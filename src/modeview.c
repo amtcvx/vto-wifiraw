@@ -24,10 +24,13 @@
 
 #define UNUSED(x) (void)(x)
 
+#define freqsmax 65
 struct netif
 {
     uint32_t phy_id;
     uint32_t supported_iftypes;
+    uint32_t freqs[freqsmax];
+    uint8_t  freqsnb;
     char name[IFNAMSIZ];
 };
 
@@ -50,23 +53,7 @@ struct state
     struct message* messages;
     struct dev_list* devices;
 };
-/*
-static const char* iftype_names[NL80211_IFTYPE_MAX + 1] = {
-    "Unspecified",
-    "IBSS",
-    "Managed",
-    "AP",
-    "AP/VLAN",
-    "WDS",
-    "Monitor",
-    "Mesh point",
-    "P2P-client",
-    "P2P-GO",
-    "P2P-device",
-    "Outside context of a BSS",
-    "NAN",
-};
-*/
+
 
 struct state* init_state()
 {
@@ -150,8 +137,7 @@ int retrieve_iftypes_callback(struct nl_msg* msg, void* arg)
     struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 
     int result = 0;
-    if ((result = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-              genlmsg_attrlen(gnlh, 0), NULL) < 0))
+    if ((result = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),genlmsg_attrlen(gnlh, 0), NULL) < 0))
     {
         fprintf(stderr, "Cannot parse attributes due to error: %d", result);
         return NL_STOP;
@@ -177,6 +163,7 @@ int retrieve_iftypes_callback(struct nl_msg* msg, void* arg)
             return NL_STOP;
         }
         current->dev.phy_id = phy_id;
+        current->dev.freqsnb = 0;
         current->next = NULL;
         current->dev.supported_iftypes = 0;
         if (!(*devices))
@@ -207,47 +194,9 @@ int retrieve_iftypes_callback(struct nl_msg* msg, void* arg)
         }
     }
 
-
-    //struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
-    struct nlattr *tb_band[NL80211_BAND_ATTR_MAX + 1];
-    struct nlattr *tb_freq[NL80211_FREQUENCY_ATTR_MAX + 1];
-    struct nlattr *nl_band;
-    struct nlattr *nl_freq;
-    int rem_band, rem_freq;
-    static int last_band = -1;
-    uint8_t cpt=0;
-    uint8_t g_freqsnb;
- 
-    #define freqsmax 65
-
-    uint32_t g_freqs[freqsmax];
-    uint32_t g_chans[freqsmax];
-
-    if (tb_msg[NL80211_ATTR_WIPHY_BANDS]) {
-      g_freqsnb = 0;
-      nla_for_each_nested(nl_band, tb_msg[NL80211_ATTR_WIPHY_BANDS], rem_band) {
-        if (last_band != nl_band->nla_type) {
-          last_band = nl_band->nla_type;
-        }
-        nla_parse(tb_band, NL80211_BAND_ATTR_MAX, nla_data(nl_band), nla_len(nl_band), NULL);
-        if (tb_band[NL80211_BAND_ATTR_FREQS]) {
-          nla_for_each_nested(nl_freq, tb_band[NL80211_BAND_ATTR_FREQS], rem_freq) {
-            nla_parse(tb_freq, NL80211_FREQUENCY_ATTR_MAX, nla_data(nl_freq), nla_len(nl_freq), NULL);
-            g_freqs[g_freqsnb] = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
-            if (g_freqs[g_freqsnb] == 2484) g_chans[cpt] = 14;
-            else if (g_freqs[g_freqsnb] < 2484) g_chans[g_freqsnb] = (g_freqs[g_freqsnb] - 2407) / 5;
-            else if (g_freqs[g_freqsnb] < 5000) g_chans[g_freqsnb] = 15 + ((g_freqs[g_freqsnb] - 2512) / 20);
-            else g_chans[g_freqsnb] = ((g_freqs[g_freqsnb] - 5000) / 5);
-            g_freqsnb++;
-
-	    printf("%d ",g_freqs[g_freqsnb-1]);
-	  }
-        }
-      }
-    }
-
     return NL_OK;
 }
+
 
 int finish_callback(struct nl_msg* msg, void* arg) {
     UNUSED(msg);
@@ -256,6 +205,44 @@ int finish_callback(struct nl_msg* msg, void* arg) {
     *finished = true;
 
     return NL_SKIP;
+}
+
+static int handler_get_channels(struct nl_msg *msg, void *arg) {
+  struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+  struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+  struct nlattr *tb_band[NL80211_BAND_ATTR_MAX + 1];
+  struct nlattr *tb_freq[NL80211_FREQUENCY_ATTR_MAX + 1];
+  struct nlattr *nl_band;
+  struct nlattr *nl_freq;
+  int rem_band, rem_freq;
+  static int last_band = -1;
+
+  nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), NULL);
+  if (tb_msg[NL80211_ATTR_WIPHY_BANDS]) {
+    nla_for_each_nested(nl_band, tb_msg[NL80211_ATTR_WIPHY_BANDS], rem_band) {
+      if (last_band != nl_band->nla_type) {
+        last_band = nl_band->nla_type;
+      }
+      nla_parse(tb_band, NL80211_BAND_ATTR_MAX, nla_data(nl_band), nla_len(nl_band), NULL);
+      if (tb_band[NL80211_BAND_ATTR_FREQS]) {
+
+        printf("TOTO\n");
+
+        nla_for_each_nested(nl_freq, tb_band[NL80211_BAND_ATTR_FREQS], rem_freq) {
+          nla_parse(tb_freq, NL80211_FREQUENCY_ATTR_MAX, nla_data(nl_freq), nla_len(nl_freq), NULL);
+/*
+          g_freqs[g_freqsnb] = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
+          if (g_freqs[g_freqsnb] == 2484) g_chans[cpt] = 14;
+          else if (g_freqs[g_freqsnb] < 2484) g_chans[g_freqsnb] = (g_freqs[g_freqsnb] - 2407) / 5;
+          else if (g_freqs[g_freqsnb] < 5000) g_chans[g_freqsnb] = 15 + ((g_freqs[g_freqsnb] - 2512) / 20);
+          else g_chans[g_freqsnb] = ((g_freqs[g_freqsnb] - 5000) / 5);
+          g_freqsnb++;
+*/
+        }
+      }
+    }
+  }
+  return NL_SKIP;
 }
 
 int main()
@@ -302,18 +289,18 @@ int main()
     nl_cb_set(state->callback, NL_CB_FINISH, NL_CB_CUSTOM,
               finish_callback, &message_received);
 
+    struct nl_msg* msg = alloc_message(state);
+
     uint8_t commands[] = { NL80211_CMD_GET_INTERFACE, NL80211_CMD_GET_WIPHY };
     for (unsigned cmd = 0; cmd < sizeof(commands) / sizeof(uint8_t); cmd++)
     {
-        struct nl_msg* msg = alloc_message(state);
         if (!msg)
         {
             fprintf(stderr, "Cannot allocate netlink message");
             cleanup(state);
             return EXIT_FAILURE;
         }
-        genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, family_id, 0,
-                    NLM_F_DUMP, commands[cmd], 0);
+        genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, family_id, 0, NLM_F_DUMP, commands[cmd], 0);
         nl_send_auto(state->socket, msg);
         message_received = false;
         while (!message_received)
@@ -327,20 +314,55 @@ int main()
             }
         }
     }
+    
+/*
+    int err = 0;
+    struct nl_sock *sk_nl;
+    if (sk_nl = nl_socket_alloc()) {
+      if ((err = genl_connect(sk_nl)) >= 0) {
+*/
+        nl_socket_modify_cb(state->socket,NL_CB_VALID,NL_CB_CUSTOM,handler_get_channels,NULL);
 
-    printf("List of wireless interfaces:\n\n");
+        for(struct dev_list* current = state->devices; current; current = current->next) {
+          if (current->dev.supported_iftypes & (1 << NL80211_IFTYPE_MONITOR)) { 
 
-    for(struct dev_list* current = state->devices; current; current = current->next)
-    {
-	if ((current->dev.supported_iftypes)&(1<<NL80211_IFTYPE_MONITOR)) {
+            msg = nlmsg_alloc();
+            genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, family_id, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
+            nla_put_u32(msg,NL80211_ATTR_IFINDEX,current->dev.phy_id);
 
-	  printf("Interface %s \n", current->dev.name);
+	    message_received = false;
+            while (!message_received)
+              {
+              int result = 0;
+              if ((result = nl_recvmsgs(state->socket, state->callback)) < 0)
+              {
+                fprintf(stderr, "Error occurred while receiving message: %d", result);
+                cleanup(state);
+                return EXIT_FAILURE;
+              }
+            }
 
-	}
+            printf("(%d) Interface %s | List of supported modes:\n", NL80211_IFTYPE_MONITOR, current->dev.name);
+	  }
+        }
+/*
+      }
     }
-
+*/
     cleanup(state);
-
     return EXIT_SUCCESS;
 }
 
+/*
+          msg = nlmsg_alloc();
+          genlmsg_put(msg,0,0,family_id,0,0,NL80211_CMD_GET_WIPHY,0);
+          nla_put_u32(msg,NL80211_ATTR_IFINDEX,current->dev.phy_id);
+          if (nl_send_auto(state->socket, msg) >= 0) {
+            nl_recvmsgs_default(state->socket);
+            printf("(%d) Interface %s | List of supported modes:\n", NL80211_IFTYPE_MONITOR, current->dev.name);
+	  }
+	}
+      }
+    }
+}
+*/
