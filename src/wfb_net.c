@@ -1,233 +1,176 @@
+#include <stdio.h>
+#include <signal.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <netlink/netlink.h> 
+#include <netlink/genl/genl.h> 
+#include <netlink/genl/family.h>
+#include <netlink/genl/ctrl.h> 
+#include <linux/nl80211.h> 
+
 #include <netlink/route/link.h>
-#include <netlink/netlink.h>
-#include <netlink/genl/genl.h>
-#include <netlink/genl/ctrl.h>
-
-#include <linux/nl80211.h>
-#include <linux/if_packet.h>
-#include <linux/filter.h>
-
-#include <net/ethernet.h>
 #include <net/if.h>
 
-#include <sys/ioctl.h>
-#include <sys/types.h>
-
-
-#include <unistd.h>
 #include <dirent.h>
-#include <fcntl.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdbool.h>
+
+#include <net/ethernet.h>
+#include <linux/filter.h>
+#include <sys/ioctl.h>
+#include <linux/if_packet.h>
 
 #include "wfb_net.h"
 
+typedef struct {
+  int    id;
+  struct nl_sock *socket;
+} netlink_t;
 
-uint8_t g_freqsnb;
-uint16_t g_family;
-uint32_t g_freqs[freqsmax];
-uint32_t g_chans[freqsmax];
+#define NBFREQS 65
+typedef struct {
+  char drivername[30];
+  char ifname[30];
+  int ifindex;
+  int iftype;
+  uint8_t nbfreqs;
+  uint8_t currchan;
+  uint32_t freqs[NBFREQS];
+  uint32_t chans[NBFREQS];
+} device_t;
 
-uint32_t g_iftype;
+typedef struct {
+  uint8_t current;
+  uint8_t nb;
+  device_t devs[MAXRAWDEV];
+} elt_t;
 
+typedef struct {
+  uint8_t fd;
+  char ifname[30];
+} raw_t;
 
-struct iovec wfb_net_ieeehd_tx_vec = { .iov_base = &wfb_net_ieeehd_tx, .iov_len = sizeof(wfb_net_ieeehd_tx)};
-struct iovec wfb_net_ieeehd_rx_vec = { .iov_base = &wfb_net_ieeehd_rx, .iov_len = sizeof(wfb_net_ieeehd_rx)};
-
-struct iovec wfb_net_radiotaphd_tx_vec = { .iov_base = &wfb_net_radiotaphd_tx, .iov_len = sizeof(wfb_net_radiotaphd_tx)};
-struct iovec wfb_net_radiotaphd_rx_vec = { .iov_base = &wfb_net_radiotaphd_rx, .iov_len = sizeof(wfb_net_radiotaphd_rx)};
-
-/*****************************************************************************/
-static int handler_get_index_type(struct nl_msg *msg, void *arg) {
-  struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
-  struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
-
-  nla_parse(tb_msg,NL80211_ATTR_MAX,genlmsg_attrdata(gnlh,0),genlmsg_attrlen(gnlh,0),NULL);
-  if (tb_msg[NL80211_ATTR_IFNAME]) printf("Interface %s\n", nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
-  if (tb_msg[NL80211_ATTR_IFINDEX]) printf("ifindex %d\n", nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]));
-  if (tb_msg[NL80211_ATTR_IFTYPE]) {
-    g_iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
-  }
+/******************************************************************************/
+static int finish_callback(struct nl_msg *msg, void *arg) {
+  bool* finished = arg;
+  *finished = true;
   return NL_SKIP;
 }
 
-/*****************************************************************************/
-static int handler_get_channels(struct nl_msg *msg, void *arg) {
+/******************************************************************************/
+static int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
+  device_t *ptr = &(((elt_t *)arg)->devs[((elt_t *)arg)->nb]);
+  ((((elt_t *)arg)->nb)++);
+
   struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
   struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
-  struct nlattr *tb_band[NL80211_BAND_ATTR_MAX + 1];
-  struct nlattr *tb_freq[NL80211_FREQUENCY_ATTR_MAX + 1];
-  struct nlattr *nl_band;
-  struct nlattr *nl_freq;
-  int rem_band, rem_freq;
-  static int last_band = -1;
-  uint8_t cpt=0;
+  nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), NULL);
+  if (tb_msg[NL80211_ATTR_IFNAME]) strcpy(ptr->ifname, nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
+  if (tb_msg[NL80211_ATTR_IFINDEX]) ptr->ifindex = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
+  if (tb_msg[NL80211_ATTR_IFTYPE]) ptr->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
 
+  return NL_SKIP;
+}
+
+/******************************************************************************/
+static int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
+  device_t *ptr = &(((elt_t *)arg)->devs[((elt_t *)arg)->current]);
+
+  struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+  struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
   nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), NULL);
   if (tb_msg[NL80211_ATTR_WIPHY_BANDS]) {
-    g_freqsnb = 0;
+    struct nlattr *tb_band[NL80211_BAND_ATTR_MAX + 1];
+    struct nlattr *tb_freq[NL80211_FREQUENCY_ATTR_MAX + 1];
+    struct nlattr *nl_band;
+    struct nlattr *nl_freq;
+    int rem_band, rem_freq;
+    int last_band = -1;
     nla_for_each_nested(nl_band, tb_msg[NL80211_ATTR_WIPHY_BANDS], rem_band) {
-      if (last_band != nl_band->nla_type) {
-        last_band = nl_band->nla_type;
-      }
+      if (last_band != nl_band->nla_type) last_band = nl_band->nla_type;
       nla_parse(tb_band, NL80211_BAND_ATTR_MAX, nla_data(nl_band), nla_len(nl_band), NULL);
       if (tb_band[NL80211_BAND_ATTR_FREQS]) {
         nla_for_each_nested(nl_freq, tb_band[NL80211_BAND_ATTR_FREQS], rem_freq) {
           nla_parse(tb_freq, NL80211_FREQUENCY_ATTR_MAX, nla_data(nl_freq), nla_len(nl_freq), NULL);
-          g_freqs[g_freqsnb] = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
-          if (g_freqs[g_freqsnb] == 2484) g_chans[cpt] = 14;
-          else if (g_freqs[g_freqsnb] < 2484) g_chans[g_freqsnb] = (g_freqs[g_freqsnb] - 2407) / 5;
-          else if (g_freqs[g_freqsnb] < 5000) g_chans[g_freqsnb] = 15 + ((g_freqs[g_freqsnb] - 2512) / 20);
-          else g_chans[g_freqsnb] = ((g_freqs[g_freqsnb] - 5000) / 5);
-          g_freqsnb++;
+	  uint32_t freq = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
+	  ptr->freqs[ptr->nbfreqs] = freq;
+          if (freq == 2484) freq = 14;
+          else if (freq < 2484) freq = (freq - 2407) / 5;
+          else if (freq < 5000) freq = 15 + ((freq - 2512) / 20);
+          else freq = ((freq - 5000) / 5);
+	  ptr->chans[ptr->nbfreqs] = freq;
+          ptr->nbfreqs++;
         }
       }
     }
   }
+
   return NL_SKIP;
 }
 
-/*****************************************************************************/
-bool wfb_net_init(wfb_net_init_t *param) {
+/******************************************************************************/
+static int initNl80211(netlink_t *nl, elt_t *elt) {
 
-  bool ret=false;
-  DIR *d1,*d2;
-  FILE *fd;
+  nl->socket = nl_socket_alloc();
+  if (!nl->socket) return -ENOMEM;
+  nl_socket_set_buffer_size(nl->socket, 8192, 8192);
+  if (genl_connect(nl->socket)) {
+    nl_close(nl->socket);
+    nl_socket_free(nl->socket);
+    return -ENOLINK;
+  }
+  nl->id = genl_ctrl_resolve(nl->socket, "nl80211");
+  if (nl->id < 0) {
+    nl_close(nl->socket);
+    nl_socket_free(nl->socket);
+    return -ENOENT;
+  }
+
+  return nl->id;
+}
+
+/******************************************************************************/
+static void unblock_rfkill(elt_t *elt) {
+  char *ptr,*netpath = "/sys/class/net";
   char path[1024],buf[1024];
   ssize_t lenlink;
-  struct dirent *dir1,*dir2;
-  char *ptr,*netpath = "/sys/class/net";
+  struct dirent *dir1;
+  DIR *d1;
+  FILE *fd;
 
-  struct nl_sock *sk_rt;
-  struct rtnl_link *link, *change;
-  struct nl_cache *cache;
-  int err = 0;
+  for(uint8_t i=0;i<elt->nb;i++) {
+    sprintf(path,"%s/%s/device/driver",netpath,elt->devs[i].ifname);
+    if ((lenlink = readlink(path, buf, sizeof(buf)-1)) != -1) {
+      buf[lenlink] = '\0';
+      ptr = strrchr( buf, '/' );
+      strcpy(elt->devs[i].drivername, ++ptr);
+    }
 
-  struct nl_msg *msg = nlmsg_alloc();
-  if ((sk_rt = nl_socket_alloc()) && (param->sk_nl = nl_socket_alloc())) {
-    if (((err = nl_connect(sk_rt, NETLINK_ROUTE)) >= 0) && ((err = genl_connect(param->sk_nl)) >= 0)) {
-      g_family = genl_ctrl_resolve(param->sk_nl, "nl80211");
-      if ((err = rtnl_link_alloc_cache(sk_rt, AF_UNSPEC, &cache)) >= 0) {
-        d1 = opendir(netpath);
-        while ((dir1 = readdir(d1)) != NULL) {
-          sprintf(path,"%s/%s/device/driver",netpath,dir1->d_name);
-          if ((lenlink = readlink(path, buf, sizeof(buf)-1)) != -1) {
-            buf[lenlink] = '\0';
-            ptr = strrchr( buf, '/' );
-            if ((strncmp( DRIVERNAME ,(ptr+1),strlen(DRIVERNAME))) == 0) {
-              sprintf(path,"%s/%s/phy80211",netpath,dir1->d_name);
-              if ((lenlink = readlink(path, buf, sizeof(buf)-1)) != -1) {
-                buf[lenlink] = '\0';
-                ptr = strrchr( buf, '/' );
-                sprintf(path,"%s/%s/phy80211",netpath,dir1->d_name);
-                d2 = opendir(path);
-                while ((dir2 = readdir(d2)) != NULL)
-                  if ((strncmp("rfkill",dir2->d_name,6)) == 0) break;
-                if ((strncmp("rfkill",dir2->d_name,6)) == 0) {
-                  sprintf(path,"%s/%s/phy80211/%s/soft",netpath,dir1->d_name,dir2->d_name);
-                  fd = fopen(path,"r+");
-                  if (fgetc(fd)==49) {
-                    fseek(fd, -1, SEEK_CUR);
-                    fputc(48, fd);
-                  };
-                  fclose(fd);
-                }
-                if ((link = rtnl_link_get_by_name(cache, dir1->d_name))) {
-                  if (!(rtnl_link_get_flags (link) & IFF_UP)) {
-                    change = rtnl_link_alloc ();
-                    rtnl_link_set_flags (change, IFF_UP);
-                    rtnl_link_change(sk_rt, link, change, 0);
-
-                    param->ifind = if_nametoindex(dir1->d_name);
-                    nl_socket_modify_cb(param->sk_nl,NL_CB_VALID,NL_CB_CUSTOM,handler_get_index_type,NULL);
-                    g_iftype = 0;
-                    genlmsg_put(msg,0,0,g_family,0,NLM_F_DUMP,NL80211_CMD_GET_INTERFACE,0);
-                    NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,if_nametoindex(dir1->d_name));
-                    if (nl_send_auto(param->sk_nl, msg) >= 0) {
-                      nl_recvmsgs_default(param->sk_nl);
-                      if (g_iftype != NL80211_IFTYPE_MONITOR) {
-                        nlmsg_free(msg);
-                        msg = nlmsg_alloc();
-                        genlmsg_put(msg,0,0,g_family,0,0,NL80211_CMD_SET_INTERFACE,0);
-                        NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,if_nametoindex(dir1->d_name));
-                        NLA_PUT_U32(msg,NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
-                        if (nl_send_auto(param->sk_nl, msg) >= 0) {
-                          nl_recvmsgs_default(param->sk_nl);
-                          nl_socket_modify_cb(param->sk_nl,NL_CB_VALID,NL_CB_CUSTOM,handler_get_channels,NULL);
-                          nlmsg_free(msg);
-                          msg = nlmsg_alloc();
-                          genlmsg_put(msg,0,0,g_family,0,0,NL80211_CMD_GET_WIPHY,0);
-                          NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,if_nametoindex(dir1->d_name));
-                          if (nl_send_auto(param->sk_nl, msg) >= 0) {
-                            nl_recvmsgs_default(param->sk_nl);
-                            strcpy(param->name,dir1->d_name);
-                            param->freqsnb = g_freqsnb;
-                            memcpy(param->freqs,g_freqs,(param->freqsnb-1)*sizeof(uint32_t));
-                            memcpy(param->chans,g_chans,(param->freqsnb-1)*sizeof(uint32_t));
-                            ret=true;
-                            break;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                closedir(d2);
-              }
-            }
-          }
-        }
-        closedir(d1);
-      }
+    sprintf(path,"%s/%s/phy80211",netpath,elt->devs[i].ifname);
+    d1 = opendir(path);
+    while ((dir1 = readdir(d1)) != NULL)
+      if ((strncmp("rfkill",dir1->d_name,5)) == 0) break;
+    if ((strncmp("rfkill",dir1->d_name,6)) == 0) {
+      sprintf(path,"%s/%s/phy80211/%s/soft",netpath,elt->devs[i].ifname,dir1->d_name);
+      fd = fopen(path,"r+");
+      if (fgetc(fd)==49) {
+        fseek(fd, -1, SEEK_CUR);
+        fputc(48, fd);
+      };
+      fclose(fd);
     }
   }
-  if (ret) {
-    //uint8_t flags;
-    uint16_t protocol = htons(ETH_P_ALL);
-    if (-1 == (param->fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
-//    if (-1 == (flags = fcntl(param->fd, F_GETFL))) exit(-1);
-//    if (-1 == (fcntl(param->fd, F_SETFL, flags | O_NONBLOCK))) exit(-1);
-    struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
-    struct sock_fprog zero_program = { 1, &zero_bytecode};
-    if (-1 == setsockopt(param->fd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program))) exit(-1);
-    struct ifreq ifr;
-    memset(&ifr, 0, sizeof(struct ifreq));
-    strncpy( ifr.ifr_name, param->name, sizeof( ifr.ifr_name ) - 1 );
-    if (ioctl( param->fd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
-    struct sockaddr_ll sll;
-    memset( &sll, 0, sizeof( sll ) );
-    sll.sll_family   = AF_PACKET;
-    sll.sll_ifindex  = ifr.ifr_ifindex;
-    sll.sll_protocol = protocol;
-    if (-1 == bind(param->fd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
-    char drain[1];
-    while (recv(param->fd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) {
-      printf("----\n");
-    };
-    struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
-    struct sock_fprog full_program = { 1, &full_bytecode};
-    if (-1 == setsockopt(param->fd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program))) ret=false;
-    static const int32_t sock_qdisc_bypass = 1;
-    if (-1 == setsockopt(param->fd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) ret=false;
-  }
-
-  return(ret);
-  nla_put_failure:
-    nlmsg_free(msg);
-    return (false);
 }
 
 /*****************************************************************************/
-bool wfb_net_setfreq(uint8_t freqcpt,wfb_net_init_t *param) {
+bool wfb_net_setfreq(netlink_t *nl, int ifindex, uint32_t freq) {
   bool ret=true;
-  param->freqcptcur = freqcpt;
   struct nl_msg *msg=nlmsg_alloc();
-  genlmsg_put(msg,0,0,g_family,0,0,NL80211_CMD_SET_CHANNEL,0);
-  NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,param->ifind);
-  NLA_PUT_U32(msg,NL80211_ATTR_WIPHY_FREQ,param->freqs[freqcpt]);
-  if (nl_send_auto(param->sk_nl, msg) < 0) ret=false;
+  genlmsg_put(msg,0,0,nl->id,0,0,NL80211_CMD_SET_CHANNEL,0);
+  NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,ifindex);
+  NLA_PUT_U32(msg,NL80211_ATTR_WIPHY_FREQ,freq);
+  if (nl_send_auto(nl->socket, msg) < 0) ret=false;
   nlmsg_free(msg);
   return(ret);
   nla_put_failure:
@@ -235,13 +178,151 @@ bool wfb_net_setfreq(uint8_t freqcpt,wfb_net_init_t *param) {
     return(false);
 }
 
-/*****************************************************************************/
-void wfb_net_incfreq(uint8_t avoidfreqcpt, wfb_net_init_t *param) {
-  if(param->freqcptcur < (param->freqsnb - 1)) ++(param->freqcptcur);
-  else param->freqcptcur = 0;
-  if (param->freqcptcur == avoidfreqcpt) {
-    if(param->freqcptcur < (param->freqsnb - 1)) ++(param->freqcptcur);
-    else param->freqcptcur = 0;
+/******************************************************************************/
+static int setwifi(netlink_t *nl, elt_t *elt) {
+
+  bool msg_received = false;
+
+  struct nl_cb *cb1 = nl_cb_alloc(NL_CB_DEFAULT);
+  if (!cb1) return ENOMEM;
+  nl_cb_set(cb1, NL_CB_VALID, NL_CB_CUSTOM, getallinterfaces_callback, elt);
+  nl_cb_set(cb1, NL_CB_FINISH, NL_CB_CUSTOM, finish_callback, &msg_received);
+
+  struct nl_msg *msg1 = nlmsg_alloc();
+  if (!msg1) return -2;
+  genlmsg_put(msg1, NL_AUTO_PORT, NL_AUTO_SEQ, nl->id, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
+  nl_send_auto(nl->socket, msg1);
+  msg_received = false;
+  while (!msg_received) nl_recvmsgs(nl->socket, cb1);
+  nlmsg_free(msg1);
+
+  struct nl_sock *sockrt = nl_socket_alloc();
+  if (!sockrt) return -ENOMEM;
+  if (nl_connect(sockrt, NETLINK_ROUTE)) {
+    nl_close(sockrt);
+    nl_socket_free(sockrt);
+    return -ENOLINK;
   }
-  wfb_net_setfreq( param->freqcptcur, param);
+
+  for(uint8_t i=0;i<elt->nb;i++) {
+    struct nl_msg *msg3 = nlmsg_alloc();
+    if (!msg3) return -2;
+    genlmsg_put(msg3,0,0,nl->id,0,0,NL80211_CMD_SET_INTERFACE,0);  //  DOWN interfaces
+    nla_put_u32(msg3, NL80211_ATTR_IFINDEX, elt->devs[i].ifindex);
+    nla_put_u32(msg3, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
+    nl_send_auto(nl->socket, msg3);
+    if (nl_send_auto(nl->socket, msg3) >= 0)  nl_recvmsgs_default(nl->socket);
+    nlmsg_free(msg3);
+  }
+
+  elt->nb = 0;
+  struct nl_msg *msg4 = nlmsg_alloc();
+  if (!msg4) return -2;
+  genlmsg_put(msg4, NL_AUTO_PORT, NL_AUTO_SEQ, nl->id, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
+  nl_send_auto(nl->socket, msg4);
+  msg_received = false;
+  while (!msg_received) nl_recvmsgs(nl->socket, cb1);
+  nlmsg_free(msg4);
+
+  unblock_rfkill(elt);
+
+  int8_t err = 0;
+  struct nl_cache *cache;
+  struct rtnl_link *link, *change;
+  if ((err = rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache)) >= 0) {
+    for(uint8_t i=0;i<elt->nb;i++) {
+      if ((link = rtnl_link_get(cache, elt->devs[i].ifindex))) {
+        if (!(rtnl_link_get_flags (link) & IFF_UP)) {
+          change = rtnl_link_alloc ();
+          rtnl_link_set_flags (change, IFF_UP);
+          rtnl_link_change(sockrt, link, change, 0);
+	}
+      }
+    }
+  }
+
+  nl_cb_set(cb1, NL_CB_VALID, NL_CB_CUSTOM, getsinglewifi_callback, elt);
+  for(uint8_t i=0;i<elt->nb;i++) {
+    elt->current = i;
+    struct nl_msg *msg2 = nlmsg_alloc();
+    if (!msg2) return -2;
+    genlmsg_put(msg2, NL_AUTO_PORT, NL_AUTO_SEQ,  nl->id, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
+    nla_put_u32(msg2, NL80211_ATTR_IFINDEX, elt->devs[i].ifindex);
+    nl_send_auto(nl->socket, msg2);
+    msg_received = false;
+    while (!msg_received) nl_recvmsgs(nl->socket, cb1);
+    nlmsg_free(msg2);
+  }
+
+  return 0;
+}
+
+/******************************************************************************/
+static bool setraw(elt_t *elt, raw_t raw[]) {
+
+  bool ret = false;
+  uint16_t protocol = htons(ETH_P_ALL);
+
+  for(uint8_t i=0;i<elt->nb;i++) {
+
+    strcpy(raw[i].ifname, elt->devs[i].ifname);
+
+    if (-1 == (raw[i].fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
+    struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
+    struct sock_fprog zero_program = { 1, &zero_bytecode};
+    if (-1 == setsockopt(raw[i].fd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program))) exit(-1);
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(struct ifreq));
+    strncpy( ifr.ifr_name, raw[i].ifname, sizeof( ifr.ifr_name ) - 1 );
+    if (ioctl( raw[i].fd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
+    struct sockaddr_ll sll;
+    memset( &sll, 0, sizeof( sll ) );
+    sll.sll_family   = AF_PACKET;
+    sll.sll_ifindex  = ifr.ifr_ifindex;
+    sll.sll_protocol = protocol;
+    if (-1 == bind(raw[i].fd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
+    char drain[1];
+    while (recv(raw[i].fd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) {
+      printf("----\n");
+    };
+    struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
+    struct sock_fprog full_program = { 1, &full_bytecode};
+    if (-1 == setsockopt(raw[i].fd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program))) ret=false;
+    static const int32_t sock_qdisc_bypass = 1;
+    if (-1 == setsockopt(raw[i].fd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) ret=false;
+  }
+
+  return(ret);
+}
+
+
+/******************************************************************************/
+void  wfb_net_init(wfb_net_init_t *pnet) {
+/*
+  netlink_t nl;
+  elt_t elt;
+
+  memset(&elt,0,sizeof(elt));
+  nl.id = initNl80211(&nl, &elt);
+  if (nl.id < 0) return -1;
+  setwifi(&nl, &elt);
+
+  raw_t raws[MAXRAWDEV];
+  setraw(&elt, raws);
+
+  uint8_t j=0;
+  for(uint8_t i=0;i<elt.nb;i++) {
+
+    wfb_net_setfreq(&nl, elt.devs[i].ifindex, elt.devs[i].freqs[j]); 
+    j++;
+
+    printf("\n(%d)(%s)(%s) ",elt.devs[i].ifindex, elt.devs[i].ifname, elt.devs[i].drivername);
+    for(uint8_t j=0;j<elt.devs[i].nbfreqs;j++) printf("(%d)(%d) ",elt.devs[i].freqs[j],elt.devs[i].chans[j]);
+    printf("\n");
+  }
+
+  nl_close(nl.socket);
+  nl_socket_free(nl.socket);
+  return 0;
+*/
 }
