@@ -2,6 +2,8 @@
 #define WFB_NET_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
 /*
 #include <netinet/in.h>
 
@@ -25,6 +27,7 @@ bool wfb_net_setfreq(uint8_t freqcpt,wfb_net_init_t *param);
 void wfb_net_incfreq(uint8_t avoidfreqcpt, wfb_net_init_t *param); 
 */
 
+
 #define MAXRAWDEV 20
 
 typedef struct {
@@ -34,11 +37,12 @@ typedef struct {
 
 typedef struct {
   uint8_t rawnb;
-  wfb_net_raw_t raw[MAXRAWDEV];
+  wfb_net_raw_t raws[MAXRAWDEV];
 } wfb_net_init_t;
 
 
-void  wfb_net_init(wfb_net_init_t *pnet);
+void wfb_net_init(wfb_net_init_t *pnet);
+bool wfb_net_setfreq(int ifindex, uint32_t freq);
 
 /************************************************************************************************/
 static uint8_t wfb_net_ieeehd_tx[] = {

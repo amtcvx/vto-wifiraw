@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <poll.h>
 #include <unistd.h>
+#include <sys/socket.h>
 
 
 #include "wfb.h"
@@ -11,33 +12,27 @@ int main(void) {
   uint8_t devcpt;
   uint64_t exptime;
   ssize_t len;
-  printf("HELLO\n");
 
   wfb_utils_init_t putils;
   wfb_utils_init(&putils);
 
-  printf("(%d)(%d)\n",putils.readtabnb,putils.nbdev);
-
-  int deb = 1;
-  int fin = 3;
+  wfb_utils_rawmsg_t rawmsg[putils.rawlimit];
 
   for(;;) {	
     if (0 != poll(putils.readsets, putils.nbdev, -1)) {
       for (uint8_t cpt=0; cpt<putils.nbdev; cpt++) {
         if (putils.readsets[cpt].revents == POLLIN) {
           devcpt = putils.readtab[cpt];
-          if (devcpt == TIME_FD) {
+          if (devcpt == 0) {
             len = read(putils.dev[devcpt].fd, &exptime, sizeof(uint64_t));
 	    wfb_utils_periodic();
 	  } else {
-            if ((devcpt > TIME_FD)&&(devcpt < putils.rawlimit)) {
-  	      printf("RAW (%d)\n",devcpt);
-/*
-              wfb_utils_presetrawmsg(&rawmsg[devcpt - RAW0_FD][rawcur], ONLINE_MTU, true);
-              len = recvmsg( dev[devcpt].fd, &rawmsg[devcpt - RAW0_FD][rawcur].msg, MSG_DONTWAIT);
 
-	      break;
-*/
+            if ((devcpt > 0)&&(devcpt < putils.rawlimit)) {
+  	      printf("RAW (%d)\n",devcpt);
+
+              wfb_utils_presetrawmsg(&rawmsg[devcpt-1], true);
+              len = recvmsg( putils.dev[devcpt].fd, &rawmsg[devcpt-1].msg, MSG_DONTWAIT);
 	    }
           }
 	}

@@ -1,8 +1,12 @@
 #ifndef WFB_H
 #define WFB_H
 
+#include "wfb_net.h"
 #define PERIOD_DELAY_S	1
 
-typedef enum { TIME_FD, FD_NB } cannal_t;
+#define PAY_MTU	1400
+
+// TIMER, PROTOCOL, VIDEO, TUNNEL, TELEMETRY
+#define MAXDEV (5 + MAXRAWDEV) 
 
 #endif // WFB_H

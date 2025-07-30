@@ -23,10 +23,12 @@
 
 #include "wfb_net.h"
 
-typedef struct {
+const char * drivername_arr[] =  { "rt2800usb", "rtl88XXau", "rtw_8822bu" };
+
+struct netlink_t {
   int    id;
   struct nl_sock *socket;
-} netlink_t;
+} g_netlink;
 
 #define NBFREQS 65
 typedef struct {
@@ -46,10 +48,12 @@ typedef struct {
   device_t devs[MAXRAWDEV];
 } elt_t;
 
-typedef struct {
-  uint8_t fd;
-  char ifname[30];
-} raw_t;
+/******************************************************************************/
+struct iovec wfb_net_ieeehd_tx_vec = { .iov_base = &wfb_net_ieeehd_tx, .iov_len = sizeof(wfb_net_ieeehd_tx)};
+struct iovec wfb_net_ieeehd_rx_vec = { .iov_base = &wfb_net_ieeehd_rx, .iov_len = sizeof(wfb_net_ieeehd_rx)};
+
+struct iovec wfb_net_radiotaphd_tx_vec = { .iov_base = &wfb_net_radiotaphd_tx, .iov_len = sizeof(wfb_net_radiotaphd_tx)};
+struct iovec wfb_net_radiotaphd_rx_vec = { .iov_base = &wfb_net_radiotaphd_rx, .iov_len = sizeof(wfb_net_radiotaphd_rx)};
 
 /******************************************************************************/
 static int finish_callback(struct nl_msg *msg, void *arg) {
@@ -110,27 +114,6 @@ static int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
 }
 
 /******************************************************************************/
-static int initNl80211(netlink_t *nl, elt_t *elt) {
-
-  nl->socket = nl_socket_alloc();
-  if (!nl->socket) return -ENOMEM;
-  nl_socket_set_buffer_size(nl->socket, 8192, 8192);
-  if (genl_connect(nl->socket)) {
-    nl_close(nl->socket);
-    nl_socket_free(nl->socket);
-    return -ENOLINK;
-  }
-  nl->id = genl_ctrl_resolve(nl->socket, "nl80211");
-  if (nl->id < 0) {
-    nl_close(nl->socket);
-    nl_socket_free(nl->socket);
-    return -ENOENT;
-  }
-
-  return nl->id;
-}
-
-/******************************************************************************/
 static void unblock_rfkill(elt_t *elt) {
   char *ptr,*netpath = "/sys/class/net";
   char path[1024],buf[1024];
@@ -163,23 +146,8 @@ static void unblock_rfkill(elt_t *elt) {
   }
 }
 
-/*****************************************************************************/
-bool wfb_net_setfreq(netlink_t *nl, int ifindex, uint32_t freq) {
-  bool ret=true;
-  struct nl_msg *msg=nlmsg_alloc();
-  genlmsg_put(msg,0,0,nl->id,0,0,NL80211_CMD_SET_CHANNEL,0);
-  NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,ifindex);
-  NLA_PUT_U32(msg,NL80211_ATTR_WIPHY_FREQ,freq);
-  if (nl_send_auto(nl->socket, msg) < 0) ret=false;
-  nlmsg_free(msg);
-  return(ret);
-  nla_put_failure:
-    nlmsg_free(msg);
-    return(false);
-}
-
 /******************************************************************************/
-static int setwifi(netlink_t *nl, elt_t *elt) {
+static int setwifi(elt_t *elt) {
 
   bool msg_received = false;
 
@@ -190,10 +158,10 @@ static int setwifi(netlink_t *nl, elt_t *elt) {
 
   struct nl_msg *msg1 = nlmsg_alloc();
   if (!msg1) return -2;
-  genlmsg_put(msg1, NL_AUTO_PORT, NL_AUTO_SEQ, nl->id, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
-  nl_send_auto(nl->socket, msg1);
+  genlmsg_put(msg1, NL_AUTO_PORT, NL_AUTO_SEQ, g_netlink.id, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
+  nl_send_auto(g_netlink.socket, msg1);
   msg_received = false;
-  while (!msg_received) nl_recvmsgs(nl->socket, cb1);
+  while (!msg_received) nl_recvmsgs(g_netlink.socket, cb1);
   nlmsg_free(msg1);
 
   struct nl_sock *sockrt = nl_socket_alloc();
@@ -207,21 +175,21 @@ static int setwifi(netlink_t *nl, elt_t *elt) {
   for(uint8_t i=0;i<elt->nb;i++) {
     struct nl_msg *msg3 = nlmsg_alloc();
     if (!msg3) return -2;
-    genlmsg_put(msg3,0,0,nl->id,0,0,NL80211_CMD_SET_INTERFACE,0);  //  DOWN interfaces
+    genlmsg_put(msg3,0,0,g_netlink.id,0,0,NL80211_CMD_SET_INTERFACE,0);  //  DOWN interfaces
     nla_put_u32(msg3, NL80211_ATTR_IFINDEX, elt->devs[i].ifindex);
     nla_put_u32(msg3, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
-    nl_send_auto(nl->socket, msg3);
-    if (nl_send_auto(nl->socket, msg3) >= 0)  nl_recvmsgs_default(nl->socket);
+    nl_send_auto(g_netlink.socket, msg3);
+    if (nl_send_auto(g_netlink.socket, msg3) >= 0)  nl_recvmsgs_default(g_netlink.socket);
     nlmsg_free(msg3);
   }
 
   elt->nb = 0;
   struct nl_msg *msg4 = nlmsg_alloc();
   if (!msg4) return -2;
-  genlmsg_put(msg4, NL_AUTO_PORT, NL_AUTO_SEQ, nl->id, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
-  nl_send_auto(nl->socket, msg4);
+  genlmsg_put(msg4, NL_AUTO_PORT, NL_AUTO_SEQ, g_netlink.id, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
+  nl_send_auto(g_netlink.socket, msg4);
   msg_received = false;
-  while (!msg_received) nl_recvmsgs(nl->socket, cb1);
+  while (!msg_received) nl_recvmsgs(g_netlink.socket, cb1);
   nlmsg_free(msg4);
 
   unblock_rfkill(elt);
@@ -246,11 +214,11 @@ static int setwifi(netlink_t *nl, elt_t *elt) {
     elt->current = i;
     struct nl_msg *msg2 = nlmsg_alloc();
     if (!msg2) return -2;
-    genlmsg_put(msg2, NL_AUTO_PORT, NL_AUTO_SEQ,  nl->id, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
+    genlmsg_put(msg2, NL_AUTO_PORT, NL_AUTO_SEQ,  g_netlink.id, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
     nla_put_u32(msg2, NL80211_ATTR_IFINDEX, elt->devs[i].ifindex);
-    nl_send_auto(nl->socket, msg2);
+    nl_send_auto(g_netlink.socket, msg2);
     msg_received = false;
-    while (!msg_received) nl_recvmsgs(nl->socket, cb1);
+    while (!msg_received) nl_recvmsgs(g_netlink.socket, cb1);
     nlmsg_free(msg2);
   }
 
@@ -258,71 +226,68 @@ static int setwifi(netlink_t *nl, elt_t *elt) {
 }
 
 /******************************************************************************/
-static bool setraw(elt_t *elt, raw_t raw[]) {
+static uint8_t setraw(elt_t *elt, wfb_net_raw_t raw[]) {
 
-  bool ret = false;
+  uint8_t ret = 0;
   uint16_t protocol = htons(ETH_P_ALL);
 
   for(uint8_t i=0;i<elt->nb;i++) {
-
-    strcpy(raw[i].ifname, elt->devs[i].ifname);
-
-    if (-1 == (raw[i].fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
+    if (strcmp(elt->devs[i].drivername,drivername_arr[1])) continue;
+    strcpy(raw[ret].ifname, elt->devs[i].ifname);
+    if (-1 == (raw[ret].fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
     struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
     struct sock_fprog zero_program = { 1, &zero_bytecode};
-    if (-1 == setsockopt(raw[i].fd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program))) exit(-1);
+    if (-1 == setsockopt(raw[ret].fd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program))) exit(-1);
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(struct ifreq));
-    strncpy( ifr.ifr_name, raw[i].ifname, sizeof( ifr.ifr_name ) - 1 );
-    if (ioctl( raw[i].fd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
+    strncpy( ifr.ifr_name, raw[ret].ifname, sizeof( ifr.ifr_name ) - 1 );
+    if (ioctl( raw[ret].fd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
     struct sockaddr_ll sll;
     memset( &sll, 0, sizeof( sll ) );
     sll.sll_family   = AF_PACKET;
     sll.sll_ifindex  = ifr.ifr_ifindex;
     sll.sll_protocol = protocol;
-    if (-1 == bind(raw[i].fd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
+    if (-1 == bind(raw[ret].fd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
     char drain[1];
-    while (recv(raw[i].fd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) {
+    while (recv(raw[ret].fd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) {
       printf("----\n");
     };
     struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
     struct sock_fprog full_program = { 1, &full_bytecode};
-    if (-1 == setsockopt(raw[i].fd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program))) ret=false;
+    if (-1 == setsockopt(raw[ret].fd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program))) ret=false;
     static const int32_t sock_qdisc_bypass = 1;
-    if (-1 == setsockopt(raw[i].fd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) ret=false;
+    if (-1 == setsockopt(raw[ret].fd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) ret=false;
+    ret++;
   }
-
   return(ret);
 }
 
+/*****************************************************************************/
+bool wfb_net_setfreq(int ifindex, uint32_t freq) {
+  bool ret=true;
+  struct nl_msg *msg=nlmsg_alloc();
+  genlmsg_put(msg,0,0,g_netlink.id,0,0,NL80211_CMD_SET_CHANNEL,0);
+  NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,ifindex);
+  NLA_PUT_U32(msg,NL80211_ATTR_WIPHY_FREQ,freq);
+  if (nl_send_auto(g_netlink.socket, msg) < 0) ret=false;
+  nlmsg_free(msg);
+  return(ret);
+  nla_put_failure:
+    nlmsg_free(msg);
+    return(false);
+}
 
 /******************************************************************************/
-void  wfb_net_init(wfb_net_init_t *pnet) {
-/*
-  netlink_t nl;
+void wfb_net_init(wfb_net_init_t *pnet) {
+
+  g_netlink.socket = nl_socket_alloc();
+  if (!g_netlink.socket) return -ENOMEM;
+  nl_socket_set_buffer_size(g_netlink.socket, 8192, 8192);
+  if (genl_connect(g_netlink.socket)) exit(-1);
+  g_netlink.id = genl_ctrl_resolve(g_netlink.socket, "nl80211");
+  if (g_netlink.id < 0) exit(-1);
   elt_t elt;
-
   memset(&elt,0,sizeof(elt));
-  nl.id = initNl80211(&nl, &elt);
-  if (nl.id < 0) return -1;
-  setwifi(&nl, &elt);
-
-  raw_t raws[MAXRAWDEV];
-  setraw(&elt, raws);
-
-  uint8_t j=0;
-  for(uint8_t i=0;i<elt.nb;i++) {
-
-    wfb_net_setfreq(&nl, elt.devs[i].ifindex, elt.devs[i].freqs[j]); 
-    j++;
-
-    printf("\n(%d)(%s)(%s) ",elt.devs[i].ifindex, elt.devs[i].ifname, elt.devs[i].drivername);
-    for(uint8_t j=0;j<elt.devs[i].nbfreqs;j++) printf("(%d)(%d) ",elt.devs[i].freqs[j],elt.devs[i].chans[j]);
-    printf("\n");
-  }
-
-  nl_close(nl.socket);
-  nl_socket_free(nl.socket);
-  return 0;
-*/
+  setwifi(&elt);
+  pnet->rawnb = setraw(&elt, pnet->raws);
 }

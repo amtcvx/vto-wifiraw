@@ -1,21 +1,62 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/timerfd.h>
 
 #include "wfb_utils.h"
 #include "wfb_net.h"
 
+#if RAW
+extern struct iovec wfb_net_ieeehd_tx_vec;
+extern struct iovec wfb_net_ieeehd_rx_vec;
+extern struct iovec wfb_net_radiotaphd_tx_vec;
+extern struct iovec wfb_net_radiotaphd_rx_vec;
+#endif // RAW
 
+wfb_utils_pay_t wfb_utils_pay;
+struct iovec wfb_utils_pay_vec = { .iov_base = &wfb_utils_pay, .iov_len = sizeof(wfb_utils_pay_t)};
+
+/*****************************************************************************/
+void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *msg, bool rxflag) {
+
+  memset(&msg->bufs, 0, sizeof(msg->bufs));
+  msg->iovecs.iov_base = &msg->bufs;
+  msg->iovecs.iov_len  = ONLINE_MTU;
+#if RAW
+  if (rxflag) {
+    msg->headvecs.head[0] = wfb_net_radiotaphd_rx_vec;
+    msg->headvecs.head[1] = wfb_net_ieeehd_rx_vec;
+    memset(wfb_net_ieeehd_rx_vec.iov_base, 0, wfb_net_ieeehd_rx_vec.iov_len);
+  } else {
+    msg->headvecs.head[0] = wfb_net_radiotaphd_tx_vec;
+    msg->headvecs.head[1] = wfb_net_ieeehd_tx_vec;
+  }
+  memset(wfb_utils_pay_vec.iov_base, 0, wfb_utils_pay_vec.iov_len);
+  msg->headvecs.head[2] = wfb_utils_pay_vec;
+  msg->headvecs.head[3] = msg->iovecs;
+  msg->msg.msg_iovlen = 4;
+#else
+  msg->headvecs.head[0] = wfb_utils_pay_vec;
+  msg->headvecs.head[1] = msg->iovecs;
+  msg->msg.msg_iovlen = 2;
+#endif // RAW
+  msg->msg.msg_iov = &msg->headvecs.head[0];
+}
+
+
+/*****************************************************************************/
 void wfb_utils_periodic(void) {
   printf("TIC\n");
 }
 
 
+/*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *putils) {
 
   wfb_net_init_t pnet;
   wfb_net_init(&pnet);
 
-  putils->nbdev = FD_NB;
+  putils->nbdev = MAXDEV;
+  putils->rawlimit = 1 + pnet.rawnb;
   putils->readtabnb = 0;
 
   uint8_t devcpt = 0;
@@ -29,7 +70,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 
   for(uint8_t i=0;i<(pnet.rawnb);i++) {
     devcpt = 1 + i;
-    putils->dev[devcpt].fd = pnet.raw[i].fd;
+    putils->dev[devcpt].fd = pnet.raws[i].fd;
     putils->readsets[putils->readtabnb].fd = putils->dev[devcpt].fd;
     putils->readsets[putils->readtabnb].events = POLLIN;
     putils->readtab[putils->readtabnb] = devcpt;
