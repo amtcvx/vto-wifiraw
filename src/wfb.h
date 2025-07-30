@@ -7,6 +7,6 @@
 #define PAY_MTU	1400
 
 // TIMER, PROTOCOL, VIDEO, TUNNEL, TELEMETRY
-#define MAXDEV (5 + MAXRAWDEV) 
+#define MAXDEV (1 + MAXRAWDEV) 
 
 #endif // WFB_H
