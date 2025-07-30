@@ -172,6 +172,7 @@ static int setwifi(elt_t *elt) {
     return -ENOLINK;
   }
 
+  if (elt->nb == 0) return(-1);
   for(uint8_t i=0;i<elt->nb;i++) {
     struct nl_msg *msg3 = nlmsg_alloc();
     if (!msg3) return -2;
@@ -232,7 +233,7 @@ static uint8_t setraw(elt_t *elt, wfb_net_raw_t raw[]) {
   uint16_t protocol = htons(ETH_P_ALL);
 
   for(uint8_t i=0;i<elt->nb;i++) {
-    if (strcmp(elt->devs[i].drivername,drivername_arr[1])) continue;
+    if (strcmp(elt->devs[i].drivername,drivername_arr[1])!=0) continue;
     strcpy(raw[ret].ifname, elt->devs[i].ifname);
     if (-1 == (raw[ret].fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
     struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
@@ -288,6 +289,7 @@ void wfb_net_init(wfb_net_init_t *pnet) {
   if (g_netlink.id < 0) exit(-1);
   elt_t elt;
   memset(&elt,0,sizeof(elt));
-  setwifi(&elt);
+  if (setwifi(&elt) < 0) exit(-1);
   pnet->rawnb = setraw(&elt, pnet->raws);
+  if (pnet->rawnb == 0) exit(-1);
 }

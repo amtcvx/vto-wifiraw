@@ -15,8 +15,9 @@ int main(void) {
 
   wfb_utils_init_t putils;
   wfb_utils_init(&putils);
+  printf("(%d)\n",putils.rawlimit-1);
 
-  wfb_utils_rawmsg_t rawmsg[putils.rawlimit];
+  wfb_utils_rawmsg_t rawmsg[putils.rawlimit - 1];
 
   for(;;) {	
     if (0 != poll(putils.readsets, putils.nbdev, -1)) {
