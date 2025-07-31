@@ -1,6 +1,9 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/timerfd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "wfb_utils.h"
 #include "wfb_net.h"
@@ -14,6 +17,14 @@ extern struct iovec wfb_net_radiotaphd_rx_vec;
 
 wfb_utils_pay_t wfb_utils_pay;
 struct iovec wfb_utils_pay_vec = { .iov_base = &wfb_utils_pay, .iov_len = sizeof(wfb_utils_pay_t)};
+
+struct log_t {
+  uint8_t fd;
+  struct sockaddr_in addrout;
+  uint8_t txt[1000];
+  uint16_t len;
+} g_log;
+struct log_t *g_plog = &g_log;
 
 /*****************************************************************************/
 void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *msg, bool rxflag) {
@@ -45,12 +56,20 @@ void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *msg, bool rxflag) {
 
 /*****************************************************************************/
 void wfb_utils_periodic(void) {
-  printf("TIC\n");
+
+  g_plog->len += sprintf((char *)g_plog->txt + g_plog->len,"[ TIC ]\n");
+  sendto(g_plog->fd, g_plog->txt, g_plog->len, 0, (const struct sockaddr *)&g_log.addrout, sizeof(struct sockaddr));
+  g_plog->len = 0;
 }
 
 
 /*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *putils) {
+
+  g_log.addrout.sin_family = AF_INET;
+  g_log.addrout.sin_port = htons(PORT_LOG);
+  g_log.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  g_log.fd = socket(AF_INET, SOCK_DGRAM, 0);
 
   wfb_net_init_t pnet;
   wfb_net_init(&pnet);

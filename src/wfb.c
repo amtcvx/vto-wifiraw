@@ -32,6 +32,8 @@ int main(void) {
   	      printf("RAW (%d)\n",devcpt);
               wfb_utils_presetrawmsg(&rawmsg[devcpt-1], true);
               len = recvmsg( putils.dev[devcpt].fd, &rawmsg[devcpt-1].msg, MSG_DONTWAIT);
+	      if (!((len > 0)&&(wfb_utils_pay.droneid == DRONEID))) {
+	      }
             }
           }
 	}

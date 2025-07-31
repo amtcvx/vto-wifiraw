@@ -164,6 +164,8 @@ static int setwifi(elt_t *elt) {
   while (!msg_received) nl_recvmsgs(g_netlink.socket, cb1);
   nlmsg_free(msg1);
 
+  if (elt->nb == 0) return(0);
+
   struct nl_sock *sockrt = nl_socket_alloc();
   if (!sockrt) return -ENOMEM;
   if (nl_connect(sockrt, NETLINK_ROUTE)) {
@@ -172,7 +174,6 @@ static int setwifi(elt_t *elt) {
     return -ENOLINK;
   }
 
-  if (elt->nb == 0) return(-1);
   for(uint8_t i=0;i<elt->nb;i++) {
     struct nl_msg *msg3 = nlmsg_alloc();
     if (!msg3) return -2;
@@ -290,6 +291,6 @@ void wfb_net_init(wfb_net_init_t *pnet) {
   elt_t elt;
   memset(&elt,0,sizeof(elt));
   if (setwifi(&elt) < 0) exit(-1);
-  pnet->rawnb = setraw(&elt, pnet->raws);
-  if (pnet->rawnb == 0) exit(-1);
+  if (elt.nb > 0) pnet->rawnb = setraw(&elt, pnet->raws);
+  else pnet->rawnb = 0;
 }
