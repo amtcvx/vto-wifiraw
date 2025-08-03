@@ -17,7 +17,7 @@ PROJ=$PWD
 read -p "for this side in $PROJ (y/n) ?" ANSWER
 if [ ! $ANSWER = "y" ] || [ -z $ANSWER ]; then exit -1; fi
 if ! groups | grep -q 'sudo'; then exit -1; fi
-sudo apt-get install -y netcat socat git net-tools wireless-tools rfkill v4l-utils build-essential
+sudo apt-get install -y socat git net-tools wireless-tools rfkill v4l-utils build-essential
 
 cd $PROJ/rtl8812au
 git checkout v5.6.4.2
