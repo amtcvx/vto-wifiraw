@@ -3,9 +3,10 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
-
 #include "wfb.h"
 #include "wfb_utils.h"
+
+extern wfb_utils_pay_t wfb_utils_pay;
 
 /*****************************************************************************/
 int main(void) {
@@ -25,14 +26,17 @@ int main(void) {
         if (putils.readsets[cpt].revents == POLLIN) {
           devcpt = putils.readtab[cpt];
           if (devcpt == 0) {
-            len = read(putils.dev[devcpt].fd, &exptime, sizeof(uint64_t));
+            len = read(putils.fd[devcpt], &exptime, sizeof(uint64_t));
 	    wfb_utils_periodic();
 	  } else {
             if ((devcpt > 0)&&(devcpt < putils.rawlimit)) {
   	      printf("RAW (%d)\n",devcpt);
               wfb_utils_presetrawmsg(&rawmsg[devcpt-1], true);
-              len = recvmsg( putils.dev[devcpt].fd, &rawmsg[devcpt-1].msg, MSG_DONTWAIT);
-	      if (!((len > 0)&&(wfb_utils_pay.droneid == DRONEID))) {
+              len = recvmsg( putils.fd[devcpt], &rawmsg[devcpt-1].msg, MSG_DONTWAIT);
+
+	      if (!((len > 0)&&(wfb_utils_pay.droneid >= DRONEIDMIN)&&(wfb_utils_pay.droneid <= DRONEIDMAX))) putils.pnet->raws[devcpt-1].fails++;
+	      else {
+                putils.pnet->raws[devcpt-1].incoming++;
 	      }
             }
           }

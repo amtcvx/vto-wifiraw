@@ -24,7 +24,8 @@ struct log_t {
   uint8_t txt[1000];
   uint16_t len;
 } g_log;
-struct log_t *g_plog = &g_log;
+
+wfb_net_init_t g_net;
 
 /*****************************************************************************/
 void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *msg, bool rxflag) {
@@ -55,11 +56,21 @@ void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *msg, bool rxflag) {
 
 
 /*****************************************************************************/
-void wfb_utils_periodic(void) {
+void printlog() {
+  uint8_t template[]="devraw(%d) fails(%d) incom(%d)\n";
 
-  g_plog->len += sprintf((char *)g_plog->txt + g_plog->len,"[ TIC ]\n");
-  sendto(g_plog->fd, g_plog->txt, g_plog->len, 0, (const struct sockaddr *)&g_log.addrout, sizeof(struct sockaddr));
-  g_plog->len = 0;
+  for (uint8_t i=0; i<g_net.rawnb; i++) {
+    g_log.len += sprintf((char *)g_log.txt + g_log.len, (char *)template,
+		  g_net.raws[i].fd, g_net.raws[i].fails, g_net.raws[i].incoming);
+  }
+
+  sendto(g_log.fd, g_log.txt, g_log.len, 0, (const struct sockaddr *)&g_log.addrout, sizeof(struct sockaddr));
+  g_log.len = 0;
+}
+
+/*****************************************************************************/
+void wfb_utils_periodic() {
+  printlog();
 }
 
 
@@ -71,26 +82,26 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   g_log.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
   g_log.fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-  wfb_net_init_t pnet;
-  wfb_net_init(&pnet);
+  wfb_net_init(&g_net);
 
   putils->nbdev = MAXDEV;
-  putils->rawlimit = 1 + pnet.rawnb;
+  putils->rawlimit = 1 + g_net.rawnb;
   putils->readtabnb = 0;
+  putils->pnet = &g_net;
 
   uint8_t devcpt = 0;
-  putils->dev[devcpt].fd = timerfd_create(CLOCK_MONOTONIC, 0);
-  putils->readsets[putils->readtabnb].fd = putils->dev[devcpt].fd;
+  putils->fd[devcpt] = timerfd_create(CLOCK_MONOTONIC, 0);
+  putils->readsets[putils->readtabnb].fd = putils->fd[devcpt];
   putils->readsets[putils->readtabnb].events = POLLIN;
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(putils->dev[devcpt].fd, 0, &period, NULL);
+  timerfd_settime(putils->fd[devcpt], 0, &period, NULL);
   putils->readtab[putils->readtabnb] = devcpt;
   (putils->readtabnb) += 1;
 
-  for(uint8_t i=0;i<(pnet.rawnb);i++) {
+  for(uint8_t i=0;i<(g_net.rawnb);i++) {
     devcpt = 1 + i;
-    putils->dev[devcpt].fd = pnet.raws[i].fd;
-    putils->readsets[putils->readtabnb].fd = putils->dev[devcpt].fd;
+    putils->fd[devcpt]  = g_net.raws[i].fd;
+    putils->readsets[putils->readtabnb].fd = putils->fd[devcpt];
     putils->readsets[putils->readtabnb].events = POLLIN;
     putils->readtab[putils->readtabnb] = devcpt;
     (putils->readtabnb) += 1;

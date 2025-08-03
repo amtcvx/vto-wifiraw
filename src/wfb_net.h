@@ -33,6 +33,8 @@ void wfb_net_incfreq(uint8_t avoidfreqcpt, wfb_net_init_t *param);
 typedef struct {
   uint8_t fd;
   char ifname[30];
+  uint32_t fails;
+  uint32_t incoming;
 } wfb_net_raw_t;
 
 typedef struct {

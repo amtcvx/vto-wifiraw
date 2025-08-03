@@ -28,16 +28,13 @@ typedef struct {
 } wfb_utils_rawmsg_t;
 
 typedef struct {
-  uint8_t fd;
-} wfb_utils_dev_t; 
-
-typedef struct {
   uint8_t readtabnb;
   uint8_t readtab[MAXDEV];
   struct pollfd readsets[MAXDEV];
   uint8_t nbdev;
-  wfb_utils_dev_t dev[MAXDEV];
   uint8_t rawlimit;
+  uint8_t fd[MAXDEV];
+  wfb_net_init_t *pnet;
 } wfb_utils_init_t;
 
 typedef struct {
@@ -49,7 +46,7 @@ typedef struct {
   uint8_t num;
 } __attribute__((packed)) wfb_utils_pay_t;
 
-void wfb_utils_periodic(void);
+void wfb_utils_periodic();
 void wfb_utils_init(wfb_utils_init_t *putils);
 void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *, bool);
 
