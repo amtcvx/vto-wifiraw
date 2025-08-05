@@ -5,10 +5,12 @@
 #include <poll.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "wfb.h"
 
 #define ONLINE_MTU PAY_MTU
+
 
 #if RAW
 #define wfb_utils_datapos 3
@@ -28,16 +30,6 @@ typedef struct {
 } wfb_utils_rawmsg_t;
 
 typedef struct {
-  uint8_t readtabnb;
-  uint8_t readtab[MAXDEV];
-  struct pollfd readsets[MAXDEV];
-  uint8_t nbdev;
-  uint8_t rawlimit;
-  uint8_t fd[MAXDEV];
-  wfb_net_init_t *pnet;
-} wfb_utils_init_t;
-
-typedef struct {
   uint8_t droneid;
   uint8_t msgcpt;
   uint16_t msglen;
@@ -46,9 +38,33 @@ typedef struct {
   uint8_t num;
 } __attribute__((packed)) wfb_utils_pay_t;
 
-void wfb_utils_periodic();
+typedef struct {
+  wfb_utils_rawmsg_t *rawmsg;
+  wfb_utils_pay_t *pay;
+} wfb_utils_raw_t;
+
+
+typedef struct {
+  uint8_t fd;
+  struct sockaddr_in addrout;
+  uint8_t txt[1000];
+  uint16_t len;
+} wfb_utils_log_t;
+
+typedef struct {
+  uint8_t readtabnb;
+  uint8_t readtab[MAXDEV];
+  struct pollfd readsets[MAXDEV];
+  uint8_t nbdev;
+  uint8_t rawlimit;
+  uint8_t fd[MAXDEV];
+  wfb_utils_log_t *stat;
+  wfb_net_init_t *raws;
+} wfb_utils_init_t;
+
+void wfb_utils_periodic(wfb_utils_log_t *stat);
 void wfb_utils_init(wfb_utils_init_t *putils);
-void wfb_utils_presetrawmsg(wfb_utils_rawmsg_t *, bool);
+void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag);
 
 
 #endif // WFB_UTILS_H

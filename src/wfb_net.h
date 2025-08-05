@@ -4,47 +4,31 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/*
-#include <netinet/in.h>
-
-#define freqsmax 65
-
-
-typedef struct {
-  char name[20];
-  uint8_t freqsnb;
-  uint8_t freqcptcur;
-  uint32_t freqs[freqsmax];
-  uint32_t chans[freqsmax];
-  uint16_t fd;
-  uint16_t ifind;
-  struct nl_sock *sk_nl;
-} wfb_net_init_t;
-
-bool wfb_net_init();
-//bool wfb_net_init(wfb_net_init_t *);
-bool wfb_net_setfreq(uint8_t freqcpt,wfb_net_init_t *param);
-void wfb_net_incfreq(uint8_t avoidfreqcpt, wfb_net_init_t *param); 
-*/
-
-
 #define MAXRAWDEV 20
 
+#define NBFREQS 65
 typedef struct {
-  uint8_t fd;
+  uint8_t sockfd;
+  char drivername[30];
   char ifname[30];
-  uint32_t fails;
-  uint32_t incoming;
-} wfb_net_raw_t;
+  int ifindex;
+  int iftype;
+  uint8_t nbfreqs;
+  uint8_t currchan;
+  uint32_t freqs[NBFREQS];
+  uint32_t chans[NBFREQS];
+} wfb_net_device_t;
 
 typedef struct {
-  uint8_t rawnb;
-  wfb_net_raw_t raws[MAXRAWDEV];
+  uint8_t sockid;
+  struct nl_sock *sockrt;
+  uint8_t nbraws;
+  wfb_net_device_t *rawdevs[MAXRAWDEV];
 } wfb_net_init_t;
 
 
-void wfb_net_init(wfb_net_init_t *pnet);
-bool wfb_net_setfreq(int ifindex, uint32_t freq);
+bool wfb_net_init(wfb_net_init_t *);
+bool wfb_net_setfreq(uint8_t sockid, struct nl_sock *sockrt, int ifindex, uint32_t freq); 
 
 /************************************************************************************************/
 static uint8_t wfb_net_ieeehd_tx[] = {
