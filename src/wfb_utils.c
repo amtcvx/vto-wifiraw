@@ -7,36 +7,33 @@
 #include "wfb_utils.h"
 #include "wfb_net.h"
 
-#if RAW
-extern uint8_t wfb_net_ieeehd_tx[];
-extern uint8_t wfb_net_ieeehd_rx[24];
-extern uint8_t wfb_net_radiotaphd_tx[];
-extern uint8_t wfb_net_radiotaphd_rx[35];
-#endif // RAW
 
 /*****************************************************************************/
 void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag) {
-  wfb_utils_pay_t *pay = raw->pay;
-  wfb_utils_rawmsg_t *msg = raw->rawmsg;
-  struct iovec pay_vec = { .iov_base = &pay, .iov_len = sizeof(wfb_utils_pay_t)};
 
+  wfb_utils_rawmsg_t *msg = &(raw->rawmsg);
   memset(&msg->bufs, 0, sizeof(msg->bufs));
   msg->iovecs.iov_base = &msg->bufs;
   msg->iovecs.iov_len  = ONLINE_MTU;
+
 #if RAW
   if (rxflag) {
-    struct iovec wfb_net_radiotaphd_rx_vec = { .iov_base = &wfb_net_radiotaphd_rx, .iov_len = sizeof(wfb_net_radiotaphd_rx)};
-    msg->headvecs.head[0] = wfb_net_radiotaphd_rx_vec;
-    struct iovec wfb_net_ieeehd_rx_vec = { .iov_base = &wfb_net_ieeehd_rx, .iov_len = sizeof(wfb_net_ieeehd_rx)};
-    msg->headvecs.head[1] = wfb_net_ieeehd_rx_vec;
-    memset(wfb_net_ieeehd_rx_vec.iov_base, 0, wfb_net_ieeehd_rx_vec.iov_len);
+    struct iovec radiotaphd_rx_vec = { .iov_base = &raw->heads->radiotaphd_rx, .iov_len = sizeof(raw->heads->radiotaphd_rx)};
+    msg->headvecs.head[0] = radiotaphd_rx_vec;
+    struct iovec ieeehd_rx_vec = { .iov_base = &raw->heads->ieeehd_rx, .iov_len = sizeof(raw->heads->ieeehd_rx)};
+    msg->headvecs.head[1] = ieeehd_rx_vec;
+    memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
   } else {
-    struct iovec wfb_net_radiotaphd_tx_vec = { .iov_base = &wfb_net_radiotaphd_tx, .iov_len = sizeof(wfb_net_radiotaphd_tx)};
-    msg->headvecs.head[0] = wfb_net_radiotaphd_tx_vec;
-    struct iovec wfb_net_ieeehd_tx_vec = { .iov_base = &wfb_net_ieeehd_tx, .iov_len = sizeof(wfb_net_ieeehd_tx)};
-    msg->headvecs.head[1] = wfb_net_ieeehd_tx_vec;
+    struct iovec radiotaphd_tx_vec = { .iov_base = &raw->heads->radiotaphd_tx, .iov_len = sizeof(raw->heads->radiotaphd_tx)};
+    msg->headvecs.head[0] = radiotaphd_tx_vec;
+    struct iovec ieeehd_tx_vec = { .iov_base = &raw->heads->ieeehd_tx, .iov_len = sizeof(raw->heads->ieeehd_tx)};
+    msg->headvecs.head[1] = ieeehd_tx_vec;
   }
+
+  wfb_utils_pay_t *pay = &(raw->pay);
+  struct iovec pay_vec = { .iov_base = &pay, .iov_len = sizeof(wfb_utils_pay_t)};
   memset(pay_vec.iov_base, 0, pay_vec.iov_len);
+
   msg->headvecs.head[2] = pay_vec;
   msg->headvecs.head[3] = msg->iovecs;
   msg->msg.msg_iovlen = 4;
@@ -50,7 +47,7 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag) {
 
 
 /*****************************************************************************/
-void printlog(wfb_utils_log_t *stat) {
+void printlog(wfb_utils_log_t *pstat) {
   uint8_t template[]="devraw(%d) fails(%d) incom(%d)\n";
 /*
   for (uint8_t i=0; i<g_net.rawnb; i++) {
@@ -58,26 +55,26 @@ void printlog(wfb_utils_log_t *stat) {
 		  g_net.raws[i].fd, g_net.raws[i].fails, g_net.raws[i].incoming);
   }
 */
-  stat->len += sprintf((char *)stat->txt, "TIC\n");
-  sendto(stat->fd, stat->txt, stat->len, 0, (const struct sockaddr *)&stat->addrout, sizeof(struct sockaddr));
-  stat->len = 0;
+
+  pstat->len += sprintf((char *)pstat->txt, "TIC\n");
+  sendto(pstat->fd, pstat->txt, pstat->len, 0, (const struct sockaddr *)&pstat->addrout, sizeof(struct sockaddr));
+  pstat->len = 0;
 
 }
 
 /*****************************************************************************/
-void wfb_utils_periodic(wfb_utils_log_t *stat) {
-  printlog(stat);
+void wfb_utils_periodic(wfb_utils_log_t *pstat) {
+  printlog(pstat);
 }
 
 
 /*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *putils) {
 
-  static wfb_utils_log_t stat;
-  stat.addrout.sin_family = AF_INET;
-  stat.addrout.sin_port = htons(PORT_LOG);
-  stat.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  stat.fd = socket(AF_INET, SOCK_DGRAM, 0);
+  putils->stat.addrout.sin_family = AF_INET;
+  putils->stat.addrout.sin_port = htons(PORT_LOG);
+  putils->stat.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  putils->stat.fd = socket(AF_INET, SOCK_DGRAM, 0);
 
   wfb_net_init_t net;
   memset(&net,0,sizeof(wfb_net_init_t));
@@ -86,8 +83,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   putils->nbdev = MAXDEV;
   putils->rawlimit = 1 + net.nbraws;
   putils->readtabnb = 0;
-  putils->stat = &stat;
-  putils->raws = net.rawdevs;
+  putils->raws.heads = &(net.heads);
 
   uint8_t devcpt = 0;
   putils->fd[devcpt] = timerfd_create(CLOCK_MONOTONIC, 0);

@@ -39,8 +39,9 @@ typedef struct {
 } __attribute__((packed)) wfb_utils_pay_t;
 
 typedef struct {
-  wfb_utils_rawmsg_t *rawmsg;
-  wfb_utils_pay_t *pay;
+  wfb_utils_rawmsg_t rawmsg;
+  wfb_utils_pay_t pay;
+  wfb_net_heads_t *heads;
 } wfb_utils_raw_t;
 
 
@@ -58,8 +59,8 @@ typedef struct {
   uint8_t nbdev;
   uint8_t rawlimit;
   uint8_t fd[MAXDEV];
-  wfb_utils_log_t *stat;
-  wfb_net_init_t *raws;
+  wfb_utils_log_t stat;
+  wfb_utils_raw_t raws;
 } wfb_utils_init_t;
 
 void wfb_utils_periodic(wfb_utils_log_t *stat);
