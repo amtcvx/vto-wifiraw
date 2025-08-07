@@ -313,7 +313,6 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
         0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
         0x10, 0x86                          // Sequence control
       };
-      static uint8_t ieeehd_rx[24];
       static uint8_t radiotaphd_tx[] = {
         0x00, 0x00, // <-- radiotap version
         0x0d, 0x00, // <- radiotap header length
@@ -321,11 +320,8 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
         0x08, 0x00,  // RADIOTAP_F_TX_NOACK
         MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
       };
-      static uint8_t radiotaphd_rx[35];
-      pnet->heads.radiotaphd_tx = radiotaphd_tx;
-      pnet->heads.radiotaphd_rx = radiotaphd_rx;
-      pnet->heads.ieeehd_tx = ieeehd_tx;
-      pnet->heads.ieeehd_rx = ieeehd_rx;
+      static wfb_net_heads_t heads = { radiotaphd_tx, sizeof(radiotaphd_tx), ieeehd_tx, sizeof(ieeehd_tx) };
+      pnet->heads = &heads;
 
       return(true); 
     }

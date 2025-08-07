@@ -9,28 +9,33 @@
 
 
 /*****************************************************************************/
-void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag) {
+void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 
-  wfb_utils_rawmsg_t *msg = &(raw->rawmsg);
+  wfb_utils_rawmsg_t *msg = &(praw->rawmsg[praw->rawmsgcurr]);
   memset(&msg->bufs, 0, sizeof(msg->bufs));
   msg->iovecs.iov_base = &msg->bufs;
   msg->iovecs.iov_len  = ONLINE_MTU;
 
 #if RAW
   if (rxflag) {
-    struct iovec radiotaphd_rx_vec = { .iov_base = &raw->heads->radiotaphd_rx, .iov_len = sizeof(raw->heads->radiotaphd_rx)};
+    uint8_t ieeehd_rx[24];
+    uint8_t radiotaphd_rx[35];
+
+    struct iovec radiotaphd_rx_vec = { .iov_base = &radiotaphd_rx, .iov_len = sizeof(radiotaphd_rx)};
     msg->headvecs.head[0] = radiotaphd_rx_vec;
-    struct iovec ieeehd_rx_vec = { .iov_base = &raw->heads->ieeehd_rx, .iov_len = sizeof(raw->heads->ieeehd_rx)};
+    struct iovec ieeehd_rx_vec = { .iov_base = &ieeehd_rx, .iov_len = sizeof(ieeehd_rx)};
     msg->headvecs.head[1] = ieeehd_rx_vec;
     memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
+
   } else {
-    struct iovec radiotaphd_tx_vec = { .iov_base = &raw->heads->radiotaphd_tx, .iov_len = sizeof(raw->heads->radiotaphd_tx)};
+
+    struct iovec radiotaphd_tx_vec = { .iov_base = &praw->heads->radiotaphd_tx, .iov_len = praw->heads->radiotaphd_tx_size};
     msg->headvecs.head[0] = radiotaphd_tx_vec;
-    struct iovec ieeehd_tx_vec = { .iov_base = &raw->heads->ieeehd_tx, .iov_len = sizeof(raw->heads->ieeehd_tx)};
+    struct iovec ieeehd_tx_vec = { .iov_base = &praw->heads->ieeehd_tx, .iov_len = praw->heads->ieeehd_tx_size};
     msg->headvecs.head[1] = ieeehd_tx_vec;
   }
 
-  wfb_utils_pay_t *pay = &(raw->pay);
+  wfb_utils_pay_t *pay = &(praw->pay);
   struct iovec pay_vec = { .iov_base = &pay, .iov_len = sizeof(wfb_utils_pay_t)};
   memset(pay_vec.iov_base, 0, pay_vec.iov_len);
 
@@ -43,6 +48,7 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag) {
   msg->msg.msg_iovlen = 2;
 #endif // RAW
   msg->msg.msg_iov = &msg->headvecs.head[0];
+
 }
 
 
@@ -83,7 +89,9 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   putils->nbdev = MAXDEV;
   putils->rawlimit = 1 + net.nbraws;
   putils->readtabnb = 0;
-  putils->raws.heads = &(net.heads);
+
+  putils->raws.heads = net.heads;
+  putils->raws.rawmsgcurr = 0;
 
   uint8_t devcpt = 0;
   putils->fd[devcpt] = timerfd_create(CLOCK_MONOTONIC, 0);

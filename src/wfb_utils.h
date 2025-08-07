@@ -9,6 +9,8 @@
 
 #include "wfb.h"
 
+#define MAXRAWMSG 20
+
 #define ONLINE_MTU PAY_MTU
 
 
@@ -39,11 +41,11 @@ typedef struct {
 } __attribute__((packed)) wfb_utils_pay_t;
 
 typedef struct {
-  wfb_utils_rawmsg_t rawmsg;
+  uint8_t rawmsgcurr;
+  wfb_utils_rawmsg_t rawmsg[MAXRAWMSG];
   wfb_utils_pay_t pay;
   wfb_net_heads_t *heads;
 } wfb_utils_raw_t;
-
 
 typedef struct {
   uint8_t fd;

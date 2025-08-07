@@ -26,12 +26,11 @@ int main(void) {
           if (devcpt == 0) {
             len = read(utils.fd[devcpt], &exptime, sizeof(uint64_t));
 	    wfb_utils_periodic(&(utils.stat));
-
 	  } else {
             if ((devcpt > 0)&&(devcpt < utils.rawlimit)) {
   	      printf("RAW (%d)\n",devcpt);
               wfb_utils_presetrawmsg(&(utils.raws), true);
-              len = recvmsg( utils.fd[devcpt], &utils.raws.rawmsg.msg, MSG_DONTWAIT);
+              len = recvmsg( utils.fd[devcpt], &utils.raws.rawmsg[utils.raws.rawmsgcurr].msg, MSG_DONTWAIT);
 	      if (!((len > 0)&&(utils.raws.pay.droneid >= DRONEIDMIN)&&(utils.raws.pay.droneid <= DRONEIDMAX))) printf("putils.stat.raws[devcpt-1].fails++\n");
 	      else {
                 printf("piutils.pnet->raws[devcpt-1].incoming++\n");

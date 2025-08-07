@@ -21,9 +21,9 @@ typedef struct {
 
 typedef struct {
   uint8_t *radiotaphd_tx;
+  uint8_t radiotaphd_tx_size;
   uint8_t *ieeehd_tx;
-  uint8_t *radiotaphd_rx;
-  uint8_t *ieeehd_rx;
+  uint8_t ieeehd_tx_size;
 } wfb_net_heads_t;
 
 typedef struct {
@@ -31,7 +31,7 @@ typedef struct {
   struct nl_sock *sockrt;
   uint8_t nbraws;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
-  wfb_net_heads_t heads;
+  wfb_net_heads_t *heads;
 } wfb_net_init_t;
 
 
