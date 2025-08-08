@@ -49,7 +49,7 @@ typedef struct {
   wfb_net_device_t *devs;
 } elt_t;
 
-const char * drivername_arr[] =  { "rt2800usb", "rtl88XXau", "rtw_8822bu", "rtw_8821ce" };
+const char * drivername_arr[] =  { "rtw_8812au", "rt2800usb", "rtw_8822bu", "rtw_8821ce" };
 
 /******************************************************************************/
 static int finish_callback(struct nl_msg *msg, void *arg) {
@@ -220,7 +220,7 @@ static uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *s
     nlmsg_free(msg2);
   }
 
-  return 0;
+  return(elt->nb);
 }
 
 /******************************************************************************/
@@ -230,7 +230,7 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
   uint16_t protocol = htons(ETH_P_ALL);
 
   for(uint8_t i=0;i<elt->nb;i++) {
-//    if (strcmp(elt->devs[i].drivername,drivername_arr[1])!=0) continue;
+//    if (strcmp(elt->devs[i].drivername,drivername_arr[0])!=0) continue;
     if (-1 == (elt->devs[i].sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) continue;
     struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
     struct sock_fprog zero_program = { 1, &zero_bytecode};
@@ -262,13 +262,16 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
 }
 
 /*****************************************************************************/
-bool wfb_net_setfreq(uint8_t sockid, struct nl_sock *sockrt, int ifindex, uint32_t freq) {
+bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq) {
+
+  printf("FREQ  (%d)\n",freq); 
+
   bool ret=true;
   struct nl_msg *msg=nlmsg_alloc();
-  genlmsg_put(msg,0,0,sockid,0,0,NL80211_CMD_SET_CHANNEL,0);
+  genlmsg_put(msg,0,0,psock->sockid,0,0,NL80211_CMD_SET_CHANNEL,0);
   NLA_PUT_U32(msg,NL80211_ATTR_IFINDEX,ifindex);
   NLA_PUT_U32(msg,NL80211_ATTR_WIPHY_FREQ,freq);
-  if (nl_send_auto(sockrt, msg) < 0) ret=false;
+  if (nl_send_auto(psock->socknl, msg) < 0) ret=false;
   nlmsg_free(msg);
   return(ret);
   nla_put_failure:
@@ -298,12 +301,16 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
   memset(&elt, 0, sizeof(elt_t));
   elt.devs = wfb_net_all80211;
 
-  static uint8_t nb;
-  if ((nb = setwifi(sockid, socknl, sockrt, &elt)) >= 0) {
-    static wfb_net_device_t *wfb_net_raw[MAXRAWDEV];
-    nb = setraw(&elt, wfb_net_raw);
-    if (nb > 0) { pnet->sockid = sockid; pnet->sockrt = sockrt; pnet->nbraws = nb; 
-	          memcpy(&(pnet->rawdevs), &wfb_net_raw, nb*sizeof(wfb_net_device_t *)); 
+  uint8_t nb;
+  if ((nb = setwifi(sockid, socknl, sockrt, &elt)) > 0) {
+    if ((nb = setraw(&elt, pnet->rawdevs)) > 0) {
+
+      pnet->nbraws = nb; 
+
+      static wfb_net_socktidnl_t sockidnl;
+      sockidnl.sockid = sockid;
+      sockidnl.socknl = socknl;
+      pnet->sockidnl = &sockidnl;
 
       static uint8_t ieeehd_tx[] = {
         0x08, 0x01,                         // Frame Control : Data frame from STA to DS

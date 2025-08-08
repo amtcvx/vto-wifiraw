@@ -28,14 +28,18 @@ typedef struct {
 
 typedef struct {
   uint8_t sockid;
-  struct nl_sock *sockrt;
+  struct nl_sock *socknl;
+} wfb_net_socktidnl_t;
+
+typedef struct {
   uint8_t nbraws;
+  wfb_net_socktidnl_t *sockidnl;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
   wfb_net_heads_t *heads;
 } wfb_net_init_t;
 
 
 bool wfb_net_init(wfb_net_init_t *);
-bool wfb_net_setfreq(uint8_t sockid, struct nl_sock *sockrt, int ifindex, uint32_t freq); 
+bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq); 
 
 #endif // WFB_NET_H

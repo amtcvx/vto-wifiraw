@@ -60,9 +60,12 @@ typedef struct {
   struct pollfd readsets[MAXDEV];
   uint8_t nbdev;
   uint8_t rawlimit;
+  uint8_t nbraws;
   uint8_t fd[MAXDEV];
   wfb_utils_log_t stat;
   wfb_utils_raw_t raws;
+  wfb_net_socktidnl_t *sockidnl;
+  wfb_net_device_t *rawdevs;
 } wfb_utils_init_t;
 
 void wfb_utils_periodic(wfb_utils_log_t *stat);

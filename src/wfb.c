@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <poll.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -15,6 +16,11 @@ int main(void) {
 
   wfb_utils_init_t utils;
   wfb_utils_init(&utils);
+
+  printf("(%d)\n",utils.rawlimit-1);
+
+  if (utils.nbraws > 0) 
+    if (!(wfb_net_setfreq(utils.sockidnl, utils.rawdevs[0].ifindex, utils.rawdevs[0].freqs[1]))) exit(-1);
 
   printf("(%d)\n",utils.rawlimit-1);
 

@@ -87,11 +87,15 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   wfb_net_init(&net);
 
   putils->nbdev = MAXDEV;
+  putils->nbraws = net.nbraws;
   putils->rawlimit = 1 + net.nbraws;
   putils->readtabnb = 0;
 
   putils->raws.heads = net.heads;
   putils->raws.rawmsgcurr = 0;
+
+  putils->sockidnl = net.sockidnl;
+  putils->rawdevs = *net.rawdevs;
 
   uint8_t devcpt = 0;
   putils->fd[devcpt] = timerfd_create(CLOCK_MONOTONIC, 0);
