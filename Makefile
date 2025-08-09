@@ -17,8 +17,8 @@ ROLEFLAG :=
 PROTFLAG :=
   ifeq ($(PROT),RAW)
     PROTFLAG += -DRAW=1
-    PROTFLAG += -DDRIVERNAME=\"rtl88XXau\"
-#    PROTFLAG += -DDRIVERNAME=\"rtl88xxau_wfb\"
+#    PROTFLAG += -DDRIVERNAME=\"rtl88XXau\"
+    PROTFLAG += -DDRIVERNAME=\"rtw_8812au\"
   else
     PROTFLAG += -DRAW=0
     PROTFLAG += -DDRIVERNAME=\"\"
@@ -45,7 +45,8 @@ OSFLAG :=
 TARGET   = wfb
 
 #CFLAGS ?= -O2 -g
-CFLAGS ?= -Ofast -g
+#CFLAGS ?= -Ofast -g
+CFLAGS ?= -g
 CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration
 CFLAGS += -DCONFIG_LIBNL30 -I/usr/include/libnl3
 CFLAGS += $(PROTFLAG) $(ROLEFLAG) $(OSFLAG)

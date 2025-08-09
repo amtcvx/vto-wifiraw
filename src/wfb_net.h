@@ -14,9 +14,11 @@ typedef struct {
   int ifindex;
   int iftype;
   uint8_t nbfreqs;
-  uint8_t currchan;
   uint32_t freqs[NBFREQS];
   uint32_t chans[NBFREQS];
+  uint32_t incoming;
+  uint32_t fails;
+
 } wfb_net_device_t;
 
 typedef struct {

@@ -68,7 +68,7 @@ typedef struct {
   wfb_net_device_t *rawdevs;
 } wfb_utils_init_t;
 
-void wfb_utils_periodic(wfb_utils_log_t *stat);
+void wfb_utils_periodic(wfb_utils_init_t *putils);
 void wfb_utils_init(wfb_utils_init_t *putils);
 void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag);
 

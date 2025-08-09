@@ -53,24 +53,24 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 
 
 /*****************************************************************************/
-void printlog(wfb_utils_log_t *pstat) {
-  uint8_t template[]="devraw(%d) fails(%d) incom(%d)\n";
-/*
-  for (uint8_t i=0; i<g_net.rawnb; i++) {
-    g_log.len += sprintf((char *)g_log.txt + g_log.len, (char *)template,
-		  g_net.raws[i].fd, g_net.raws[i].fails, g_net.raws[i].incoming);
-  }
-*/
+void printlog(wfb_utils_init_t *pinit) {
+  uint8_t template[]="devraw(%d) incom(%d) fails(%d)\n";
 
-  pstat->len += sprintf((char *)pstat->txt, "TIC\n");
+  wfb_net_device_t *rawdevs; 
+  wfb_utils_log_t *pstat = &pinit->stat;
+  for (uint8_t i=0; i < pinit->nbraws; i++) {
+    rawdevs = &pinit->rawdevs[i];
+    pstat->len += sprintf((char *)pstat->txt + pstat->len, (char *)template,
+		  i, rawdevs->incoming, rawdevs->fails);
+  }
   sendto(pstat->fd, pstat->txt, pstat->len, 0, (const struct sockaddr *)&pstat->addrout, sizeof(struct sockaddr));
   pstat->len = 0;
 
 }
 
 /*****************************************************************************/
-void wfb_utils_periodic(wfb_utils_log_t *pstat) {
-  printlog(pstat);
+void wfb_utils_periodic(wfb_utils_init_t *pinit) {
+  printlog(pinit);
 }
 
 

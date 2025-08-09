@@ -49,8 +49,6 @@ typedef struct {
   wfb_net_device_t *devs;
 } elt_t;
 
-const char * drivername_arr[] =  { "rtl88XXau", "iwlwifi", "rt2800usb", "rtw_8822bu", "rtw_8821ce" };
-
 /******************************************************************************/
 static int finish_callback(struct nl_msg *msg, void *arg) {
   bool* finished = arg;
@@ -235,7 +233,7 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
   uint16_t protocol = htons(ETH_P_ALL);
 
   for(uint8_t i=0;i<elt->nb;i++) {
-    if (strcmp(elt->devs[i].drivername,drivername_arr[0])!=0) continue;
+    if (strcmp(elt->devs[i].drivername,DRIVERNAME)!=0) continue;
     if (-1 == (elt->devs[i].sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) continue;
     struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
     struct sock_fprog zero_program = { 1, &zero_bytecode};
