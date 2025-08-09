@@ -49,7 +49,7 @@ typedef struct {
   wfb_net_device_t *devs;
 } elt_t;
 
-const char * drivername_arr[] =  { "rtw_8812au", "rt2800usb", "rtw_8822bu", "rtw_8821ce" };
+const char * drivername_arr[] =  { "rtl88XXau", "iwlwifi", "rt2800usb", "rtw_8822bu", "rtw_8821ce" };
 
 /******************************************************************************/
 static int finish_callback(struct nl_msg *msg, void *arg) {
@@ -66,11 +66,17 @@ static int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
   nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), NULL);
 
   wfb_net_device_t *ptr = &(((elt_t *)arg)->devs[((elt_t *)arg)->nb]);
-  ((((elt_t *)arg)->nb)++);
 
-  if (tb_msg[NL80211_ATTR_IFNAME])  strcpy(ptr->ifname, nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
-  if (tb_msg[NL80211_ATTR_IFINDEX]) ptr->ifindex = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
-  if (tb_msg[NL80211_ATTR_IFTYPE])  ptr->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
+  char ifname[30];
+  if (tb_msg[NL80211_ATTR_IFNAME]) {
+    strcpy(ifname, nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
+    if (strlen(ifname) > 0) { 
+      strcpy(ptr->ifname, ifname);
+      if (tb_msg[NL80211_ATTR_IFINDEX]) ptr->ifindex = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
+      if (tb_msg[NL80211_ATTR_IFTYPE])  ptr->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
+      ((((elt_t *)arg)->nb)++);
+    }
+  }
 
   return NL_SKIP;
 }
@@ -133,7 +139,6 @@ static void unblock_rfkill(elt_t *elt) {
       ptr = strrchr( buf, '/' );
       strcpy(elt->devs[i].drivername, ++ptr);
     }
-
     sprintf(path,"%s/%s/phy80211",netpath,elt->devs[i].ifname);
     d1 = opendir(path);
     while ((dir1 = readdir(d1)) != NULL)
@@ -230,7 +235,7 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
   uint16_t protocol = htons(ETH_P_ALL);
 
   for(uint8_t i=0;i<elt->nb;i++) {
-//    if (strcmp(elt->devs[i].drivername,drivername_arr[0])!=0) continue;
+    if (strcmp(elt->devs[i].drivername,drivername_arr[0])!=0) continue;
     if (-1 == (elt->devs[i].sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) continue;
     struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
     struct sock_fprog zero_program = { 1, &zero_bytecode};
