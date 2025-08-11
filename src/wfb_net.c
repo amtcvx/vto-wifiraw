@@ -330,8 +330,8 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
         0x08, 0x00,  // RADIOTAP_F_TX_NOACK
         MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
       };
-      static wfb_net_heads_t heads = { radiotaphd_tx, sizeof(radiotaphd_tx), ieeehd_tx, sizeof(ieeehd_tx) };
-      pnet->heads = &heads;
+      static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx), ieeehd_tx, sizeof(ieeehd_tx) };
+      pnet->headstx = &headstx;
 
       return(true); 
     }

@@ -41,10 +41,16 @@ typedef struct {
 } __attribute__((packed)) wfb_utils_pay_t;
 
 typedef struct {
+  uint8_t ieeehd_rx[24];
+  uint8_t radiotaphd_rx[35];
+} wfb_utils_heads_rx_t;
+
+typedef struct {
   uint8_t rawmsgcurr;
   wfb_utils_rawmsg_t rawmsg[MAXRAWMSG];
   wfb_utils_pay_t pay;
-  wfb_net_heads_t *heads;
+  wfb_net_heads_tx_t *headstx;
+  wfb_utils_heads_rx_t *headsrx;
 } wfb_utils_raw_t;
 
 typedef struct {

@@ -26,7 +26,7 @@ typedef struct {
   uint8_t radiotaphd_tx_size;
   uint8_t *ieeehd_tx;
   uint8_t ieeehd_tx_size;
-} wfb_net_heads_t;
+} wfb_net_heads_tx_t;
 
 typedef struct {
   uint8_t sockid;
@@ -37,7 +37,7 @@ typedef struct {
   uint8_t nbraws;
   wfb_net_socktidnl_t *sockidnl;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
-  wfb_net_heads_t *heads;
+  wfb_net_heads_tx_t *headstx;
 } wfb_net_init_t;
 
 

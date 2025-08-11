@@ -18,20 +18,18 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 
 #if RAW
   if (rxflag) {
-    uint8_t ieeehd_rx[24];
-    uint8_t radiotaphd_rx[35];
 
-    struct iovec radiotaphd_rx_vec = { .iov_base = &radiotaphd_rx, .iov_len = sizeof(radiotaphd_rx)};
+    struct iovec radiotaphd_rx_vec = { .iov_base = &praw->headsrx->radiotaphd_rx, .iov_len = sizeof(praw->headsrx->radiotaphd_rx)};
     msg->headvecs.head[0] = radiotaphd_rx_vec;
-    struct iovec ieeehd_rx_vec = { .iov_base = &ieeehd_rx, .iov_len = sizeof(ieeehd_rx)};
+    struct iovec ieeehd_rx_vec = { .iov_base = &praw->headsrx->ieeehd_rx, .iov_len = sizeof(praw->headsrx->ieeehd_rx)};
     msg->headvecs.head[1] = ieeehd_rx_vec;
     memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
 
   } else {
 
-    struct iovec radiotaphd_tx_vec = { .iov_base = &praw->heads->radiotaphd_tx, .iov_len = praw->heads->radiotaphd_tx_size};
+    struct iovec radiotaphd_tx_vec = { .iov_base = &praw->headstx->radiotaphd_tx, .iov_len = praw->headstx->radiotaphd_tx_size};
     msg->headvecs.head[0] = radiotaphd_tx_vec;
-    struct iovec ieeehd_tx_vec = { .iov_base = &praw->heads->ieeehd_tx, .iov_len = praw->heads->ieeehd_tx_size};
+    struct iovec ieeehd_tx_vec = { .iov_base = &praw->headstx->ieeehd_tx, .iov_len = praw->headstx->ieeehd_tx_size};
     msg->headvecs.head[1] = ieeehd_tx_vec;
   }
 
@@ -91,7 +89,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   putils->rawlimit = 1 + net.nbraws;
   putils->readtabnb = 0;
 
-  putils->raws.heads = net.heads;
+  putils->raws.headstx = net.headstx;
   putils->raws.rawmsgcurr = 0;
 
   putils->sockidnl = net.sockidnl;
