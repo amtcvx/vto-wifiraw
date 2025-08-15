@@ -5,3 +5,6 @@
 [submodule "zfec"]
 	path = zfec
 	url = https://github.com/tahoe-lafs/zfec.git
+[submodule "zfex"]
+	path = zfex
+	url = https://github.com/WojciechMigda/zfex.git
