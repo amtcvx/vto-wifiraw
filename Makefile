@@ -47,6 +47,8 @@ TARGET   = wfb
 #CFLAGS ?= -O2 -g
 #CFLAGS ?= -Ofast -g
 CFLAGS ?= -g
+CFLAGS += -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD
+
 CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration
 CFLAGS += -DCONFIG_LIBNL30 -I/usr/include/libnl3
 CFLAGS += $(PROTFLAG) $(ROLEFLAG) $(OSFLAG)
