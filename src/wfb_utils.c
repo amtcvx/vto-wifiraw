@@ -6,6 +6,7 @@
 
 #include "wfb_utils.h"
 #include "wfb_net.h"
+#include "zfex.h"
 
 
 /*****************************************************************************/
@@ -74,6 +75,9 @@ void wfb_utils_periodic(wfb_utils_init_t *pinit) {
 
 /*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *putils) {
+
+  fec_t *fec_p;
+  fec_new(FEC_K, FEC_N, &fec_p);
 
   putils->stat.addrout.sin_family = AF_INET;
   putils->stat.addrout.sin_port = htons(PORT_LOG);

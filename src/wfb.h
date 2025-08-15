@@ -23,4 +23,7 @@
 // TIMER, PROTOCOL, VIDEO, TUNNEL, TELEMETRY
 #define MAXDEV (1 + MAXRAWDEV) 
 
+#define FEC_K	8
+#define FEC_N	12
+
 #endif // WFB_H
