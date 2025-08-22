@@ -18,25 +18,25 @@ int main(void) {
   
   printf("(%d)\n",utils.nbraws);
 
-  for(;;) {	
+  for(;;) {     
     if (0 != poll(utils.readsets, utils.nbdev, -1)) {
       for (uint8_t cpt=0; cpt<utils.nbdev; cpt++) {
         if (utils.readsets[cpt].revents == POLLIN) {
           if (cpt == 0) {
             len = read(utils.fd[cpt], &exptime, sizeof(uint64_t));
-	    wfb_utils_periodic(&utils);
-	  } else {
+            wfb_utils_periodic(&utils);
+          } else {
             if ((cpt > 0)&&(cpt <= utils.nbraws)) {
-  	      printf("RAW (%d)\n",cpt);
+              printf("RAW (%d)\n",cpt);
               wfb_utils_presetrawmsg(&(utils.raws), true);
               len = recvmsg( utils.fd[cpt], &utils.raws.rawmsg[utils.raws.rawmsgcurr].msg, MSG_DONTWAIT);
-	      if (!((len > 0)&&(utils.raws.pay.droneid >= DRONEIDMIN)&&(utils.raws.pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
-	      else { 
+              if (!((len > 0)&&(utils.raws.pay.droneid >= DRONEIDMIN)&&(utils.raws.pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
+              else { 
                 utils.rawdevs[cpt-1]->stat.incoming++;
-	      }
-	    }
+              }
+            }
           }
-	}
+        }
       }
     }
   }

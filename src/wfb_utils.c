@@ -21,10 +21,10 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
   if (rxflag) {
 
     struct iovec radiotaphd_rx_vec = { .iov_base = &praw->headsrx->radiotaphd_rx, 
-	                               .iov_len = sizeof(praw->headsrx->radiotaphd_rx)};
+                                       .iov_len = sizeof(praw->headsrx->radiotaphd_rx)};
     msg->headvecs.head[0] = radiotaphd_rx_vec;
     struct iovec ieeehd_rx_vec = { .iov_base = &praw->headsrx->ieeehd_rx, 
-	                           .iov_len = sizeof(praw->headsrx->ieeehd_rx)};
+                                   .iov_len = sizeof(praw->headsrx->ieeehd_rx)};
     msg->headvecs.head[1] = ieeehd_rx_vec;
 
 //    memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
@@ -32,10 +32,10 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
   } else {
 
     struct iovec radiotaphd_tx_vec = { .iov_base = &praw->headstx->radiotaphd_tx, 
-	                               .iov_len = praw->headstx->radiotaphd_tx_size};
+                                       .iov_len = praw->headstx->radiotaphd_tx_size};
     msg->headvecs.head[0] = radiotaphd_tx_vec;
     struct iovec ieeehd_tx_vec = { .iov_base = &praw->headstx->ieeehd_tx, 
-	                           .iov_len = praw->headstx->ieeehd_tx_size};
+                                   .iov_len = praw->headstx->ieeehd_tx_size};
     msg->headvecs.head[1] = ieeehd_tx_vec;
   }
 
@@ -64,7 +64,7 @@ void printlog(wfb_utils_init_t *pinit) {
   for (uint8_t i=0; i < pinit->nbraws; i++) {
     wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-		          pinit->rawchan.mainraw, pinit->rawchan.backraw, i, pstat->incoming, pstat->fails);
+                          pinit->rawchan.mainraw, pinit->rawchan.backraw, i, pstat->incoming, pstat->fails);
   }
   if (pinit->nbraws == 0) plog->len += sprintf((char *)plog->txt + plog->len, "NO WIFI\n");
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addrout, sizeof(struct sockaddr));

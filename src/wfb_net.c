@@ -103,15 +103,15 @@ static int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
         nla_for_each_nested(nl_freq, tb_band[NL80211_BAND_ATTR_FREQS], rem_freq) {
           nla_parse(tb_freq, NL80211_FREQUENCY_ATTR_MAX, nla_data(nl_freq), nla_len(nl_freq), NULL);
 
-	  uint32_t freq = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
-	  ptr->freqs[ptr->nbfreqs] = freq;
+          uint32_t freq = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
+          ptr->freqs[ptr->nbfreqs] = freq;
 
           if (freq == 2484) freq = 14;
           else if (freq < 2484) freq = (freq - 2407) / 5;
           else if (freq < 5000) freq = 15 + ((freq - 2512) / 20);
           else freq = ((freq - 5000) / 5);
 
-	  ptr->chans[ptr->nbfreqs] = freq;
+          ptr->chans[ptr->nbfreqs] = freq;
           ptr->nbfreqs++;
         }
       }
@@ -205,7 +205,7 @@ static uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *s
           change = rtnl_link_alloc ();
           rtnl_link_set_flags (change, IFF_UP);
           rtnl_link_change(sockrt, link, change, 0);
-	}
+        }
       }
     }
   }
