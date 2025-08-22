@@ -7,6 +7,13 @@
 #define MAXRAWDEV 20
 
 #define NBFREQS 65
+
+typedef struct {
+  uint8_t timecpt;
+  uint32_t incoming;
+  uint32_t fails;
+} wfb_net_status_t;
+
 typedef struct {
   uint8_t sockfd;
   char drivername[30];
@@ -16,9 +23,7 @@ typedef struct {
   uint8_t nbfreqs;
   uint32_t freqs[NBFREQS];
   uint32_t chans[NBFREQS];
-  uint32_t incoming;
-  uint32_t fails;
-
+  wfb_net_status_t stat;
 } wfb_net_device_t;
 
 typedef struct {

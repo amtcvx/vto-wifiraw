@@ -61,17 +61,21 @@ typedef struct {
 } wfb_utils_log_t;
 
 typedef struct {
+  int8_t mainraw;
+  int8_t backraw;
+} wfb_utils_rawchan_t;
+
+typedef struct {
   uint8_t readtabnb;
-  uint8_t readtab[MAXDEV];
   struct pollfd readsets[MAXDEV];
   uint8_t nbdev;
-  uint8_t rawlimit;
   uint8_t nbraws;
   uint8_t fd[MAXDEV];
-  wfb_utils_log_t stat;
+  wfb_utils_log_t log;
+  wfb_utils_rawchan_t rawchan;
   wfb_utils_raw_t raws;
   wfb_net_socktidnl_t *sockidnl;
-  wfb_net_device_t *rawdevs;
+  wfb_net_device_t *rawdevs[MAXRAWDEV];
 } wfb_utils_init_t;
 
 void wfb_utils_periodic(wfb_utils_init_t *putils);

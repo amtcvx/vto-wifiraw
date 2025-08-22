@@ -20,17 +20,22 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 #if RAW
   if (rxflag) {
 
-    struct iovec radiotaphd_rx_vec = { .iov_base = &praw->headsrx->radiotaphd_rx, .iov_len = sizeof(praw->headsrx->radiotaphd_rx)};
+    struct iovec radiotaphd_rx_vec = { .iov_base = &praw->headsrx->radiotaphd_rx, 
+	                               .iov_len = sizeof(praw->headsrx->radiotaphd_rx)};
     msg->headvecs.head[0] = radiotaphd_rx_vec;
-    struct iovec ieeehd_rx_vec = { .iov_base = &praw->headsrx->ieeehd_rx, .iov_len = sizeof(praw->headsrx->ieeehd_rx)};
+    struct iovec ieeehd_rx_vec = { .iov_base = &praw->headsrx->ieeehd_rx, 
+	                           .iov_len = sizeof(praw->headsrx->ieeehd_rx)};
     msg->headvecs.head[1] = ieeehd_rx_vec;
-    memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
+
+//    memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
 
   } else {
 
-    struct iovec radiotaphd_tx_vec = { .iov_base = &praw->headstx->radiotaphd_tx, .iov_len = praw->headstx->radiotaphd_tx_size};
+    struct iovec radiotaphd_tx_vec = { .iov_base = &praw->headstx->radiotaphd_tx, 
+	                               .iov_len = praw->headstx->radiotaphd_tx_size};
     msg->headvecs.head[0] = radiotaphd_tx_vec;
-    struct iovec ieeehd_tx_vec = { .iov_base = &praw->headstx->ieeehd_tx, .iov_len = praw->headstx->ieeehd_tx_size};
+    struct iovec ieeehd_tx_vec = { .iov_base = &praw->headstx->ieeehd_tx, 
+	                           .iov_len = praw->headstx->ieeehd_tx_size};
     msg->headvecs.head[1] = ieeehd_tx_vec;
   }
 
@@ -53,23 +58,41 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *pinit) {
-  uint8_t template[]="devraw(%d) incom(%d) fails(%d)\n";
 
-  wfb_net_device_t *rawdevs; 
-  wfb_utils_log_t *pstat = &pinit->stat;
+  uint8_t template[]="mainraw(%d) backraw(%d) devraw(%d) incom(%d) fails(%d)\n";
+  wfb_utils_log_t *plog = &pinit->log;
   for (uint8_t i=0; i < pinit->nbraws; i++) {
-    rawdevs = &pinit->rawdevs[i];
-    pstat->len += sprintf((char *)pstat->txt + pstat->len, (char *)template,
-		  i, rawdevs->incoming, rawdevs->fails);
+    wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
+    plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
+		          pinit->rawchan.mainraw, pinit->rawchan.backraw, i, pstat->incoming, pstat->fails);
   }
-  sendto(pstat->fd, pstat->txt, pstat->len, 0, (const struct sockaddr *)&pstat->addrout, sizeof(struct sockaddr));
-  pstat->len = 0;
+  if (pinit->nbraws == 0) plog->len += sprintf((char *)plog->txt + plog->len, "NO WIFI\n");
+  sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addrout, sizeof(struct sockaddr));
+  plog->len = 0;
 
+}
+
+/*****************************************************************************/
+void setmainbackup(wfb_utils_init_t *pinit) {
+
+  for (uint8_t i=0; i < pinit->nbraws; i++) {
+    wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
+
+    if (pstat->timecpt < 10) pstat->timecpt++;
+    else {
+      pstat->timecpt = 0;
+      if (pstat->fails == 0) {
+        pinit->rawchan.mainraw = i;
+      } else pstat->fails = 0;
+    }
+
+  }
 }
 
 /*****************************************************************************/
 void wfb_utils_periodic(wfb_utils_init_t *pinit) {
   printlog(pinit);
+  setmainbackup(pinit);
 }
 
 
@@ -79,41 +102,44 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
 
-  putils->stat.addrout.sin_family = AF_INET;
-  putils->stat.addrout.sin_port = htons(PORT_LOG);
-  putils->stat.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  putils->stat.fd = socket(AF_INET, SOCK_DGRAM, 0);
+  putils->log.addrout.sin_family = AF_INET;
+  putils->log.addrout.sin_port = htons(PORT_LOG);
+  putils->log.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  putils->log.fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  memset(&(putils->rawchan), -1, sizeof(wfb_utils_rawchan_t));
 
   wfb_net_init_t net;
   memset(&net,0,sizeof(wfb_net_init_t));
   wfb_net_init(&net);
 
   putils->nbdev = MAXDEV;
-  putils->nbraws = net.nbraws;
-  putils->rawlimit = 1 + net.nbraws;
-  putils->readtabnb = 0;
 
   putils->raws.headstx = net.headstx;
   putils->raws.rawmsgcurr = 0;
 
   putils->sockidnl = net.sockidnl;
-  putils->rawdevs = *net.rawdevs;
 
-  uint8_t devcpt = 0;
-  putils->fd[devcpt] = timerfd_create(CLOCK_MONOTONIC, 0);
-  putils->readsets[putils->readtabnb].fd = putils->fd[devcpt];
-  putils->readsets[putils->readtabnb].events = POLLIN;
+  putils->fd[0] = timerfd_create(CLOCK_MONOTONIC, 0);
+  putils->readsets[0].fd = putils->fd[0];
+  putils->readsets[0].events = POLLIN;
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(putils->fd[devcpt], 0, &period, NULL);
-  putils->readtab[putils->readtabnb] = devcpt;
-  (putils->readtabnb) += 1;
+  timerfd_settime(putils->fd[0], 0, &period, NULL);
 
+  putils->readtabnb = 1;
   for(uint8_t i=0;i<net.nbraws;i++) {
-    devcpt = 1 + i;
-    putils->fd[devcpt]  = net.rawdevs[i]->sockfd;
-    putils->readsets[putils->readtabnb].fd = putils->fd[devcpt];
+    uint8_t nextnbfreq = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / net.nbraws);
+
+    if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextnbfreq]))) continue;
+
+    putils->fd[putils->readtabnb]  = net.rawdevs[i]->sockfd;
+
+    putils->rawdevs[(putils->readtabnb) - 1] = net.rawdevs[i];
+
+    putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
     putils->readsets[putils->readtabnb].events = POLLIN;
-    putils->readtab[putils->readtabnb] = devcpt;
     (putils->readtabnb) += 1;
   }
+  putils->nbraws = putils->readtabnb - 1;
+
 }
