@@ -267,8 +267,6 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
 /*****************************************************************************/
 bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq) {
 
-  printf("FREQ  (%d)\n",freq); 
-
   bool ret=true;
   struct nl_msg *msg=nlmsg_alloc();
   genlmsg_put(msg,0,0,psock->sockid,0,0,NL80211_CMD_SET_CHANNEL,0);

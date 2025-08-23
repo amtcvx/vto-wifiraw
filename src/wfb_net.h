@@ -9,7 +9,9 @@
 #define NBFREQS 65
 
 typedef struct {
+  bool freqfree;
   uint8_t timecpt;
+  uint8_t freqnb;
   uint32_t incoming;
   uint32_t fails;
 } wfb_net_status_t;

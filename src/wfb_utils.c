@@ -59,12 +59,12 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *pinit) {
 
-  uint8_t template[]="mainraw(%d) backraw(%d) devraw(%d) incom(%d) fails(%d)\n";
+  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d)\n";
   wfb_utils_log_t *plog = &pinit->log;
   for (uint8_t i=0; i < pinit->nbraws; i++) {
     wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-                          pinit->rawchan.mainraw, pinit->rawchan.backraw, i, pstat->incoming, pstat->fails);
+                          i, pstat->freqnb, pinit->rawchan.mainraw, pinit->rawchan.backraw, pstat->incoming, pstat->fails);
   }
   if (pinit->nbraws == 0) plog->len += sprintf((char *)plog->txt + plog->len, "NO WIFI\n");
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addrout, sizeof(struct sockaddr));
@@ -78,14 +78,46 @@ void setmainbackup(wfb_utils_init_t *pinit) {
   for (uint8_t i=0; i < pinit->nbraws; i++) {
     wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
 
-    if (pstat->timecpt < 10) pstat->timecpt++;
-    else {
+    if (pstat->fails != 0) {
+      pstat->fails = 0;
       pstat->timecpt = 0;
-      if (pstat->fails == 0) {
-        pinit->rawchan.mainraw = i;
-      } else pstat->fails = 0;
-    }
+      pstat->freqfree = false;
 
+      uint8_t nextfreqnb = 1 + pstat->freqnb;
+      if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
+      pstat->freqnb = nextfreqnb;
+      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
+
+    } else {
+      if (pstat->timecpt < 10) pstat->timecpt++;
+      else {
+        pstat->timecpt = 0;
+        pstat->freqfree = true;
+      }
+    }
+  }
+
+  if (pinit->rawchan.mainraw == -1) {
+    for (uint8_t i=0; i < pinit->nbraws; i++) {
+      if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+    }
+    for (uint8_t i=0; i < pinit->nbraws; i++) {
+      if ((pinit->rawdevs[i]->stat.freqfree) && (i !=  pinit->rawchan.mainraw)) { pinit->rawchan.backraw = i; break; }
+    }
+  } else {
+    if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
+      if ((pinit->rawchan.backraw > 0) && (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.mainraw = pinit->rawchan.backraw;
+      else {
+        for (uint8_t i=0; i < pinit->nbraws; i++) {
+          if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+	}
+      }
+    }
+    if (pinit->rawchan.backraw == -1) {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if ((pinit->rawdevs[i]->stat.freqfree) && (i !=  pinit->rawchan.mainraw)) { pinit->rawchan.backraw = i; break; }
+      }
+    }
   }
 }
 
@@ -128,9 +160,11 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 
   putils->readtabnb = 1;
   for(uint8_t i=0;i<net.nbraws;i++) {
-    uint8_t nextnbfreq = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / net.nbraws);
+    uint8_t nextfreqnb = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / net.nbraws);
 
-    if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextnbfreq]))) continue;
+    if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextfreqnb]))) continue;
+    net.rawdevs[i]->stat.freqnb = nextfreqnb;
+    net.rawdevs[i]->stat.freqfree = false;
 
     putils->fd[putils->readtabnb]  = net.rawdevs[i]->sockfd;
 
