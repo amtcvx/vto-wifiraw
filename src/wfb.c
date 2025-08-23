@@ -38,6 +38,11 @@ int main(void) {
           }
         }
       }
+      for (uint8_t cpt=0; cpt<utils.nbraws; cpt++) {
+        wfb_utils_presetrawmsg(&(utils.raws), false);
+        len = sendmsg(utils.fd[1 + cpt], &utils.raws.rawmsg[utils.raws.rawmsgcurr].msg, MSG_DONTWAIT);
+	if (len > 0) utils.rawdevs[cpt]->stat.sent++;
+      }
     }
   }
   return(0);

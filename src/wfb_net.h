@@ -14,6 +14,7 @@ typedef struct {
   uint8_t freqnb;
   uint32_t incoming;
   uint32_t fails;
+  uint32_t sent;
 } wfb_net_status_t;
 
 typedef struct {

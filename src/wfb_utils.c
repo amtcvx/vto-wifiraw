@@ -59,12 +59,13 @@ void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *pinit) {
 
-  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d)\n";
+  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d) sent(%d)\n";
   wfb_utils_log_t *plog = &pinit->log;
   for (uint8_t i=0; i < pinit->nbraws; i++) {
     wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-                          i, pstat->freqnb, pinit->rawchan.mainraw, pinit->rawchan.backraw, pstat->incoming, pstat->fails);
+                          i, pstat->freqnb, pinit->rawchan.mainraw, pinit->rawchan.backraw, pstat->incoming, 
+			  pstat->fails, pstat->sent);
   }
   if (pinit->nbraws == 0) plog->len += sprintf((char *)plog->txt + plog->len, "NO WIFI\n");
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addrout, sizeof(struct sockaddr));
