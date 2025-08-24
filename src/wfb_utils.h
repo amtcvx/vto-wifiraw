@@ -9,10 +9,9 @@
 
 #include "wfb.h"
 
-#define MAXRAWMSG 20
-
 #define ONLINE_MTU PAY_MTU
 
+#define MAXMSG	5
 
 #if RAW
 #define wfb_utils_datapos 3
@@ -32,6 +31,12 @@ typedef struct {
 } wfb_utils_rawmsg_t;
 
 typedef struct {
+  uint8_t buf[MAXRAWDEV][MAXMSG][FEC_N][ONLINE_MTU];
+  struct iovec iov[MAXRAWDEV][MAXMSG][FEC_N];
+} wfb_utils_downmsg_t;
+
+
+typedef struct {
   uint8_t droneid;
   uint8_t msgcpt;
   uint16_t msglen;
@@ -47,7 +52,7 @@ typedef struct {
 
 typedef struct {
   uint8_t rawmsgcurr;
-  wfb_utils_rawmsg_t rawmsg[MAXRAWMSG];
+  wfb_utils_rawmsg_t rawmsg[MAXRAWDEV];
   wfb_utils_pay_t pay;
   wfb_net_heads_tx_t *headstx;
   wfb_utils_heads_rx_t *headsrx;
@@ -65,6 +70,7 @@ typedef struct {
   int8_t backraw;
 } wfb_utils_rawchan_t;
 
+
 typedef struct {
   uint8_t readtabnb;
   struct pollfd readsets[MAXDEV];
@@ -76,7 +82,12 @@ typedef struct {
   wfb_utils_raw_t raws;
   wfb_net_socktidnl_t *sockidnl;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
+  wfb_utils_downmsg_t downmsg;
 } wfb_utils_init_t;
+
+typedef struct {
+  int16_t chan;
+} __attribute__((packed)) wfb_utils_down_t;
 
 void wfb_utils_periodic(wfb_utils_init_t *putils);
 void wfb_utils_init(wfb_utils_init_t *putils);

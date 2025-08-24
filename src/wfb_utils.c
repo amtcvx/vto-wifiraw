@@ -107,7 +107,7 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     }
   } else {
     if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
-      if ((pinit->rawchan.backraw > 0) && (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.mainraw = pinit->rawchan.backraw;
+      if ((pinit->rawchan.backraw > -1) && (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.mainraw = pinit->rawchan.backraw;
       else {
         for (uint8_t i=0; i < pinit->nbraws; i++) {
           if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
@@ -115,11 +115,26 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       }
     }
     if (pinit->rawchan.backraw == -1) {
-      for (uint8_t i=0; i < pinit->nbraws; i++) {
+      for (uint8_t i=0; i < pinit->nbraws; i++) { 
         if ((pinit->rawdevs[i]->stat.freqfree) && (i !=  pinit->rawchan.mainraw)) { pinit->rawchan.backraw = i; break; }
       }
-    }
+    } else if (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
   }
+
+  if (pinit->rawchan.mainraw != -1) {
+    struct iovec *mainio =  &(pinit->downmsg.iov[pinit->rawchan.mainraw][0][0]);
+    mainio->iov_len = sizeof(wfb_utils_down_t);
+    if (pinit->rawchan.backraw == -1) {
+      ((wfb_utils_down_t *)(mainio->iov_base))->chan = -1;
+    } else { 
+      struct iovec *backio =  &(pinit->downmsg.iov[pinit->rawchan.backraw][0][0]);
+      ((wfb_utils_down_t *)mainio->iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
+      ((wfb_utils_down_t *)backio->iov_base)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
+      backio->iov_len = sizeof(wfb_utils_down_t);
+    }
+  } 
+
+
 }
 
 /*****************************************************************************/
@@ -176,5 +191,14 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     (putils->readtabnb) += 1;
   }
   putils->nbraws = putils->readtabnb - 1;
+
+
+  for (uint8_t i=0; i < MAXRAWDEV; i++) {
+    for (uint8_t j=0; j < MAXMSG; j++) {
+      for (uint8_t k=0; k < FEC_N; k++) {
+        putils->downmsg.iov[i][j][k].iov_base = &(putils->downmsg.buf[i][j][k][0]);
+      }
+    }
+  }
 
 }
