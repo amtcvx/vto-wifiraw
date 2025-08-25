@@ -34,6 +34,8 @@ int main(void) {
               if (!((len > 0)&&(utils.raws.pay.droneid >= DRONEIDMIN)&&(utils.raws.pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
               else { 
                 utils.rawdevs[cpt-1]->stat.incoming++;
+		wfb_utils_down_t *pay = utils.raws.rawmsg[utils.raws.rawmsgcurr].headvecs.head[wfb_utils_datapos].iov_base;
+		utils.rawdevs[cpt-1]->stat.chan = pay->chan;
               }
             }
           }
