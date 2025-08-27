@@ -35,7 +35,6 @@ if uname -a | grep -cs "6.1.0-1012-rockchip"> /dev/null 2>&1; then
   sudo rm /usr/lib/modules/6.1.0-1012-rockchip/kernel/drivers/net/wireless/rtl8812au/88XXau.ko
 fi
 if $DKMS; then
-  echo "blacklist rtl8812au" |sudo tee -a /etc/modprobe.d/blacklist.conf > /dev/null 2>&1
   sudo apt-get install -y dkms
   sudo make dkms_install
 else 
@@ -74,7 +73,7 @@ if uname -a | grep -cs "Ubuntu"> /dev/null 2>&1; then
     sudo systemctl reload NetworkManager.service 
   fi
 fi
-#sudo cp $PROJ/material/8812au.conf /etc/modprobe.d
+sudo cp $PROJ/material/blacklist-wfb.conf /etc/modprobe.d
 for f in $PROJ/material/60-wfb.rules $PROJ/material/wfb.service $PROJ/scripts/wfb_on.sh; do
   sed -i 's#TOBEUPDATEATINSTALLATION#'$PROJ'#' ${f};
   echo ${f};
