@@ -28,15 +28,40 @@ int main(void) {
             wfb_utils_periodic(&utils);
           } else {
             if ((cpt > 0)&&(cpt <= utils.nbraws)) {
-              printf("RAW (%d)\n",cpt);
+/*
               wfb_utils_presetrawmsg(&(utils.raws), true);
               len = recvmsg( utils.fd[cpt], &utils.raws.rawmsg[utils.raws.rawmsgcurr].msg, MSG_DONTWAIT);
+*/
+              uint8_t llchd[4];
+              wfb_utils_pay_t pay;
+
+	      struct iovec iov1 =  { .iov_base = utils.raws.headsrx->radiotaphd_rx,
+                                    .iov_len = sizeof(utils.raws.headsrx->radiotaphd_rx)};
+	      struct iovec iov2 =  { .iov_base = utils.raws.headsrx->ieeehd_rx,
+                                    .iov_len = sizeof(utils.raws.headsrx->ieeehd_rx)};
+              struct iovec iov3 =  { .iov_base = &llchd,
+                                    .iov_len = sizeof(llchd)};
+              struct iovec iov4 =  { .iov_base = &pay,
+                                    .iov_len = sizeof(wfb_utils_pay_t)};
+              struct iovec iovtab[4] = {iov1, iov2, iov3, iov4};
+
+	      struct msghdr msg;
+              msg.msg_iov = iovtab;
+              msg.msg_iovlen = 4;
+
+	      len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
+              if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
+              else { 
+                utils.rawdevs[cpt-1]->stat.incoming++;
+	      }
+/*
               if (!((len > 0)&&(utils.raws.pay.droneid >= DRONEIDMIN)&&(utils.raws.pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
               else { 
                 utils.rawdevs[cpt-1]->stat.incoming++;
 		wfb_utils_down_t *pay = utils.raws.rawmsg[utils.raws.rawmsgcurr].headvecs.head[wfb_utils_datapos].iov_base;
 		utils.rawdevs[cpt-1]->stat.chan = pay->chan;
               }
+*/
             }
           }
         }
@@ -77,7 +102,6 @@ int main(void) {
                                     .iov_len = sizeof(llchd)};
 	      struct iovec iov4 =  { .iov_base = &pay,
                                     .iov_len = sizeof(wfb_utils_pay_t)};
-
 	      struct iovec iovtab[4] = {iov1, iov2, iov3, iov4};
 
 	      struct msghdr msg;
