@@ -59,12 +59,6 @@ else
 #  make
 #  sudo make install
 fi  
-ln -s $PROJ/zfex/zfex/zfex.c $PROJ/src
-ln -s $PROJ/zfex/zfex/zfex.h $PROJ/src
-ln -s $PROJ/zfex/zfex/zfex_bytemask.h $PROJ/src
-ln -s $PROJ/zfex/zfex/zfex_macros.h $PROJ/src
-ln -s $PROJ/zfex/zfex/zfex_pp.h $PROJ/src
-ln -s $PROJ/zfex/zfex/zfex_status.h $PROJ/src
 
 sudo apt-get install libnl-3-dev
 if uname -m | grep -Eq 'x86_64' ; then
