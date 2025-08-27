@@ -17,8 +17,7 @@ ROLEFLAG :=
 PROTFLAG :=
   ifeq ($(PROT),RAW)
     PROTFLAG += -DRAW=1
-#    PROTFLAG += -DDRIVERNAME=\"rtl88XXau\"
-    PROTFLAG += -DDRIVERNAME=\"rtw_8812au\"
+    PROTFLAG += -DDRIVERNAME=\"rtl88XXau\"
   else
     PROTFLAG += -DRAW=0
     PROTFLAG += -DDRIVERNAME=\"\"
