@@ -60,6 +60,8 @@ int main(void) {
       	      utils.raws.rawmsg[i].headvecs.head[wfb_utils_datapos] = utils.downmsg.iov[i][j][k];
               len = sendmsg(utils.fd[1 + i], &utils.raws.rawmsg[utils.raws.rawmsgcurr].msg, MSG_DONTWAIT);
 */
+
+              uint8_t llchd[4];
 	      wfb_utils_pay_t pay;
               pay.msgcpt = j;
               pay.droneid = DRONEID;
@@ -71,13 +73,16 @@ int main(void) {
                                     .iov_len = utils.raws.headstx->radiotaphd_tx_size};
 	      struct iovec iov2 =  { .iov_base = utils.raws.headstx->ieeehd_tx,
                                     .iov_len = utils.raws.headstx->ieeehd_tx_size};
-	      struct iovec iov3 =  { .iov_base = &pay,
-                                    .iov_len = sizeof(pay)};
-	      struct iovec iovtab[3] = {iov1, iov2, iov3};
+	      struct iovec iov3 =  { .iov_base = &llchd,
+                                    .iov_len = sizeof(llchd)};
+	      struct iovec iov4 =  { .iov_base = &pay,
+                                    .iov_len = sizeof(wfb_utils_pay_t)};
+
+	      struct iovec iovtab[4] = {iov1, iov2, iov3, iov4};
 
 	      struct msghdr msg;
 	      msg.msg_iov = iovtab;
-              msg.msg_iovlen = 3;
+              msg.msg_iovlen = 4;
 
 	      len = sendmsg(utils.fd[1 + i], (const struct msghdr *)&msg, MSG_DONTWAIT);
 

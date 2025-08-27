@@ -43,6 +43,7 @@ typedef struct {
   uint8_t seq;
   uint8_t fec;
   uint8_t num;
+  uint8_t dum;
 } __attribute__((packed)) wfb_utils_pay_t;
 
 typedef struct {
