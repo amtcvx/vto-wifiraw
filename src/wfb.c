@@ -54,7 +54,7 @@ int main(void) {
                 utils.rawdevs[cpt-1]->stat.incoming++;
 	      }
 
-	      wfb_net_drain(utils.fd[cpt]);
+//	      wfb_net_drain(utils.fd[cpt]);
 
 /*
               wfb_utils_presetrawmsg(&(utils.raws), true);

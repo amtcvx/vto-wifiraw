@@ -319,7 +319,7 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
       sockidnl.socknl = socknl;
       pnet->sockidnl = &sockidnl;
 
-      static uint8_t llchd_tx[4];
+      static uint8_t llchd_tx[4] = {1,2,3,4};
 
       static uint8_t ieeehd_tx[] = {
         0x08, 0x01,                         // Frame Control : Data frame from STA to DS
