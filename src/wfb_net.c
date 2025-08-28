@@ -227,6 +227,19 @@ static uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *s
 }
 
 /******************************************************************************/
+void wfb_net_drain(uint8_t fd) {
+
+  struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
+  struct sock_fprog zero_program = { 1, &zero_bytecode};
+  setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program));
+  char drain[1];
+  while (recv(fd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) printf("----\n");
+  struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
+  struct sock_fprog full_program = { 1, &full_bytecode};
+  setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program));
+}
+
+/******************************************************************************/
 static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
 
   uint8_t cpt = 0;
@@ -235,9 +248,6 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
   for(uint8_t i=0;i<elt->nb;i++) {
     if (strcmp(elt->devs[i].drivername,DRIVERNAME)!=0) continue;
     if (-1 == (elt->devs[i].sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) continue;
-    struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
-    struct sock_fprog zero_program = { 1, &zero_bytecode};
-    if (-1 == setsockopt(elt->devs[i].sockfd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program))) continue;
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(struct ifreq));
     strncpy( ifr.ifr_name, elt->devs[i].ifname, sizeof( ifr.ifr_name ) - 1 );
@@ -248,13 +258,9 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
     sll.sll_ifindex  = ifr.ifr_ifindex;
     sll.sll_protocol = protocol;
     if (-1 == bind(elt->devs[i].sockfd, (struct sockaddr *)&sll, sizeof(sll))) continue;
-    char drain[1];
-    while (recv(elt->devs[i].sockfd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) {
-      printf("----\n");
-    };
-    struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
-    struct sock_fprog full_program = { 1, &full_bytecode};
-    if (-1 == setsockopt(elt->devs[i].sockfd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program))) continue;
+
+    wfb_net_drain(elt->devs[i].sockfd);
+
     static const int32_t sock_qdisc_bypass = 1;
     if (-1 == setsockopt(elt->devs[i].sockfd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) continue;
 

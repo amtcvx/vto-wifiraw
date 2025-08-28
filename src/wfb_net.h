@@ -53,6 +53,7 @@ typedef struct {
 
 
 bool wfb_net_init(wfb_net_init_t *);
+void wfb_net_drain(uint8_t fd);
 bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq); 
 
 #endif // WFB_NET_H

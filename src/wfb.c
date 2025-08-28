@@ -9,6 +9,8 @@
 #include "wfb.h"
 #include "wfb_utils.h"
 
+#include <linux/filter.h>
+
 
 /*****************************************************************************/
 int main(void) {
@@ -45,14 +47,15 @@ int main(void) {
 	      struct msghdr msg;
               msg.msg_iov = iovtab;
               msg.msg_iovlen = 4;
-
 	      len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
-
 
               if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
               else { 
                 utils.rawdevs[cpt-1]->stat.incoming++;
 	      }
+
+	      wfb_net_drain(utils.fd[cpt]);
+
 /*
               wfb_utils_presetrawmsg(&(utils.raws), true);
               len = recvmsg( utils.fd[cpt], &utils.raws.rawmsg[utils.raws.rawmsgcurr].msg, MSG_DONTWAIT);
