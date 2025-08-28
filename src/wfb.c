@@ -49,10 +49,11 @@ int main(void) {
               msg.msg_iovlen = 4;
 	      len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
 
-	      uint8_t *ptr = iov3.iov_base;
-
-              if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX)&&(ptr[0]==1)&&(ptr[1]==2)&&(ptr[2]==3))) utils.rawdevs[cpt-1]->stat.fails++;
-              else { 
+              if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX)
+                &&(((uint8_t *)iov3.iov_base)[0]==1)&&(((uint8_t *)iov3.iov_base)[1]==2)
+		&&(((uint8_t *)iov3.iov_base)[2]==3)&&(((uint8_t *)iov3.iov_base)[3]==4))) {
+	        utils.rawdevs[cpt-1]->stat.fails++;
+	      } else { 
                 utils.rawdevs[cpt-1]->stat.incoming++;
 	      }
 
