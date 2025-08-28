@@ -179,7 +179,6 @@ void wfb_utils_periodic(wfb_utils_init_t *pinit) {
   setmainbackup(pinit);
 }
 
-
 /*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *putils) {
 
@@ -198,6 +197,9 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   wfb_net_init(&net);
 
   putils->nbdev = MAXDEV;
+
+  static wfb_utils_heads_rx_t heads_rx;
+  putils->raws.headsrx = &heads_rx;
 
   putils->raws.headstx = net.headstx;
   putils->raws.rawmsgcurr = 0;

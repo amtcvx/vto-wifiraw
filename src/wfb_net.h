@@ -35,6 +35,8 @@ typedef struct {
   uint8_t radiotaphd_tx_size;
   uint8_t *ieeehd_tx;
   uint8_t ieeehd_tx_size;
+  uint8_t *llchd_tx;
+  uint8_t llchd_tx_size;
 } wfb_net_heads_tx_t;
 
 typedef struct {

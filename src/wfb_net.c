@@ -313,6 +313,8 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
       sockidnl.socknl = socknl;
       pnet->sockidnl = &sockidnl;
 
+      static uint8_t llchd_tx[4];
+
       static uint8_t ieeehd_tx[] = {
         0x08, 0x01,                         // Frame Control : Data frame from STA to DS
         0x00, 0x00,                         // Duration
@@ -328,7 +330,9 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
         0x08, 0x00,  // RADIOTAP_F_TX_NOACK
         MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
       };
-      static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx), ieeehd_tx, sizeof(ieeehd_tx) };
+      static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx), 
+	                                    ieeehd_tx, sizeof(ieeehd_tx),
+	                                    llchd_tx, sizeof(llchd_tx) };
       pnet->headstx = &headstx;
 
       return(true); 

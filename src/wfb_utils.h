@@ -47,8 +47,9 @@ typedef struct {
 } __attribute__((packed)) wfb_utils_pay_t;
 
 typedef struct {
-  uint8_t ieeehd_rx[24];
   uint8_t radiotaphd_rx[35];
+  uint8_t ieeehd_rx[24];
+  uint8_t llchd_rx[4];
 } wfb_utils_heads_rx_t;
 
 typedef struct {
