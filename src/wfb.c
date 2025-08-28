@@ -49,12 +49,14 @@ int main(void) {
               msg.msg_iovlen = 4;
 	      len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
 
-              if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX))) utils.rawdevs[cpt-1]->stat.fails++;
+	      uint8_t *ptr = iov3.iov_base;
+
+              if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX)&&(ptr[0]==1)&&(ptr[1]==2)&&(ptr[2]==3))) utils.rawdevs[cpt-1]->stat.fails++;
               else { 
                 utils.rawdevs[cpt-1]->stat.incoming++;
 	      }
 
-//	      wfb_net_drain(utils.fd[cpt]);
+	      wfb_net_drain(utils.fd[cpt]);
 
 /*
               wfb_utils_presetrawmsg(&(utils.raws), true);
