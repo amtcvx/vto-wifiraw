@@ -121,12 +121,12 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     } else if (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
   }
   if (pinit->rawchan.mainraw != -1) {
-    struct iovec *mainio =  &(pinit->downmsg.iov[pinit->rawchan.mainraw][0][0]);
+    struct iovec *mainio = &pinit->downmsg.elttab[WFB_PRO]->iov[pinit->rawchan.mainraw];
     mainio->iov_len = sizeof(wfb_utils_down_t);
     if (pinit->rawchan.backraw == -1) {
       ((wfb_utils_down_t *)(mainio->iov_base))->chan = -1;
     } else { 
-      struct iovec *backio =  &(pinit->downmsg.iov[pinit->rawchan.backraw][0][0]);
+      struct iovec *backio = &pinit->downmsg.elttab[WFB_PRO]->iov[pinit->rawchan.backraw];
       ((wfb_utils_down_t *)mainio->iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
       ((wfb_utils_down_t *)backio->iov_base)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
       backio->iov_len = sizeof(wfb_utils_down_t);
@@ -135,6 +135,7 @@ void setmainbackup(wfb_utils_init_t *pinit) {
 #else
   for (uint8_t i=0; i < pinit->nbraws; i++) {
     wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
+
     if (pstat->timecpt < 1) pstat->timecpt++;
     else {
       pstat->timecpt = 0;
@@ -156,7 +157,6 @@ void setmainbackup(wfb_utils_init_t *pinit) {
               pinit->rawdevs[j]->stat.chan = pstat->chan; 
 	      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, 
 			    pinit->rawdevs[j]->freqs[pinit->rawdevs[j]->stat.chan]);
-
 	      break;
 	    }
 	  }
@@ -230,13 +230,17 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   }
   putils->nbraws = putils->readtabnb - 1;
 
-
+  putils->downmsg.elttab[WFB_PRO] = putils->downmsg.elt_pro;
+  putils->downmsg.elttab[WFB_TUN] = putils->downmsg.elt_tun;
+  putils->downmsg.elttab[WFB_TEL] = putils->downmsg.elt_tel;
+  putils->downmsg.elttab[WFB_VID] = putils->downmsg.elt_vid[0];
   for (uint8_t i=0; i < MAXRAWDEV; i++) {
-    for (uint8_t j=0; j < MAXMSG; j++) {
+    for (uint8_t j=0; j < WFB_NB; j++) {
       for (uint8_t k=0; k < FEC_N; k++) {
-        putils->downmsg.iov[i][j][k].iov_base = &(putils->downmsg.buf[i][j][k][0]);
+        if (j == WFB_VID) ; //putils->downmsg.elttab[j]->iov[i].iov_base = &putils->downmsg.elttab[j]->buf[i];
+	else putils->downmsg.elttab[j]->iov[i].iov_base = &putils->downmsg.elttab[j]->buf[i];
+	putils->downmsg.elttab[j]->iov[i].iov_len = 0;
       }
     }
   }
-
 }

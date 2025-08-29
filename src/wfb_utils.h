@@ -11,8 +11,6 @@
 
 #define ONLINE_MTU PAY_MTU
 
-#define MAXMSG	5
-
 #if RAW
 #define wfb_utils_datapos 3
 #else
@@ -31,10 +29,8 @@ typedef struct {
 } wfb_utils_rawmsg_t;
 
 typedef struct {
-  uint8_t buf[MAXRAWDEV][MAXMSG][FEC_N][ONLINE_MTU];
-  struct iovec iov[MAXRAWDEV][MAXMSG][FEC_N];
-} wfb_utils_downmsg_t;
-
+  int16_t chan;
+} __attribute__((packed)) wfb_utils_down_t;
 
 typedef struct {
   uint8_t droneid;
@@ -45,6 +41,20 @@ typedef struct {
   uint8_t num;
   uint8_t dum;
 } __attribute__((packed)) wfb_utils_pay_t;
+
+typedef struct {
+  uint8_t buf[MAXRAWDEV];
+  struct iovec iov[MAXRAWDEV]; 
+} down_elt_t; 
+
+typedef struct {
+  down_elt_t elt_pro[sizeof(wfb_utils_pay_t)+sizeof(wfb_utils_down_t)];
+  down_elt_t elt_tun[sizeof(wfb_utils_pay_t)+ONLINE_MTU];
+  down_elt_t elt_tel[sizeof(wfb_utils_pay_t)+ONLINE_MTU];
+  down_elt_t elt_vid[FEC_N][sizeof(wfb_utils_pay_t)+ONLINE_MTU];
+  down_elt_t *elttab[WFB_NB];
+//  size_t len[MAXRAWDEV][WFB_NB][FEC_N];
+} wfb_utils_downmsg_t;
 
 typedef struct {
   uint8_t radiotaphd_rx[35];
@@ -87,9 +97,6 @@ typedef struct {
   wfb_utils_downmsg_t downmsg;
 } wfb_utils_init_t;
 
-typedef struct {
-  int16_t chan;
-} __attribute__((packed)) wfb_utils_down_t;
 
 void wfb_utils_periodic(wfb_utils_init_t *putils);
 void wfb_utils_init(wfb_utils_init_t *putils);

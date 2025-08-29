@@ -20,7 +20,8 @@
 
 #define PORT_LOG  5000
 
-// TIMER, PROTOCOL, VIDEO, TUNNEL, TELEMETRY
+typedef enum { WFB_PRO, WFB_TUN, WFB_TEL, WFB_VID, WFB_NB } type_d;
+
 #define MAXDEV (1 + MAXRAWDEV) 
 
 #define FEC_K	8
