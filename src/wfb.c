@@ -50,7 +50,7 @@ int main(void) {
 	      struct msghdr msg;
               msg.msg_iov = iovtab;
               msg.msg_iovlen = 4;
-	      len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
+	      len = recvmsg(utils.fd[cpt], &msg, 0);
 
               if (!((len > 0)&&(pay.droneid >= DRONEIDMIN)&&(pay.droneid <= DRONEIDMAX)
                 &&(((uint8_t *)iov3.iov_base)[0]==1)&&(((uint8_t *)iov3.iov_base)[1]==2)
