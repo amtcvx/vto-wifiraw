@@ -9,8 +9,7 @@
 #include "wfb.h"
 #include "wfb_utils.h"
 
-#include <linux/filter.h>
-
+#include <sys/time.h>
 
 /*****************************************************************************/
 int main(void) {
@@ -18,6 +17,7 @@ int main(void) {
   ssize_t len;
   uint8_t num=0, seq=0;
 
+  double time2 = 0, time3 = 9;
   wfb_utils_init_t utils;
   wfb_utils_init(&utils);
 
@@ -57,6 +57,14 @@ int main(void) {
 		&&(((uint8_t *)iov3.iov_base)[2]==3)&&(((uint8_t *)iov3.iov_base)[3]==4))) {
 	        utils.rawdevs[cpt-1]->stat.fails++;
 	      } else { 
+
+                struct timeval t;
+                double time1, elapsed;
+                gettimeofday(&t, NULL);
+                time1 = t.tv_sec + 1.0e-6 * t.tv_usec;
+		if (time2 != 0) { elapsed = (double)(time2 - time1); printf("in elapsed (%f)\n",elapsed);}
+                time2 = time1;
+ 
                 utils.rawdevs[cpt-1]->stat.incoming++;
 		//wfb_utils_down_t *pay = utils.raws.rawmsg[utils.raws.rawmsgcurr].headvecs.head[wfb_utils_datapos].iov_base;
 		//utils.rawdevs[cpt-1]->stat.chan = pay->chan;
@@ -101,6 +109,13 @@ int main(void) {
   
   	      if (len > 0) utils.rawdevs[i]->stat.sent++;
 	      utils.downmsg.elttab[j]->iov[i].iov_len = 0;
+
+              struct timeval t;
+              double time1, elapsed;
+              gettimeofday(&t, NULL);
+              time1 = t.tv_sec + 1.0e-6 * t.tv_usec;
+	      if (time3 != 0) { elapsed = (double)(time3 - time1); printf("out elapsed (%f)\n",elapsed);}
+              time3 = time1;
 	    }
 	  }
 	}
