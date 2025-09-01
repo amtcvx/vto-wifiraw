@@ -112,7 +112,7 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       }
     } else {
       pstat->timecpt++;
-      if (pstat->timecpt > 1) {
+      if (pstat->timecpt > 3) {
         pstat->timecpt = 0;
         uint8_t nextfreqnb = 1 + pstat->freqnb;
         if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
