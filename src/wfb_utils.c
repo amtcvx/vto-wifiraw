@@ -8,54 +8,6 @@
 #include "wfb_net.h"
 #include "zfex.h"
 
-
-/*****************************************************************************/
-void wfb_utils_presetrawmsg(wfb_utils_raw_t *praw, bool rxflag) {
-
-  wfb_utils_rawmsg_t *msg = &(praw->rawmsg[praw->rawmsgcurr]);
-  memset(&msg->bufs, 0, sizeof(msg->bufs));
-  msg->iovecs.iov_base = &msg->bufs;
-  msg->iovecs.iov_len  = ONLINE_MTU;
-
-#if RAW
-  if (rxflag) {
-
-    struct iovec radiotaphd_rx_vec = { .iov_base = &praw->headsrx->radiotaphd_rx, 
-                                       .iov_len = sizeof(praw->headsrx->radiotaphd_rx)};
-    msg->headvecs.head[0] = radiotaphd_rx_vec;
-    struct iovec ieeehd_rx_vec = { .iov_base = &praw->headsrx->ieeehd_rx, 
-                                   .iov_len = sizeof(praw->headsrx->ieeehd_rx)};
-    msg->headvecs.head[1] = ieeehd_rx_vec;
-
-//    memset(ieeehd_rx_vec.iov_base, 0, ieeehd_rx_vec.iov_len);
-
-  } else {
-
-    struct iovec radiotaphd_tx_vec = { .iov_base = &praw->headstx->radiotaphd_tx, 
-                                       .iov_len = praw->headstx->radiotaphd_tx_size};
-    msg->headvecs.head[0] = radiotaphd_tx_vec;
-    struct iovec ieeehd_tx_vec = { .iov_base = &praw->headstx->ieeehd_tx, 
-                                   .iov_len = praw->headstx->ieeehd_tx_size};
-    msg->headvecs.head[1] = ieeehd_tx_vec;
-  }
-
-  wfb_utils_pay_t *pay = &(praw->pay);
-  struct iovec pay_vec = { .iov_base = &pay, .iov_len = sizeof(wfb_utils_pay_t)};
-  memset(pay_vec.iov_base, 0, pay_vec.iov_len);
-
-  msg->headvecs.head[2] = pay_vec;
-  msg->headvecs.head[3] = msg->iovecs;
-  msg->msg.msg_iovlen = 4;
-#else
-  msg->headvecs.head[0] = pay_vec;
-  msg->headvecs.head[1] = msg->iovecs;
-  msg->msg.msg_iovlen = 2;
-#endif // RAW
-  msg->msg.msg_iov = &msg->headvecs.head[0];
-
-}
-
-
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *pinit) {
 
@@ -121,15 +73,15 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     } else if (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
   }
   if (pinit->rawchan.mainraw != -1) {
-    struct iovec *mainio = &pinit->downmsg.elttab[WFB_PRO]->iov[pinit->rawchan.mainraw];
-    mainio->iov_len = sizeof(wfb_utils_down_t);
+    struct iovec *mainio = &pinit->msgout.eltout[pinit->rawchan.mainraw].iov[WFB_PRO];
+    mainio->iov_len = sizeof(wfb_utils_pro_t);
     if (pinit->rawchan.backraw == -1) {
-      ((wfb_utils_down_t *)(mainio->iov_base))->chan = -1;
+      ((wfb_utils_pro_t *)(mainio->iov_base))->chan = -1;
     } else { 
-      struct iovec *backio = &pinit->downmsg.elttab[WFB_PRO]->iov[pinit->rawchan.backraw];
-      ((wfb_utils_down_t *)mainio->iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
-      ((wfb_utils_down_t *)backio->iov_base)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
-      backio->iov_len = sizeof(wfb_utils_down_t);
+      struct iovec *backio = &pinit->msgout.eltout[pinit->rawchan.backraw].iov[WFB_PRO];
+      ((wfb_utils_pro_t *)mainio->iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
+      ((wfb_utils_pro_t *)backio->iov_base)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
+      backio->iov_len = sizeof(wfb_utils_pro_t);
     }
   } 
 #else
@@ -202,7 +154,6 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   putils->raws.headsrx = &heads_rx;
 
   putils->raws.headstx = net.headstx;
-  putils->raws.rawmsgcurr = 0;
 
   putils->sockidnl = net.sockidnl;
 
@@ -230,16 +181,23 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   }
   putils->nbraws = putils->readtabnb - 1;
 
-  putils->downmsg.elttab[WFB_PRO] = putils->downmsg.elt_pro;
-  putils->downmsg.elttab[WFB_TUN] = putils->downmsg.elt_tun;
-  putils->downmsg.elttab[WFB_TEL] = putils->downmsg.elt_tel;
-  putils->downmsg.elttab[WFB_VID] = putils->downmsg.elt_vid[0];
   for (uint8_t i=0; i < MAXRAWDEV; i++) {
+
+    putils->msgin.eltin[i].curr = 0;
+    for (uint8_t k=0; k < FEC_N; k++) {
+      putils->msgin.eltin[i].iov[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
+      putils->msgin.eltin[i].iov[k].iov_len = 0;
+    }
+
     for (uint8_t j=0; j < WFB_NB; j++) {
-      for (uint8_t k=0; k < FEC_N; k++) {
-        if (j == WFB_VID) ; //putils->downmsg.elttab[j]->iov[i].iov_base = &putils->downmsg.elttab[j]->buf[i];
-	else putils->downmsg.elttab[j]->iov[i].iov_base = &putils->downmsg.elttab[j]->buf[i];
-	putils->downmsg.elttab[j]->iov[i].iov_len = 0;
+      if (j == WFB_PRO) { putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_pro; putils->msgout.eltout[i].iov[j].iov_len = 0; }
+      else if (j == WFB_TUN) { putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_tun; putils->msgout.eltout[i].iov[j].iov_len = 0; }
+      else if (j == WFB_TEL) { putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_tel; putils->msgout.eltout[i].iov[j].iov_len = 0; }
+      else if (j == WFB_VID) {
+        for (uint8_t k=0; k < FEC_N; k++) {
+	  putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_vid[k];
+	  putils->msgout.eltout[i].iov[j].iov_len = 0;
+	}
       }
     }
   }

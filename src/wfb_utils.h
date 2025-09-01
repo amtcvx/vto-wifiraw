@@ -18,19 +18,8 @@
 #endif
 
 typedef struct {
-  struct iovec head[wfb_utils_datapos + 1];
-} wfb_utils_head_t;
-
-typedef struct {
-  uint8_t bufs[ ONLINE_MTU + 1];
-  struct msghdr msg;
-  struct iovec iovecs;
-  wfb_utils_head_t headvecs;
-} wfb_utils_rawmsg_t;
-
-typedef struct {
   int16_t chan;
-} __attribute__((packed)) wfb_utils_down_t;
+} __attribute__((packed)) wfb_utils_pro_t;
 
 typedef struct {
   uint8_t droneid;
@@ -40,21 +29,29 @@ typedef struct {
   uint8_t fec;
   uint8_t num;
   uint8_t dum;
-} __attribute__((packed)) wfb_utils_pay_t;
+} __attribute__((packed)) wfb_utils_heads_pay_t;
 
 typedef struct {
-  uint8_t buf[MAXRAWDEV];
-  struct iovec iov[MAXRAWDEV]; 
-} down_elt_t; 
+  uint8_t buf_pro[sizeof(wfb_utils_pro_t)];
+  uint8_t buf_tun[ONLINE_MTU];
+  uint8_t buf_tel[ONLINE_MTU];
+  uint8_t buf_vid[FEC_N][ONLINE_MTU];
+  struct iovec iov[WFB_NB];
+} msg_eltout_t; 
 
 typedef struct {
-  down_elt_t elt_pro[sizeof(wfb_utils_pay_t)+sizeof(wfb_utils_down_t)];
-  down_elt_t elt_tun[sizeof(wfb_utils_pay_t)+ONLINE_MTU];
-  down_elt_t elt_tel[sizeof(wfb_utils_pay_t)+ONLINE_MTU];
-  down_elt_t elt_vid[FEC_N][sizeof(wfb_utils_pay_t)+ONLINE_MTU];
-  down_elt_t *elttab[WFB_NB];
-//  size_t len[MAXRAWDEV][WFB_NB][FEC_N];
-} wfb_utils_downmsg_t;
+  msg_eltout_t eltout[MAXRAWDEV];
+} wfb_utils_msgout_t;
+
+typedef struct {
+  uint8_t buf_raw[FEC_N][ONLINE_MTU];
+  struct iovec iov[FEC_N];
+  uint8_t curr;
+} msg_eltin_t; 
+
+typedef struct {
+  msg_eltin_t eltin[MAXRAWDEV];
+} wfb_utils_msgin_t;
 
 typedef struct {
   uint8_t radiotaphd_rx[35];
@@ -63,9 +60,7 @@ typedef struct {
 } wfb_utils_heads_rx_t;
 
 typedef struct {
-  uint8_t rawmsgcurr;
-  wfb_utils_rawmsg_t rawmsg[MAXRAWDEV];
-  wfb_utils_pay_t pay;
+  wfb_utils_heads_pay_t headspay;
   wfb_net_heads_tx_t *headstx;
   wfb_utils_heads_rx_t *headsrx;
 } wfb_utils_raw_t;
@@ -94,7 +89,8 @@ typedef struct {
   wfb_utils_raw_t raws;
   wfb_net_socktidnl_t *sockidnl;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
-  wfb_utils_downmsg_t downmsg;
+  wfb_utils_msgin_t msgin;
+  wfb_utils_msgout_t msgout;
 } wfb_utils_init_t;
 
 
