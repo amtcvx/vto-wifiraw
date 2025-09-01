@@ -76,7 +76,8 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     struct iovec *mainio = &pinit->msgout.eltout[pinit->rawchan.mainraw].iov[WFB_PRO];
     mainio->iov_len = sizeof(wfb_utils_pro_t);
     if (pinit->rawchan.backraw == -1) {
-      ((wfb_utils_pro_t *)(mainio->iov_base))->chan = -1;
+//      (((wfb_utils_pro_t *)(mainio->iov_base))->chan) = -1;
+       pinit->msgout.eltout[pinit->rawchan.mainraw].buf_pro[0] = -1;
     } else { 
       struct iovec *backio = &pinit->msgout.eltout[pinit->rawchan.backraw].iov[WFB_PRO];
       ((wfb_utils_pro_t *)mainio->iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
@@ -190,14 +191,18 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     }
 
     for (uint8_t j=0; j < WFB_NB; j++) {
-      if (j == WFB_PRO) { putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_pro; putils->msgout.eltout[i].iov[j].iov_len = 0; }
-      else if (j == WFB_TUN) { putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_tun; putils->msgout.eltout[i].iov[j].iov_len = 0; }
-      else if (j == WFB_TEL) { putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_tel; putils->msgout.eltout[i].iov[j].iov_len = 0; }
-      else if (j == WFB_VID) {
+
+      if (j == WFB_VID) {
         for (uint8_t k=0; k < FEC_N; k++) {
-	  putils->msgout.eltout[i].iov[j].iov_base = &putils->msgout.eltout[i].buf_vid[k];
-	  putils->msgout.eltout[i].iov[j].iov_len = 0;
+	  putils->msgout.eltout[i].buf_fec[k].iovvid.iov_base = &putils->msgout.eltout[i].buf_fec[k].buf_vid;
+	  putils->msgout.eltout[i].buf_fec[k].iovvid.iov_len = 0;
 	}
+      } else {
+        struct iovec *piov = &putils->msgout.eltout[i].iov[j];
+        piov->iov_len = 0;
+        if (j == WFB_PRO) piov->iov_base = &putils->msgout.eltout[i].buf_pro;
+        else if (j == WFB_TUN) piov->iov_base = &putils->msgout.eltout[i].buf_tun;
+        else if (j == WFB_TEL) piov->iov_base = &putils->msgout.eltout[i].buf_tel;
       }
     }
   }

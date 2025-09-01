@@ -59,6 +59,8 @@ int main(void) {
                 if( headspay.msgcpt == WFB_PRO) {
                   utils.rawdevs[cpt-1]->stat.incoming++;
 		  utils.rawdevs[cpt-1]->stat.chan = (((wfb_utils_pro_t *)&utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ].iov_base))->chan;
+
+                  printf("IN [%d][%d]\n",cpt-1,utils.rawdevs[cpt-1]->stat.chan);
 		}
 	      }
 	      wfb_net_drain(utils.fd[cpt]);
@@ -93,6 +95,9 @@ int main(void) {
   	      msg.msg_iov = iovtab;
               msg.msg_iovlen = 5;
 
+              printf("OUT [%d](%d)[%d][%d][%d]\n",((wfb_utils_pro_t *)&utils.msgout.eltout[utils.rawchan.mainraw].buf_pro)->chan, utils.rawchan.mainraw, ((wfb_utils_pro_t *)&utils.msgout.eltout[i].iov[j].iov_base)->chan,i,j);
+
+		
   	      len = sendmsg(utils.fd[1 + i], (const struct msghdr *)&msg, MSG_DONTWAIT);
   
   	      if (len > 0) utils.rawdevs[i]->stat.sent++;
