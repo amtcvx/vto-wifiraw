@@ -95,7 +95,7 @@ int main(void) {
   	      msg.msg_iov = iovtab;
               msg.msg_iovlen = 5;
 
-              printf("OUT [%d](%d)[%d][%d][%d]\n",((wfb_utils_pro_t *)&utils.msgout.eltout[utils.rawchan.mainraw].buf_pro)->chan, utils.rawchan.mainraw, ((wfb_utils_pro_t *)&utils.msgout.eltout[i].iov[j].iov_base)->chan,i,j);
+              printf("OUT [%d]\n",((wfb_utils_pro_t *)&utils.msgout.eltout[i].iov[j].iov_base)->chan);
 
 		
   	      len = sendmsg(utils.fd[1 + i], (const struct msghdr *)&msg, MSG_DONTWAIT);

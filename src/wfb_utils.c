@@ -73,16 +73,13 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     } else if (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
   }
   if (pinit->rawchan.mainraw != -1) {
-    struct iovec *mainio = &pinit->msgout.eltout[pinit->rawchan.mainraw].iov[WFB_PRO];
-    mainio->iov_len = sizeof(wfb_utils_pro_t);
+    ((struct iovec *)&pinit->msgout.eltout[pinit->rawchan.mainraw].iov[WFB_PRO])->iov_len = sizeof(wfb_utils_pro_t);
     if (pinit->rawchan.backraw == -1) {
-//      (((wfb_utils_pro_t *)(mainio->iov_base))->chan) = -1;
-       pinit->msgout.eltout[pinit->rawchan.mainraw].buf_pro[0] = -1;
+       ((wfb_utils_pro_t *)pinit->msgout.eltout[pinit->rawchan.mainraw].buf_pro)->chan = -1;
     } else { 
-      struct iovec *backio = &pinit->msgout.eltout[pinit->rawchan.backraw].iov[WFB_PRO];
-      ((wfb_utils_pro_t *)mainio->iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
-      ((wfb_utils_pro_t *)backio->iov_base)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
-      backio->iov_len = sizeof(wfb_utils_pro_t);
+      ((wfb_utils_pro_t *)pinit->msgout.eltout[pinit->rawchan.mainraw].buf_pro)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
+      ((wfb_utils_pro_t *)pinit->msgout.eltout[pinit->rawchan.backraw].buf_pro)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
+      ((struct iovec *)&pinit->msgout.eltout[pinit->rawchan.backraw].iov[WFB_PRO])->iov_len = sizeof(wfb_utils_pro_t);
     }
   } 
 #else
