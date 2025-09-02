@@ -116,6 +116,15 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       pstat->timecpt++;
       if (pstat->timecpt > 3) {
         pstat->timecpt = 0;
+	if (pinit->rawchan.mainraw == i) {
+          pinit->rawchan.mainraw = -1;
+          if (pinit->rawchan.backraw > 0) {
+	    pinit->rawchan.mainraw = pinit->rawchan.backraw;
+	  }    
+	} else if (pinit->rawchan.backraw == i) {
+          pinit->rawchan.backraw = -1;
+	}
+
         uint8_t nextfreqnb = 1 + pstat->freqnb;
         if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
         pstat->freqnb = nextfreqnb;
