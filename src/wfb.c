@@ -58,7 +58,7 @@ int main(void) {
 	      } else {
                 if( headspay.msgcpt == WFB_PRO) {
                   utils.rawdevs[cpt-1]->stat.incoming++;
-		  //utils.rawdevs[cpt-1]->stat.chan = (((wfb_utils_pro_t *)&utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ].iov_base))->chan;
+		  utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iov5.iov_base)->chan;
 
                   printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iov5.iov_base)->chan);
 		}
@@ -87,7 +87,7 @@ int main(void) {
   	      struct iovec iov4 = { .iov_base = &headspay,
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
 
-  	      struct iovec iov5 =  utils.msgout.eltout[i].iov[j];
+  	      struct iovec iov5 = utils.msgout.eltout[i].iov[j];
 
   	      struct iovec iovtab[5] = {iov1, iov2, iov3, iov4, iov5};
   

@@ -88,25 +88,29 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     if (pstat->incoming > 0) { 
       pstat->incoming = 0;
       pstat->timecpt = 0;
-      if (pstat->chan == -1) { pinit->rawchan.mainraw = i; }
+      if (pstat->chan == -1) pinit->rawchan.mainraw = i; 
       else {
-        for (uint8_t j=0; j < pinit->nbraws; j++) {
-          if (j!=i) {
-	    if (pstat->chan < 100) { 
-	      pinit->rawchan.mainraw = i; 
-	      pinit->rawchan.backraw = j; 
-	    } else {
+        if ((pinit->rawchan.mainraw < 0) || (pinit->rawchan.backraw < 0)) {
+          for (uint8_t j=0; j < pinit->nbraws; j++) {
+            if (j!=i) {
+  	      if (pstat->chan < 100) { 
+  	        pinit->rawchan.mainraw = i; 
+  	        pinit->rawchan.backraw = j; 
+                pinit->rawdevs[j]->stat.freqnb = pstat->chan; 
+  	      } 
               if (pstat->chan >= 100) { 
-	        pinit->rawchan.mainraw = j; 
-	        pinit->rawchan.backraw = i;
-	      }
-	    }
-            pinit->rawdevs[j]->stat.chan = pstat->chan; 
-	    wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, 
-			    pinit->rawdevs[j]->freqs[pinit->rawdevs[j]->stat.chan]);
-	    break;
-	  }
-        }
+  	        pinit->rawchan.mainraw = j; 
+  	        pinit->rawchan.backraw = i;
+                pinit->rawdevs[j]->stat.freqnb = 100 - pstat->chan; 
+  	      }
+  	      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, 
+  			    pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
+
+  	      printf("[%d][%d][%d][%d]\n",pstat->chan,j,pinit->rawchan.mainraw,pinit->rawchan.backraw);
+  	      break;
+  	    }
+          }
+	}
       }
     } else {
       pstat->timecpt++;
@@ -185,7 +189,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     putils->msgin.eltin[i].curr = 0;
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iov[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
-      putils->msgin.eltin[i].iov[k].iov_len = 0;
+      putils->msgin.eltin[i].iov[k].iov_len = ONLINE_MTU;
     }
 
     for (uint8_t j=0; j < WFB_NB; j++) {
