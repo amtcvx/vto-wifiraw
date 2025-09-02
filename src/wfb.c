@@ -58,9 +58,9 @@ int main(void) {
 	      } else {
                 if( headspay.msgcpt == WFB_PRO) {
                   utils.rawdevs[cpt-1]->stat.incoming++;
-		  utils.rawdevs[cpt-1]->stat.chan = (((wfb_utils_pro_t *)&utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ].iov_base))->chan;
+		  //utils.rawdevs[cpt-1]->stat.chan = (((wfb_utils_pro_t *)&utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ].iov_base))->chan;
 
-                  printf("IN [%d][%d]\n",cpt-1,utils.rawdevs[cpt-1]->stat.chan);
+                  printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iov5.iov_base)->chan);
 		}
 	      }
 	      wfb_net_drain(utils.fd[cpt]);
@@ -95,7 +95,7 @@ int main(void) {
   	      msg.msg_iov = iovtab;
               msg.msg_iovlen = 5;
 
-              printf("OUT (%d)(%d)  (%d)\n",i,j,((wfb_utils_pro_t *)utils.msgout.eltout[i].iov[j].iov_base)->chan);
+              printf("OUT (%d)(%d)  (%d)\n",i,j,((wfb_utils_pro_t *)iov5.iov_base)->chan);
 		
   	      len = sendmsg(utils.fd[1 + i], (const struct msghdr *)&msg, MSG_DONTWAIT);
   
