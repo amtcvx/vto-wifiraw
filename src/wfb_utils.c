@@ -35,12 +35,14 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       pstat->fails = 0;
       pstat->timecpt = 0;
       pstat->freqfree = false;
-      if (i != pinit->rawchan.mainraw) {
-        uint8_t nextfreqnb = 1 + pstat->freqnb;
-        if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
-        pstat->freqnb = nextfreqnb;
-        wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
-      }
+
+      pinit->msgout.eltout[i].iov[WFB_PRO].iov_len = 0;
+
+      uint8_t nextfreqnb = 1 + pstat->freqnb;
+      if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
+      pstat->freqnb = nextfreqnb;
+      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
+
     } else {
       if (pstat->timecpt < 10) pstat->timecpt++;
       else {
@@ -49,29 +51,30 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       }
     }
   }
+
   if (pinit->rawchan.mainraw == -1) {
     for (uint8_t i=0; i < pinit->nbraws; i++) {
       if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
     }
-    for (uint8_t i=0; i < pinit->nbraws; i++) {
-      if ((pinit->rawdevs[i]->stat.freqfree) && (i !=  pinit->rawchan.mainraw)) { pinit->rawchan.backraw = i; break; }
-    }
-  } else {
-    if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
-      if ((pinit->rawchan.backraw > -1) && (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) {
-        pinit->rawchan.mainraw = pinit->rawchan.backraw;
-      } else {
-        for (uint8_t i=0; i < pinit->nbraws; i++) {
-          if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
-	}
-      }
-    }
-    if (pinit->rawchan.backraw == -1) {
-      for (uint8_t i=0; i < pinit->nbraws; i++) { 
+  }
+
+  if (pinit->rawchan.mainraw != -1) {
+    if  (pinit->rawchan.backraw == -1)  {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
         if ((pinit->rawdevs[i]->stat.freqfree) && (i !=  pinit->rawchan.mainraw)) { pinit->rawchan.backraw = i; break; }
       }
-    } else if (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
-  }
+    } else {
+      if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
+        if (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree) {
+          pinit->rawchan.mainraw = pinit->rawchan.backraw;
+	  pinit->rawchan.backraw = -1;
+	} else pinit->rawchan.mainraw = -1;
+      }
+    }
+  } 
+ 
+  if ((pinit->rawchan.backraw != -1) && (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree))) pinit->rawchan.backraw = -1;
+
   if (pinit->rawchan.mainraw != -1) {
     pinit->msgout.eltout[pinit->rawchan.mainraw].iov[WFB_PRO].iov_len = sizeof(wfb_utils_pro_t);
     if (pinit->rawchan.backraw == -1) {
@@ -88,42 +91,13 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     if (pstat->incoming > 0) { 
       pstat->incoming = 0;
       pstat->timecpt = 0;
-      if (pstat->chan == -1) pinit->rawchan.mainraw = i; 
-      else {
-        if ((pinit->rawchan.mainraw < 0) || (pinit->rawchan.backraw < 0)) {
-          for (uint8_t j=0; j < pinit->nbraws; j++) {
-            if (j!=i) {
-  	      if (pstat->chan < 100) { 
-  	        pinit->rawchan.mainraw = i; 
-  	        pinit->rawchan.backraw = j; 
-                pinit->rawdevs[j]->stat.freqnb = pstat->chan; 
-  	      } 
-              if (pstat->chan >= 100) { 
-  	        pinit->rawchan.mainraw = j; 
-  	        pinit->rawchan.backraw = i;
-                pinit->rawdevs[j]->stat.freqnb = 100 - pstat->chan; 
-  	      }
-  	      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, 
-  			    pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
+      pstat->freqfree = false;
 
-  	      printf("[%d][%d][%d][%d]\n",pstat->chan,j,pinit->rawchan.mainraw,pinit->rawchan.backraw);
-  	      break;
-  	    }
-          }
-	}
-      }
     } else {
-      pstat->timecpt++;
-      if (pstat->timecpt > 3) {
+      if (pstat->timecpt < 3) pstat->timecpt++;
+      else {
         pstat->timecpt = 0;
-	if (pinit->rawchan.mainraw == i) {
-          pinit->rawchan.mainraw = -1;
-          if (pinit->rawchan.backraw > 0) {
-	    pinit->rawchan.mainraw = pinit->rawchan.backraw;
-	  }    
-	} else if (pinit->rawchan.backraw == i) {
-          pinit->rawchan.backraw = -1;
-	}
+        pstat->freqfree = true;
 
         uint8_t nextfreqnb = 1 + pstat->freqnb;
         if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
@@ -132,6 +106,26 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       }
     }
   }
+
+  for (uint8_t i=0; i < pinit->nbraws; i++) {
+    if (!(pinit->rawdevs[i]->stat.freqfree)) { 
+      if (pinit->rawdevs[i]->stat.chan < 100) { pinit->rawchan.mainraw = i; ifreq = pstat->chan; }
+      else { pinit->rawchan.backraw = i;   freq = 100 - pstat->chan; }
+
+      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex,
+                     pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
+
+      break;
+    }
+  }
+
+  for (uint8_t i=0; i < pinit->nbraws; i++) {
+    if (pinit->rawchan.mainraw != -1 ) if (i != pinit->rawchan.mainraw)  { pinit->rawchan.backraw  = i; break; }
+  }
+  for (uint8_t i=0; i < pinit->nbraws; i++) {
+    if (pinit->rawchan.backraw != -1 ) if (i != pinit->rawchan.backraw)  { pinit->rawchan.mainraw  = i; break; }
+  }
+
 #endif // BOARD
 
 }
