@@ -78,6 +78,7 @@ int main(void) {
             struct iovec *piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[WFB_TUN];
             piov->iov_len = ONLINE_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
+	    if (utils.rawchan.mainraw == -1) piov->iov_len = 0; 
 	    printf("TUN readv(%ld)\n",piov->iov_len);
 
           }
