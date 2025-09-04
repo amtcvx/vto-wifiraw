@@ -45,10 +45,14 @@ void setmainbackup(wfb_utils_init_t *pinit) {
 
       pinit->msgout.eltout[i].iov[WFB_PRO].iov_len = 0;
 
-      uint8_t nextfreqnb = 1 + pstat->freqnb;
-      if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
-      pstat->freqnb = nextfreqnb;
-      wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
+      if (((pinit->nbraws <= 1) && (-1 == pinit->rawchan.mainraw))
+        || (pinit->nbraws > 1)) {
+
+        uint8_t nextfreqnb = 1 + pstat->freqnb;
+        if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
+        pstat->freqnb = nextfreqnb;
+        wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
+      }
 
     } else {
       if (pstat->timecpt < 10) pstat->timecpt++;
@@ -252,17 +256,11 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   }
   putils->nbraws = putils->readtabnb - 1;
 
-  printf("(%d)\n",putils->readtabnb);
-
   build_tun(&putils->fd[putils->readtabnb]); // One bidirectional link
   putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
   putils->readsets[putils->readtabnb].events = POLLIN;
   (putils->readtabnb) += 1;
 
-
-  printf("(%d)\n",putils->fd[2]);
-
-  
 
   for (uint8_t i=0; i < MAXRAWDEV; i++) {
     putils->msgin.eltin[i].curr = 0;
