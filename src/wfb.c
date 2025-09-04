@@ -62,9 +62,18 @@ int main(void) {
 
                   printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iov5.iov_base)->chan);
 		}
+		else if( headspay.msgcpt == WFB_TUN) {
+		  if ((len = write(utils.fd[cpt], iov5.iov_base, iov5.iov_len)) > 0) printf("TUN (%ld)\n",len);
+		}
 	      }
 	      wfb_net_drain(utils.fd[cpt]);
             }
+
+	    else if (cpt == WFB_TUN) {
+              struct iovec *piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[WFB_TUN];
+              piov->iov_len = ONLINE_MTU;
+              piov->iov_len = readv( utils.fd[cpt], piov, 1);
+	    }
           }
         }
       }

@@ -4,9 +4,16 @@
 #include <sys/timerfd.h>
 #include <netinet/in.h>
 
+#include <fcntl.h>
+#include <net/if.h>
+#include <linux/if_tun.h>
+#include <sys/ioctl.h>
+
 #include "wfb_utils.h"
 #include "wfb_net.h"
 #include "zfex.h"
+
+#define TUN_MTU 1400
 
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *pinit) {
@@ -157,6 +164,42 @@ void wfb_utils_periodic(wfb_utils_init_t *pinit) {
   setmainbackup(pinit);
 }
 
+
+/*****************************************************************************/
+void build_tun(uint8_t *fd) {
+  uint16_t fd_tun_udp;
+  struct ifreq ifr;
+
+  memset(&ifr, 0, sizeof(struct ifreq));
+  struct sockaddr_in addr, dstaddr;
+#if BOARD
+  strcpy(ifr.ifr_name,"airtun");
+  addr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
+  dstaddr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
+#else
+  strcpy(ifr.ifr_name, "grdtun");
+  addr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
+  dstaddr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
+#endif // BOARD
+  if (0 > (*fd = open("/dev/net/tun",O_RDWR))) exit(-1);
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (ioctl(*fd, TUNSETIFF, &ifr ) < 0 ) exit(-1);
+  if (-1 == (fd_tun_udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
+  addr.sin_family = AF_INET;
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
+  addr.sin_addr.s_addr = inet_addr(IPBROAD);
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
+  dstaddr.sin_family = AF_INET;
+  memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
+  ifr.ifr_mtu = TUN_MTU;
+  if (ioctl( fd_tun_udp, SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
+  ifr.ifr_flags = IFF_UP ;
+  if (ioctl( fd_tun_udp, SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
+}
+
 /*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *putils) {
 
@@ -189,40 +232,41 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(putils->fd[0], 0, &period, NULL);
 
+
+ 
   putils->readtabnb = 1;
   for(uint8_t i=0;i<net.nbraws;i++) {
     uint8_t nextfreqnb = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / net.nbraws);
-
     if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextfreqnb]))) continue;
     net.rawdevs[i]->stat.freqnb = nextfreqnb;
-
 #if BOARD
     net.rawdevs[i]->stat.freqfree = false;
 #else
     net.rawdevs[i]->stat.freqfree = true;
 #endif // BOARD
-
     putils->fd[putils->readtabnb]  = net.rawdevs[i]->sockfd;
-
     putils->rawdevs[(putils->readtabnb) - 1] = net.rawdevs[i];
-
     putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
     putils->readsets[putils->readtabnb].events = POLLIN;
     (putils->readtabnb) += 1;
   }
   putils->nbraws = putils->readtabnb - 1;
 
+  build_tun(&putils->fd[putils->readtabnb]); // One bidirectional link
+  putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
+  putils->readsets[putils->readtabnb].events = POLLIN;
+  (putils->readtabnb) += 1;
+
+
+  
 
   for (uint8_t i=0; i < MAXRAWDEV; i++) {
-
     putils->msgin.eltin[i].curr = 0;
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iov[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
       putils->msgin.eltin[i].iov[k].iov_len = ONLINE_MTU;
     }
-
     for (uint8_t j=0; j < WFB_NB; j++) {
-
       if (j == WFB_VID) {
         for (uint8_t k=0; k < FEC_N; k++) {
 	  putils->msgout.eltout[i].buf_fec[k].iovvid.iov_base = &putils->msgout.eltout[i].buf_fec[k].buf_vid;
