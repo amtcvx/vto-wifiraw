@@ -110,7 +110,7 @@ int main(void) {
   	      msg.msg_iov = iovtab;
               msg.msg_iovlen = 5;
 
-              printf("OUT (%d)(%d)  (%d)\n",i,j,((wfb_utils_pro_t *)iov5.iov_base)->chan);
+              printf("OUT (%d)(%d)  (%ld)\n",i,j,iov5.iov_len);
 		
   	      len = sendmsg(utils.fd[1 + i], (const struct msghdr *)&msg, MSG_DONTWAIT);
   
