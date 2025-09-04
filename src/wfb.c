@@ -67,7 +67,7 @@ int main(void) {
 
 	    } else if( headspay.msgcpt == WFB_TUN) {
 
-	      if ((len = write(utils.fd[cpt], iov5.iov_base, iov5.iov_len)) > 0) printf("TUN (%ld)\n",len);
+	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, iov5.iov_len)) > 0) printf("TUN (%ld)\n",len);
 
 	    }
 
