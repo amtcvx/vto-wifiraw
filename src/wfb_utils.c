@@ -103,18 +103,35 @@ void setmainbackup(wfb_utils_init_t *pinit) {
         if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
         pstat->freqnb = nextfreqnb;
         wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
+
+	if (i == pinit->rawchan.mainraw) pinit->rawchan.mainraw = -1;
+	if (i == pinit->rawchan.backraw) pinit->rawchan.backraw = -1;
       }
     }
   }
 
+  int8_t nextfreqnb = -1;
   for (uint8_t i=0; i < pinit->nbraws; i++) {
-    if (pinit->rawchan.mainraw != -1) {
-      if (i != pinit->rawchan.mainraw) { pinit->rawchan.backraw = i; pinit->rawdevs[i]->stat.freqnb = pinit->rawdevs[pinit->rawchan.mainraw ]->stat.chan; break; };
+    if (!(pinit->rawdevs[i]->stat.freqfree)) {
+      if (pinit->rawdevs[i]->stat.chan == -1) { pinit->rawchan.mainraw = i; pinit->rawchan.backraw = -1; }
+      else if (pinit->rawdevs[pinit->rawchan.mainraw ]->stat.chan < 100) { pinit->rawchan.mainraw = i; nextfreqnb = pinit->rawdevs[i]->stat.chan; }
+      else if (pinit->rawdevs[pinit->rawchan.mainraw ]->stat.chan >= 100) { pinit->rawchan.backraw = i; nextfreqnb = pinit->rawdevs[i]->stat.chan; }
     }
   }
-  for (uint8_t i=0; i < pinit->nbraws; i++) {
-    if (pinit->rawchan.backraw != -1) {
-      if (i != pinit->rawchan.backraw) { pinit->rawchan.mainraw = i; pinit->rawdevs[i]->stat.freqnb = 100 - (pinit->rawdevs[pinit->rawchan.backraw ]->stat.chan); break; };
+
+  if (nextfreqnb != -1) {
+    if (pinit->rawchan.mainraw != -1) {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if (i != pinit->rawchan.mainraw) {
+          if (nextfreqnb < 100)  { pinit->rawchan.backraw = i; wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]); break;}
+	}
+      }
+    } else if (pinit->rawchan.backraw != -1) {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if (i != pinit->rawchan.backraw) {
+          if (nextfreqnb >= 100)  { pinit->rawchan.mainraw = i; wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[100 - nextfreqnb]); break;}
+	}
+      }
     }
   }
 
