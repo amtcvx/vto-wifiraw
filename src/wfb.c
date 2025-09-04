@@ -23,57 +23,63 @@ int main(void) {
       for (uint8_t cpt=0; cpt<utils.nbdev; cpt++) {
         if (utils.readsets[cpt].revents == POLLIN) {
           if (cpt == 0) {
+
             len = read(utils.fd[cpt], &exptime, sizeof(uint64_t));
             wfb_utils_periodic(&utils);
-          } else {
-            if ((cpt > 0)&&(cpt <= utils.nbraws)) {
 
-              wfb_utils_heads_pay_t headspay;
-	      memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
-	      memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
+          } else if ((cpt > 0)&&(cpt <= utils.nbraws)) {
 
-	      struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
-                                    .iov_len = sizeof(utils.raws.headsrx->radiotaphd_rx)};
-	      struct iovec iov2 = { .iov_base = utils.raws.headsrx->ieeehd_rx,
+            wfb_utils_heads_pay_t headspay;
+	    memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
+	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
+
+	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
+                                  .iov_len = sizeof(utils.raws.headsrx->radiotaphd_rx)};
+	    struct iovec iov2 = { .iov_base = utils.raws.headsrx->ieeehd_rx,
                                     .iov_len = sizeof(utils.raws.headsrx->ieeehd_rx)};
-	      struct iovec iov3 = { .iov_base = utils.raws.headsrx->llchd_rx,
+	    struct iovec iov3 = { .iov_base = utils.raws.headsrx->llchd_rx,
                                     .iov_len = sizeof(utils.raws.headsrx->llchd_rx)};
-              struct iovec iov4 = { .iov_base = &headspay,
+            struct iovec iov4 = { .iov_base = &headspay,
                                     .iov_len = sizeof(wfb_utils_heads_pay_t)};
 
-              struct iovec iov5 = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ];
+            struct iovec iov5 = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ];
 
-              struct iovec iovtab[5] = {iov1, iov2, iov3, iov4, iov5};
+            struct iovec iovtab[5] = {iov1, iov2, iov3, iov4, iov5};
 
-	      struct msghdr msg;
-              msg.msg_iov = iovtab;
-              msg.msg_iovlen = 5;
+	    struct msghdr msg;
+            msg.msg_iov = iovtab;
+            msg.msg_iovlen = 5;
 
-	      len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
+	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
 
-              if (!((len > 0)&&(headspay.droneid >= DRONEIDMIN)&&(headspay.droneid <= DRONEIDMAX)
+            if (!((len > 0)&&(headspay.droneid >= DRONEIDMIN)&&(headspay.droneid <= DRONEIDMAX)
                 &&(((uint8_t *)iov3.iov_base)[0]==1)&&(((uint8_t *)iov3.iov_base)[1]==2)
 		&&(((uint8_t *)iov3.iov_base)[2]==3)&&(((uint8_t *)iov3.iov_base)[3]==4))) {
-	        utils.rawdevs[cpt-1]->stat.fails++;
-	      } else {
-                if( headspay.msgcpt == WFB_PRO) {
-                  utils.rawdevs[cpt-1]->stat.incoming++;
-		  utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iov5.iov_base)->chan;
 
-                  printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iov5.iov_base)->chan);
-		}
-		else if( headspay.msgcpt == WFB_TUN) {
-		  if ((len = write(utils.fd[cpt], iov5.iov_base, iov5.iov_len)) > 0) printf("TUN (%ld)\n",len);
-		}
-	      }
-	      wfb_net_drain(utils.fd[cpt]);
-            }
+	      utils.rawdevs[cpt-1]->stat.fails++;
 
-	    else if (cpt == WFB_TUN) {
-              struct iovec *piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[WFB_TUN];
-              piov->iov_len = ONLINE_MTU;
-              piov->iov_len = readv( utils.fd[cpt], piov, 1);
+	    } else if( headspay.msgcpt == WFB_PRO) {
+
+              utils.rawdevs[cpt-1]->stat.incoming++;
+	      utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iov5.iov_base)->chan;
+
+              printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iov5.iov_base)->chan);
+
+	    } else if( headspay.msgcpt == WFB_TUN) {
+
+	      if ((len = write(utils.fd[cpt], iov5.iov_base, iov5.iov_len)) > 0) printf("TUN (%ld)\n",len);
+
 	    }
+
+	    wfb_net_drain(utils.fd[cpt]);
+
+          } else if (cpt == utils.nbraws + 1) {
+
+            struct iovec *piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[WFB_TUN];
+            piov->iov_len = ONLINE_MTU;
+            piov->iov_len = readv( utils.fd[cpt], piov, 1);
+	    printf("TUN readv(%ld)\n",piov->iov_len);
+
           }
         }
       }

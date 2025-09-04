@@ -252,11 +252,15 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   }
   putils->nbraws = putils->readtabnb - 1;
 
+  printf("(%d)\n",putils->readtabnb);
+
   build_tun(&putils->fd[putils->readtabnb]); // One bidirectional link
   putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
   putils->readsets[putils->readtabnb].events = POLLIN;
   (putils->readtabnb) += 1;
 
+
+  printf("(%d)\n",putils->fd[2]);
 
   
 
