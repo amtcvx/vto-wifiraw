@@ -64,10 +64,16 @@ void setmainbackup(wfb_utils_init_t *pinit) {
   }
 
   if (pinit->rawchan.mainraw == -1) {
-    for (uint8_t i=0; i < pinit->nbraws; i++) {
-      if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+    if (pinit->rawchan.backraw != -1) {
+      pinit->rawchan.mainraw = pinit->rawchan.backraw;
+      pinit->rawchan.backraw = -1;
+    } else { 
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+      }
     }
   }
+
   if (pinit->rawchan.mainraw != -1) {
     for (uint8_t i=0; i < pinit->nbraws; i++) {
       if ((pinit->rawdevs[i]->stat.freqfree) && (i !=  pinit->rawchan.mainraw)) { pinit->rawchan.backraw = i; break; }
@@ -97,15 +103,14 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       else {
         pstat->timecpt = 0;
         pstat->freqfree = true;
+
+	if (i == pinit->rawchan.mainraw) pinit->rawchan.mainraw = -1;
+	if (i == pinit->rawchan.backraw) pinit->rawchan.backraw = -1;
      
         uint8_t nextfreqnb = 1 + pstat->freqnb;
         if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
         pstat->freqnb = nextfreqnb;
         wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
-
-	if (i == pinit->rawchan.mainraw) pinit->rawchan.mainraw = -1;
-	if (i == pinit->rawchan.backraw) pinit->rawchan.backraw = -1;
-
       }
     }
   }
@@ -115,28 +120,35 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       if (pinit->rawdevs[i]->stat.chan == -1) { 
         pinit->rawchan.mainraw = i; 
 	pinit->rawchan.backraw = -1; 
+	printf("A (%d)\n",i);
         break; // for i
       } else if (pinit->rawdevs[i]->stat.chan < 100) { 
         pinit->rawchan.mainraw = i; 
+	printf("B (%d)\n",i);
         for (uint8_t j=0; j < pinit->nbraws; j++) {
           if (j != pinit->rawchan.mainraw) {
             pinit->rawchan.backraw = j;
+	    printf("B1 (%d)\n",j);
 	    if (pinit->rawdevs[j]->stat.freqnb !=  pinit->rawdevs[i]->stat.chan) {
               pinit->rawdevs[j]->stat.freqnb = pinit->rawdevs[i]->stat.chan;
               wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
+	      printf("B2 (%d)(%d)\n",j,pinit->rawdevs[j]->stat.freqnb);
 	      break; // for j
 	    }
 	  }
 	}
 	break; // for i
       } else if (pinit->rawdevs[i]->stat.chan >= 100) { 
+        printf("C (%d)\n",i);
         pinit->rawchan.backraw = i; 
         for (uint8_t j=0; j < pinit->nbraws; j++) {
           if (j != pinit->rawchan.backraw)  {
             pinit->rawchan.mainraw = j;
+	    printf("C1 (%d)\n",j);
 	    if (pinit->rawdevs[j]->stat.freqnb !=  (pinit->rawdevs[i]->stat.chan - 100)) {
               pinit->rawdevs[j]->stat.freqnb = pinit->rawdevs[i]->stat.chan - 100;
               wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
+	      printf("C2 (%d)(%d)\n",j,pinit->rawdevs[j]->stat.freqnb);
 	      break; // for j
 	    }
 	  }
