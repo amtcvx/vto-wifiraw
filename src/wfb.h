@@ -3,14 +3,15 @@
 
 #include "wfb_net.h"
 
+#define DRONEID_GRD 0
+#define DRONEID_MIN 1
+#define DRONEID_MAX 2
+
 #if BOARD
 #define DRONEID 1
 #else
-#define DRONEID 0
+#define DRONEID DRONEID_GRD
 #endif // BOARD
-
-#define DRONEIDMAX 2
-#define DRONEIDMIN 1
 
 #define PERIOD_DELAY_S	1
 

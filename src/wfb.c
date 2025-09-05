@@ -52,9 +52,14 @@ int main(void) {
 
 	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
 
-            if (!((len > 0)&&(headspay.droneid >= DRONEIDMIN)&&(headspay.droneid <= DRONEIDMAX)
-                &&(((uint8_t *)iov3.iov_base)[0]==1)&&(((uint8_t *)iov3.iov_base)[1]==2)
-		&&(((uint8_t *)iov3.iov_base)[2]==3)&&(((uint8_t *)iov3.iov_base)[3]==4))) {
+            if (!((len > 0) && 
+#if BOARD
+            (headspay.droneid == DRONEID_GRD)
+#else
+            (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEI_DMAX)
+#endif
+             &&(((uint8_t *)iov3.iov_base)[0]==1)&&(((uint8_t *)iov3.iov_base)[1]==2)
+	     &&(((uint8_t *)iov3.iov_base)[2]==3)&&(((uint8_t *)iov3.iov_base)[3]==4))) {
 
 	      utils.rawdevs[cpt-1]->stat.fails++;
 
