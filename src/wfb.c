@@ -117,6 +117,7 @@ int main(void) {
               msg.msg_iovlen = 5;
 
               printf("OUT (%d)(%d)  (%ld)\n",i,j,iov5.iov_len);
+	      if (j == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iov5.iov_base)->chan);
 		
   	      len = sendmsg(utils.fd[1 + i], (const struct msghdr *)&msg, MSG_DONTWAIT);
   
