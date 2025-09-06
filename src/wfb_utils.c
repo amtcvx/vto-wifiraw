@@ -273,6 +273,26 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   (putils->readtabnb) += 1;
 
 
+  (putils->readtabnb) += 1;
+
+  if (-1 == (putils->fd[putils->readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+#if BOARD
+  if (-1 == setsockopt( putils->fd[putils->readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(PORT_VID);
+  addr.sin_addr.s_addr =inet_addr(IP_LOCAL);
+  if (-1 == bind( putils->fd[putils->readtabnb], (const struct sockaddr *)&addr, sizeof(addr))) exit(-1);
+  putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
+  putils->readsets[putils->readtabnb].events = POLLIN;
+  (putils->readtabnb) += 1;
+#else
+  putils->vidout.sin_family = AF_INET;
+  putils->vidout.sin_port = htons(PORT_VID);
+  putils->vidout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+#endif // BOARD
+
+
   for (uint8_t i=0; i < MAXRAWDEV; i++) {
     putils->msgin.eltin[i].curr = 0;
     for (uint8_t k=0; k < FEC_N; k++) {
@@ -280,6 +300,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
       putils->msgin.eltin[i].iov[k].iov_len = ONLINE_MTU;
     }
     for (uint8_t j=0; j < WFB_NB; j++) {
+      putils->msgout.eltout[i].curr[j] = 0;
       if (j == WFB_VID) {
         for (uint8_t k=0; k < FEC_N; k++) {
 	  putils->msgout.eltout[i].buf_fec[k].iovvid.iov_base = &putils->msgout.eltout[i].buf_fec[k].buf_vid;

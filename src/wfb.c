@@ -72,13 +72,13 @@ int main(void) {
 
 	    } else if( headspay.msgcpt == WFB_TUN) {
 
-	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, headspay.msglen)) > 0) printf("TUN (%ld)\n",len);
+	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, headspay.msglen)) > 0) printf("TUN write(%ld)\n",len);
 
 	    }
 
 	    wfb_net_drain(utils.fd[cpt]);
 
-          } else if (cpt == utils.nbraws + 1) {
+          } else if (cpt == utils.nbraws + 1) { // WFB_TUN
 
             struct iovec *piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[WFB_TUN];
             piov->iov_len = ONLINE_MTU;
@@ -86,7 +86,15 @@ int main(void) {
 	    if (utils.rawchan.mainraw == -1) piov->iov_len = 0; 
 	    printf("TUN readv(%ld)\n",piov->iov_len);
 
-          }
+          } else if (cpt == utils.nbraws + 3) { // WFB_VID
+            uint8_t curr =  utils.msgout.eltout[utils.rawchan.mainraw].curr[WFB_VID];
+            struct iovec *piov = &utils.msgout.eltout[utils.rawchan.mainraw].buf_fec[curr].iovvid;
+            piov->iov_len = ONLINE_MTU;
+            piov->iov_len = readv( utils.fd[cpt], piov, 1);
+	    if (utils.rawchan.mainraw == -1) piov->iov_len = 0; 
+	    printf("VID readv(%ld)\n",piov->iov_len);
+
+	  }
         }
       }
 
@@ -94,7 +102,7 @@ int main(void) {
         for (uint8_t j=0;j<WFB_NB;j++) {
           if (utils.msgout.eltout[i].iov[j].iov_len > 0) {
             uint8_t kmax;
-            if (i == WFB_NB) kmax = FEC_N; else kmax = 0;
+            if (j == WFB_VID) kmax = FEC_N; else kmax = 0;
             for (uint8_t k=0;k<=kmax;k++) {
 
   	      struct iovec iov5 = utils.msgout.eltout[i].iov[j];

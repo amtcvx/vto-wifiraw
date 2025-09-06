@@ -42,6 +42,7 @@ typedef struct {
   uint8_t buf_tel[ONLINE_MTU];
   buf_fec_t buf_fec[FEC_N];
   struct iovec iov[WFB_NB];
+  uint8_t curr[WFB_NB];
 } msg_eltout_t; 
 
 typedef struct {
@@ -96,6 +97,7 @@ typedef struct {
   wfb_net_device_t *rawdevs[MAXRAWDEV];
   wfb_utils_msgin_t msgin;
   wfb_utils_msgout_t msgout;
+  struct sockaddr_in vidout;
 } wfb_utils_init_t;
 
 

@@ -23,6 +23,7 @@
 #define TUNIP_GROUND	"10.0.1.1"
 #define IPBROAD		"255.255.255.0"
 
+#define PORT_VID  5600
 #define PORT_LOG  5000
 
 typedef enum { WFB_PRO, WFB_TUN, WFB_TEL, WFB_VID, WFB_NB } type_d;
