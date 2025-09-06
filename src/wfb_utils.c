@@ -57,33 +57,43 @@ void setmainbackup(wfb_utils_init_t *pinit) {
     }
   }
 
-  if (pinit->rawchan.mainraw != -1) {
-    if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
-      pinit->rawchan.mainraw = -1;
-      if (pinit->rawchan.backraw != -1) {
-        if (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree) {
-          pinit->rawchan.mainraw = pinit->rawchan.backraw;
-	  pinit->rawchan.backraw = -1;
-	}
-      } else {
-        for (uint8_t i=0; i < pinit->nbraws; i++) {
-          if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
-	}
+  if (pinit->nbraws == 1) {
+    if (pinit->rawchan.mainraw != -1) {
+      if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) pinit->rawchan.mainraw = -1;
+    } else {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
       }
     }
   } else {
-    for (uint8_t i=0; i < pinit->nbraws; i++) {
-      if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+	  
+    if (pinit->rawchan.mainraw != -1) {
+      if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
+        pinit->rawchan.mainraw = -1;
+        if (pinit->rawchan.backraw != -1) {
+          if (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree) {
+            pinit->rawchan.mainraw = pinit->rawchan.backraw;
+	    pinit->rawchan.backraw = -1;
+	  }
+        } else {
+          for (uint8_t i=0; i < pinit->nbraws; i++) {
+            if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+	  }
+        }
+      }
+    } else {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
+      }
     }
-  }
 
-
-  if (pinit->rawchan.backraw != -1) {
-    if  (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
-  }
-  if ((pinit->rawchan.mainraw != -1) && (pinit->rawchan.backraw == -1)) {
-    for (uint8_t i=0; i < pinit->nbraws; i++) {
-      if ((i != pinit->rawchan.mainraw) && (pinit->rawdevs[i]->stat.freqfree)) { pinit->rawchan.backraw = i; break; }
+    if (pinit->rawchan.backraw != -1) {
+      if  (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
+    }
+    if ((pinit->rawchan.mainraw != -1) && (pinit->rawchan.backraw == -1)) {
+      for (uint8_t i=0; i < pinit->nbraws; i++) {
+        if ((i != pinit->rawchan.mainraw) && (pinit->rawdevs[i]->stat.freqfree)) { pinit->rawchan.backraw = i; break; }
+      }
     }
   }
 
