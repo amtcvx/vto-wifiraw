@@ -10,7 +10,7 @@
 
 typedef struct {
   bool freqfree;
-  int8_t chan;
+  int16_t chan;
   uint8_t timecpt;
   uint8_t freqnb;
   uint32_t incoming;

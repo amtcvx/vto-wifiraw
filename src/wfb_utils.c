@@ -133,6 +133,10 @@ void setmainbackup(wfb_utils_init_t *pinit) {
       }
     }
   }
+  for (uint8_t i=0; i < pinit->nbraws; i++) {
+    printf("chan (%d)(%d)  ",i,pinit->rawdevs[i]->stat.chan);
+  } 
+  printf("\n");
 
   for (uint8_t i=0; i < pinit->nbraws; i++) {
     if (!(pinit->rawdevs[i]->stat.freqfree)) {
