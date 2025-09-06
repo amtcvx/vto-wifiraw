@@ -72,7 +72,7 @@ int main(void) {
 
 	    } else if( headspay.msgcpt == WFB_TUN) {
 
-	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, iov5.iov_len)) > 0) printf("TUN (%ld)\n",len);
+	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, headspay.msglen)) > 0) printf("TUN (%ld)\n",len);
 
 	    }
 
@@ -97,7 +97,9 @@ int main(void) {
             if (i == WFB_NB) kmax = FEC_N; else kmax = 0;
             for (uint8_t k=0;k<=kmax;k++) {
 
-              wfb_utils_heads_pay_t headspay = { .droneid = DRONEID, .msgcpt = j, .seq = seq, .fec = k, .num = num++ };
+  	      struct iovec iov5 = utils.msgout.eltout[i].iov[j];
+
+              wfb_utils_heads_pay_t headspay = { .droneid = DRONEID, .msgcpt = j, .msglen = iov5.iov_len,.seq = seq, .fec = k, .num = num++ };
   
   	      struct iovec iov1 = { .iov_base = utils.raws.headstx->radiotaphd_tx,
                                         .iov_len = utils.raws.headstx->radiotaphd_tx_size};
@@ -107,8 +109,6 @@ int main(void) {
                                         .iov_len = utils.raws.headstx->llchd_tx_size};
   	      struct iovec iov4 = { .iov_base = &headspay,
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
-
-  	      struct iovec iov5 = utils.msgout.eltout[i].iov[j];
 
   	      struct iovec iovtab[5] = {iov1, iov2, iov3, iov4, iov5};
   
