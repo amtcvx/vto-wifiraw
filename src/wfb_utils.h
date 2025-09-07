@@ -43,6 +43,8 @@ typedef struct {
 
 typedef struct {
   msg_eltout_t eltout[MAXRAWDEV];
+  uint8_t buf_drain[ONLINE_MTU];
+  struct iovec iov_drain;
 } wfb_utils_msgout_t;
 
 typedef struct {
@@ -100,7 +102,7 @@ typedef struct {
 
 void wfb_utils_periodic(wfb_utils_init_t *putils);
 void wfb_utils_init(wfb_utils_init_t *putils);
-void wfb_utils_presetrawmsg(wfb_utils_raw_t *raw, bool rxflag);
+void wfb_utils_displayvid(wfb_utils_init_t *putils);
 
 
 #endif // WFB_UTILS_H

@@ -58,9 +58,7 @@ void setmainbackup(wfb_utils_init_t *pinit) {
   }
 
   if (pinit->nbraws == 1) {
-    if (pinit->rawchan.mainraw != -1) {
-      if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) pinit->rawchan.mainraw = -1;
-    } else {
+    if (pinit->rawchan.mainraw == -1) {
       for (uint8_t i=0; i < pinit->nbraws; i++) {
         if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
       }
@@ -174,11 +172,23 @@ void setmainbackup(wfb_utils_init_t *pinit) {
 }
 
 /*****************************************************************************/
+void wfb_utils_displayvid(wfb_utils_init_t *putils) {
+
+  uint8_t *inblocks[FEC_K];
+  uint8_t *outblocks[FEC_N-FEC_K];
+  unsigned index[FEC_K];
+
+  fec_decode(putils->fec_p, (gf const **)inblocks, outblocks, index, ONLINE_MTU);
+              //(const gf*restrict const*restrict const)inblocks,
+              //outblocks,(gf*restrict const*restrict const)outblocks,
+              //(const unsigned*restrict const)index, 
+};
+
+/*****************************************************************************/
 void wfb_utils_periodic(wfb_utils_init_t *pinit) {
   printlog(pinit);
   setmainbackup(pinit);
 }
-
 
 /*****************************************************************************/
 void build_tun(uint8_t *fd) {
@@ -292,6 +302,8 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 #endif // BOARD
 
 
+  putils->msgout.iov_drain.iov_base = &putils->msgout.buf_drain;
+  putils->msgout.iov_drain.iov_len = ONLINE_MTU;
   for (uint8_t i=0; i < MAXRAWDEV; i++) {
     putils->msgin.eltin[i].curr = 0;
     for (uint8_t k=0; k < FEC_N; k++) {

@@ -74,31 +74,43 @@ int main(void) {
 
 	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, headspay.msglen)) > 0) printf("TUN write(%ld)\n",len);
 
+	    } else if( headspay.msgcpt == WFB_VID) {
+ 
+              wfb_utils_displayvid(&utils);
+
 	    }
 
 	    wfb_net_drain(utils.fd[cpt]);
 
           } else if (cpt == utils.nbraws + 1) { // WFB_TUN
 
-            struct iovec *piov = &utils.msgout.eltout[cpt-1].iov[0][WFB_TUN];
+            struct iovec *piov;
+            if (utils.rawchan.mainraw == -1) piov = &utils.msgout.iov_drain;
+	    else  piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[0][WFB_TUN];
             piov->iov_len = ONLINE_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-	    if (utils.rawchan.mainraw == -1) piov->iov_len = 0; 
+
+            if (utils.rawchan.mainraw == -1) for (uint8_t i=0;i<utils.nbraws;i++) 
+	      utils.msgout.eltout[i].iov[0][WFB_TUN].iov_len = 0;
 	    printf("TUN readv(%ld)\n",piov->iov_len);
 
           } else if (cpt == utils.nbraws + 3) { // WFB_VID
 					
-            uint8_t curr =  utils.msgout.eltout[cpt-1].currvid;
-            struct iovec *piov = &utils.msgout.eltout[cpt-1].iov[curr][WFB_VID];
+            struct iovec *piov; uint8_t curr;
+            if (utils.rawchan.mainraw == -1) piov = &utils.msgout.iov_drain;
+	    else {
+              curr = utils.msgout.eltout[utils.rawchan.mainraw].currvid;
+              piov = &utils.msgout.eltout[utils.rawchan.mainraw].iov[curr][WFB_VID];
+	      memset(piov->iov_base, 0, piov->iov_len);
+	    }
             piov->iov_len = ONLINE_MTU;
-	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-	    if (utils.rawchan.mainraw == -1) piov->iov_len = 0; 
-	    else if (utils.msgout.eltout[utils.rawchan.mainraw].currvid < FEC_K) (utils.msgout.eltout[utils.rawchan.mainraw].currvid)++;
-	    else piov->iov_len = 0;
-
+            if (utils.rawchan.mainraw == -1) { for (uint8_t i=0;i<utils.nbraws;i++) for (uint8_t k=0;k<FEC_N;k++) 
+	      utils.msgout.eltout[i].iov[k][WFB_VID].iov_len = 0; 
+	    } else {
+	      if (utils.msgout.eltout[utils.rawchan.mainraw].currvid < FEC_K) (utils.msgout.eltout[utils.rawchan.mainraw].currvid)++;
+	    }
 	    printf("VID readv(%ld)\n",piov->iov_len);
-
 	  }
         }
       }
@@ -117,12 +129,12 @@ int main(void) {
 	      fecblocks[f] = (uint8_t *)&utils.msgout.eltout[i].buf_vid[f + FEC_K];
               utils.msgout.eltout[i].iov[f + FEC_K][WFB_VID].iov_len = ONLINE_MTU;
 	    }
-/*
+
 	    fec_encode(utils.fec_p,
 			 (const gf*restrict const*restrict const)datablocks,
 			 (gf*restrict const*restrict const)fecblocks,
 			 (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
-*/
+
 	    printf("ENCODED\n");
 
 	  }
