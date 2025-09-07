@@ -302,7 +302,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     for (uint8_t j=0; j < WFB_NB; j++) {
       if (j == WFB_VID) {
         for (uint8_t k=0; k < FEC_N; k++) {
-	  putils->msgout.eltout[i].iov[k][j].iov_base = &putils->msgout.eltout[i].buf_vid[k];
+	  putils->msgout.eltout[i].iov[k][j].iov_base = &putils->msgout.eltout[i].buf_vid[k][0];
 	  putils->msgout.eltout[i].iov[k][j].iov_len = 0;
 	}
       } else {

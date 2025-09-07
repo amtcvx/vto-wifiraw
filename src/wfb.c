@@ -94,8 +94,9 @@ int main(void) {
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 	    if (utils.rawchan.mainraw == -1) piov->iov_len = 0; 
-	    else if (utils.msgout.eltout[utils.rawchan.mainraw].currvid < FEC_K) 
-		    (utils.msgout.eltout[utils.rawchan.mainraw].currvid)++;
+	    else if (utils.msgout.eltout[utils.rawchan.mainraw].currvid < FEC_K) (utils.msgout.eltout[utils.rawchan.mainraw].currvid)++;
+	    else piov->iov_len = 0;
+
 	    printf("VID readv(%ld)\n",piov->iov_len);
 
 	  }
@@ -110,10 +111,12 @@ int main(void) {
 	    kmax = (FEC_N - 1); 
  
             unsigned blocknums[FEC_N-FEC_K]; for(uint8_t i=0; i<(FEC_N-FEC_K); i++) blocknums[i]=(i+FEC_K);
-	    uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&utils.msgout.eltout[i].iov[f][WFB_VID].iov_base;
+	    uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&utils.msgout.eltout[i].buf_vid[f];
+//&utils.msgout.eltout[i].iov[f][WFB_VID].iov_base;
 	    uint8_t *fecblocks[FEC_N-FEC_K]; 
 	    for (uint8_t f=0; f<(FEC_N - FEC_K); f++) {
-	      fecblocks[f] = (uint8_t *)&utils.msgout.eltout[i].iov[f + FEC_K][WFB_VID].iov_base;
+	      fecblocks[f] = (uint8_t *)&utils.msgout.eltout[i].buf_vid[f + FEC_K];
+//&utils.msgout.eltout[i].iov[f + FEC_K][WFB_VID].iov_base;
               utils.msgout.eltout[i].iov[f + FEC_K][WFB_VID].iov_len = ONLINE_MTU;
 	    }
 
