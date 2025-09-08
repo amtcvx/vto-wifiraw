@@ -42,7 +42,7 @@ typedef struct {
 } wfb_utils_msgout_t;
 
 typedef struct {
-  uint8_t buf_raw[FEC_N][ONLINE_MTU];
+  uint8_t buf_raw[FEC_N + WFB_NB][ONLINE_MTU];
   struct iovec iov[FEC_N];
   uint8_t curr;
 } msg_eltin_t; 

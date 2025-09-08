@@ -59,7 +59,16 @@ int main(void) {
 	    } else if( headspay.msgcpt == WFB_TUN) {
 	      if ((len = write(utils.fd[utils.nbraws + 1], iov5.iov_base, headspay.msglen)) > 0) printf("TUN write(%ld)\n",len);
 	    } else if( headspay.msgcpt == WFB_VID) {
-              wfb_utils_displayvid(&utils);
+              //utils.msgin.eltin[cpt-1].iov[headspay.fec] = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ] ;
+              //utils.msgin.eltin[cpt-1].curr++;
+	      if (headspay.fec < FEC_K) {
+               // if ((len = sendto(utils.fd[utils.nbraws + 2], iov5.iov_base, headspay.msglen, MSG_DONTWAIT, 
+		//	      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
+                  printf("VID write(%d)(%ld)\n",headspay.fec,len);
+		//}
+	      } 
+
+              //wfb_utils_displayvid(&utils);
 	    }
 	    wfb_net_drain(utils.fd[cpt]);
           } else if (cpt == utils.nbraws + 1) { // WFB_TUN
@@ -123,6 +132,7 @@ int main(void) {
               msg.msg_iovlen = 5;
               printf("OUT (%d)(%d)  (%ld)\n",i,j,iov5.iov_len);
     	      if (i == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iov5.iov_base)->chan);
+    	      if (i == WFB_VID) printf("fec%d\n",headspay.fec);
       	      len = sendmsg(utils.fd[1 + j], (const struct msghdr *)&msg, MSG_DONTWAIT);
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
     	      if ((i == WFB_VID) && (k == (FEC_N - 1))) utils.msgout.currvid = 0;
