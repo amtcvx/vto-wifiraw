@@ -86,13 +86,14 @@ int main(void) {
         uint8_t jmax = 0, kmax = 0;
         if (i == WFB_PRO) jmax = utils.nbraws;
         if ((i == WFB_VID) && (utils.msgout.currvid == FEC_K)) {
+
 	  kmax = (FEC_N  - 1);
           unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
 	  uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&utils.msgout.buf_vid[f];
 	  uint8_t *fecblocks[FEC_N-FEC_K]; 
 	  for (uint8_t f=0; f<(FEC_N - FEC_K); f++) {
 	    fecblocks[f] = (uint8_t *)&utils.msgout.buf_vid[f + FEC_K];
-            utils.msgout.iov[WFB_VID][f + FEC_K]->iov_len = ONLINE_MTU;
+            utils.msgout.iov[WFB_VID][0][f + FEC_K].iov_len = ONLINE_MTU;
 	  }
 	  fec_encode(utils.fec_p,
 			 (const gf*restrict const*restrict const)datablocks,
@@ -104,7 +105,8 @@ int main(void) {
         for (uint8_t j=0;j<=jmax;j++) {
           for (uint8_t k=0;k<=kmax;k++) {
     	    struct iovec iov5 = utils.msgout.iov[i][j][k];
-            if (iov5.iov_len > 0) {
+            if ((iov5.iov_len > 0)  && (((i == WFB_VID) && (utils.msgout.currvid == FEC_K)) || (i != WFB_VID))) {
+
               wfb_utils_heads_pay_t headspay = 
   	          { .droneid = DRONEID, .msgcpt = i, .msglen = iov5.iov_len,.seq = seq, .fec = k, .num = num++ };
       	      struct iovec iov1 = { .iov_base = utils.raws.headstx->radiotaphd_tx,
@@ -120,7 +122,7 @@ int main(void) {
       	      msg.msg_iov = iovtab;
               msg.msg_iovlen = 5;
               printf("OUT (%d)(%d)  (%ld)\n",i,j,iov5.iov_len);
-    	      if (j == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iov5.iov_base)->chan);
+    	      if (i == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iov5.iov_base)->chan);
       	      len = sendmsg(utils.fd[1 + j], (const struct msghdr *)&msg, MSG_DONTWAIT);
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
     	      if ((i == WFB_VID) && (k == (FEC_N - 1))) utils.msgout.currvid = 0;

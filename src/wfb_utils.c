@@ -311,23 +311,15 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   }
 
   putils->msgout.currvid = 0;
-  for (uint8_t j=0; j < net.nbraws; j++) {
-    struct iovec *piov = &putils->msgout.iov[WFB_PRO][j][0];
-    piov->iov_base = &putils->msgout.buf_pro[j][0];
-    piov->iov_len = 0;
+  for (uint8_t i=0;i<WFB_NB;i++) {
+    for (uint8_t j=0;j<net.nbraws; j++) {
+      for (uint8_t k=0; k<FEC_N ; k++) {
+        struct iovec *piov = &putils->msgout.iov[i][j][k];
+	piov->iov_len = 0;
+	if (i==WFB_PRO) piov->iov_base = &putils->msgout.buf_pro[j][0];
+	if (i==WFB_TUN) piov->iov_base = &putils->msgout.buf_tun;
+	if (i==WFB_VID)  piov->iov_base = &putils->msgout.buf_vid[k][0];
+      }
+    }
   }
-    
-  for (uint8_t k=0; k<FEC_N ; k++) {
-    struct iovec *piov = &putils->msgout.iov[WFB_VID][0][k];
-    piov->iov_base = &putils->msgout.buf_vid[k][0];
-    piov->iov_len = 0;
-  }
-
-  struct iovec *piov;
-  piov = &putils->msgout.iov[0][WFB_TUN][0];
-  piov->iov_len = 0;
-  piov->iov_base = &putils->msgout.buf_tun;
-  piov = &putils->msgout.iov[0][WFB_TUN][0];
-  piov->iov_len = 0;
-  piov->iov_base = &putils->msgout.buf_tel;
 }
