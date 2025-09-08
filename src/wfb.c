@@ -62,10 +62,10 @@ int main(void) {
               //utils.msgin.eltin[cpt-1].iov[headspay.fec] = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ] ;
               //utils.msgin.eltin[cpt-1].curr++;
 	      if (headspay.fec < FEC_K) {
-               // if ((len = sendto(utils.fd[utils.nbraws + 2], iov5.iov_base, headspay.msglen, MSG_DONTWAIT, 
-		//	      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
+                if ((len = sendto(utils.fd[utils.nbraws + 3], iov5.iov_base, headspay.msglen, MSG_DONTWAIT, 
+		      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
                   printf("VID write(%d)(%ld)\n",headspay.fec,len);
-		//}
+		}
 	      } 
 
               //wfb_utils_displayvid(&utils);

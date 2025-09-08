@@ -4,6 +4,8 @@ apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreame
 
 gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay ! udpsink host=127.0.0.1 port=5600
 
+gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! avdec_h265 !  videoconvert ! autovideosink sync=false
+
 
 Ubuntu 22.04 + NVIDIA
 ---------------------
