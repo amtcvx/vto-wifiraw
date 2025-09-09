@@ -292,11 +292,11 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT_NORAW);
-    addr.sin_addr.s_addr =inet_addr(IP_LOCAL);
+    addr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
     if (-1 == bind( putils->fd[putils->readtabnb], (const struct sockaddr *)&addr, sizeof(addr))) continue;
     putils->norawout.sin_family = AF_INET;
     putils->norawout.sin_port = htons(PORT_NORAW);
-    putils->norawout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+    putils->norawout.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
 #endif // BOARD
     putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
     putils->readsets[putils->readtabnb].events = POLLIN;

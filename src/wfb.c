@@ -133,13 +133,15 @@ int main(void) {
               printf("OUT (%d)(%d)  (%ld)\n",i,j,iov5.iov_len);
     	      if (i == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iov5.iov_base)->chan);
     	      if (i == WFB_VID) printf("fec%d\n",headspay.fec);
-  #if RAW
-  #else
+#if RAW
+#else
       	      msg.msg_name = &utils.norawout;
       	      msg.msg_namelen = sizeof(utils.norawout);
-  #endif // RAW
+#endif // RAW
       	      len = sendmsg(utils.fd[1 + j], (const struct msghdr *)&msg, MSG_DONTWAIT);
+#if RAW
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
+#endif // RAW
     	      if ((i == WFB_VID) && (k == (FEC_N - 1))) utils.msgout.currvid = 0;
     	      utils.msgout.iov[i][j][k].iov_len = 0;
 	    }
