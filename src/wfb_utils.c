@@ -241,14 +241,21 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 
   putils->nbdev = MAXDEV;
 
+#if RAW
   wfb_net_init_t net;
   memset(&net,0,sizeof(wfb_net_init_t));
   wfb_net_init(&net);
   putils->raws.headstx = net.headstx;
-#if RAW 
   putils->sockidnl = net.sockidnl;
   putils->nbraws = net.nbraws;
 #else // RAW
+  static uint8_t llchd_tx[4];
+  static uint8_t ieeehd_tx[24];
+  static uint8_t radiotaphd_tx[13];
+  static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx),
+                                            ieeehd_tx, sizeof(ieeehd_tx),
+                                            llchd_tx, sizeof(llchd_tx) };
+  putils->raws.headstx = &headstx;
   putils->nbraws = 1;
 #endif // RAW
       

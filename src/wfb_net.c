@@ -288,7 +288,6 @@ bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq) {
 
 /******************************************************************************/
 bool wfb_net_init(wfb_net_init_t *pnet) {
-#if RAW
   struct nl_sock *socknl = nl_socket_alloc();
   if (!socknl) return(false);
   nl_socket_set_buffer_size(socknl, 8192, 8192);
@@ -345,29 +344,4 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
     }
   }
   return(false);
-#else // RAW
-      static uint8_t llchd_tx[4] = {1,2,3,4};
-
-      static uint8_t ieeehd_tx[] = {
-        0x08, 0x01,                         // Frame Control : Data frame from STA to DS
-        0x00, 0x00,                         // Duration
-        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Receiver MAC
-        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Transmitter MAC
-        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
-        0x10, 0x86                          // Sequence control
-      };
-      static uint8_t radiotaphd_tx[] = {
-        0x00, 0x00, // <-- radiotap version
-        0x0d, 0x00, // <- radiotap header length
-        0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
-        0x08, 0x00,  // RADIOTAP_F_TX_NOACK
-        MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
-      };
-      static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx), 
-	                                    ieeehd_tx, sizeof(ieeehd_tx),
-	                                    llchd_tx, sizeof(llchd_tx) };
-      pnet->headstx = &headstx;
-
-      return(true); 
-#endif // RAW
 }
