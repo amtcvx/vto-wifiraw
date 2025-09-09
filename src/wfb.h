@@ -23,6 +23,7 @@
 #define TUNIP_GROUND	"10.0.1.1"
 #define IPBROAD		"255.255.255.0"
 
+#define PORT_NORAW  3000
 #define PORT_VID  5600
 #define PORT_LOG  5000
 

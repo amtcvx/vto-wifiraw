@@ -90,6 +90,7 @@ typedef struct {
   wfb_utils_msgin_t msgin;
   wfb_utils_msgout_t msgout;
   struct sockaddr_in vidout;
+  struct sockaddr_in norawout;
   fec_t *fec_p;
 } wfb_utils_init_t;
 

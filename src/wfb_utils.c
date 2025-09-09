@@ -186,8 +186,12 @@ void wfb_utils_displayvid(wfb_utils_init_t *putils) {
 
 /*****************************************************************************/
 void wfb_utils_periodic(wfb_utils_init_t *pinit) {
+#if RAW
   printlog(pinit);
   setmainbackup(pinit);
+#else  // RAW
+  pinit->rawchan.mainraw = 1;
+#endif  // RAW
 }
 
 /*****************************************************************************/
@@ -230,46 +234,63 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 
   fec_new(FEC_K, FEC_N, &(putils->fec_p));
 
-  putils->log.addrout.sin_family = AF_INET;
-  putils->log.addrout.sin_port = htons(PORT_LOG);
-  putils->log.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  putils->log.fd = socket(AF_INET, SOCK_DGRAM, 0);
-
   memset(&(putils->rawchan), -1, sizeof(wfb_utils_rawchan_t));
-
-  wfb_net_init_t net;
-  memset(&net,0,sizeof(wfb_net_init_t));
-  wfb_net_init(&net);
-
-  putils->nbdev = MAXDEV;
 
   static wfb_utils_heads_rx_t heads_rx;
   putils->raws.headsrx = &heads_rx;
 
+  putils->nbdev = MAXDEV;
+
+#if RAW
+  wfb_net_init_t net;
+  memset(&net,0,sizeof(wfb_net_init_t));
+  wfb_net_init(&net);
   putils->raws.headstx = net.headstx;
-
   putils->sockidnl = net.sockidnl;
-
+  putils->nbraws = net.nbraws;
+#else // RAW
+  putils->nbraws = 1;
+#endif // RAW
+      
+/*****************************************************************************/  
+  putils->log.addrout.sin_family = AF_INET;
+  putils->log.addrout.sin_port = htons(PORT_LOG);
+  putils->log.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  putils->log.fd = socket(AF_INET, SOCK_DGRAM, 0);
+         
+/*****************************************************************************/  
   putils->fd[0] = timerfd_create(CLOCK_MONOTONIC, 0);
   putils->readsets[0].fd = putils->fd[0];
   putils->readsets[0].events = POLLIN;
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(putils->fd[0], 0, &period, NULL);
 
-
- 
+/*****************************************************************************/  
   putils->readtabnb = 1;
-  for(uint8_t i=0;i<net.nbraws;i++) {
-    uint8_t nextfreqnb = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / net.nbraws);
-    if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextfreqnb]))) continue;
-    net.rawdevs[i]->stat.freqnb = nextfreqnb;
+  for(uint8_t i=0;i<putils->nbraws;i++) {
+#if RAW
 #if BOARD
     net.rawdevs[i]->stat.freqfree = false;
 #else
     net.rawdevs[i]->stat.freqfree = true;
 #endif // BOARD
+    uint8_t nextfreqnb = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / putils->nbraws);
+    if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextfreqnb]))) continue;
+    net.rawdevs[i]->stat.freqnb = nextfreqnb;
     putils->fd[putils->readtabnb]  = net.rawdevs[i]->sockfd;
     putils->rawdevs[(putils->readtabnb) - 1] = net.rawdevs[i];
+#else // RAW
+    if (-1 == (putils->fd[putils->readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) continue;
+    if (-1 == setsockopt(putils->fd[putils->readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) continue;
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(PORT_NORAW);
+    addr.sin_addr.s_addr =inet_addr(IP_LOCAL);
+    if (-1 == bind( putils->fd[putils->readtabnb], (const struct sockaddr *)&addr, sizeof(addr))) continue;
+    putils->norawout.sin_family = AF_INET;
+    putils->norawout.sin_port = htons(PORT_NORAW);
+    putils->norawout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+#endif // BOARD
     putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
     putils->readsets[putils->readtabnb].events = POLLIN;
     (putils->readtabnb) += 1;
@@ -281,7 +302,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   putils->readsets[putils->readtabnb].events = POLLIN;
   (putils->readtabnb) += 1;
 
-
+/*****************************************************************************/  
   (putils->readtabnb) += 1;
 
   if (-1 == (putils->fd[putils->readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
@@ -301,8 +322,8 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
   putils->vidout.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
 
-
-  for (uint8_t i=0; i < net.nbraws; i++) {
+/*****************************************************************************/  
+  for (uint8_t i=0; i < putils->nbraws; i++) {
     putils->msgin.eltin[i].curr = 0;
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iov[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
@@ -312,7 +333,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 
   putils->msgout.currvid = 0;
   for (uint8_t i=0;i<WFB_NB;i++) {
-    for (uint8_t j=0;j<net.nbraws; j++) {
+    for (uint8_t j=0;j<putils->nbraws; j++) {
       for (uint8_t k=0; k<FEC_N ; k++) {
         struct iovec *piov = &putils->msgout.iov[i][j][k];
 	piov->iov_len = 0;
