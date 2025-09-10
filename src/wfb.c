@@ -30,16 +30,16 @@ int main(void) {
             wfb_utils_heads_pay_t headspay;
 	    memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
             struct iovec iovheadpay = { .iov_base = &headspay,
-                                    .iov_len = sizeof(wfb_utils_heads_pay_t)};
+                                        .iov_len = sizeof(wfb_utils_heads_pay_t)};
             struct iovec iovpay = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ];
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
 	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
                                   .iov_len = sizeof(utils.raws.headsrx->radiotaphd_rx)};
 	    struct iovec iov2 = { .iov_base = utils.raws.headsrx->ieeehd_rx,
-                                    .iov_len = sizeof(utils.raws.headsrx->ieeehd_rx)};
+                                  .iov_len = sizeof(utils.raws.headsrx->ieeehd_rx)};
 	    struct iovec iov3 = { .iov_base = utils.raws.headsrx->llchd_rx,
-                                    .iov_len = sizeof(utils.raws.headsrx->llchd_rx)};
+                                  .iov_len = sizeof(utils.raws.headsrx->llchd_rx)};
             struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, iovpay};
 	    msg.msg_iovlen = 5;
 #else // RAW
@@ -49,7 +49,7 @@ int main(void) {
             msg.msg_iov = iovtab;
 	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
 
-	    printf("(%ld)\n",len);
+	    printf("(%ld)(%ld)(%ld)\n",len,iovheadpay.iov_len,iovpay.iov_len);
 
 #if RAW
             if (!((len > 0) && 
@@ -136,15 +136,15 @@ int main(void) {
   	          { .droneid = DRONEID, .msgcpt = i, .msglen = iovpay.iov_len,.seq = seq, .fec = k, .num = num++ };
 
               struct iovec iovheadpay = { .iov_base = &headspay,
-                                            .iov_len = sizeof(wfb_utils_heads_pay_t)};
+                                          .iov_len = sizeof(wfb_utils_heads_pay_t)};
               struct msghdr msg;
 #if RAW
       	      struct iovec iov1 = { .iov_base = utils.raws.headstx->radiotaphd_tx,
-                                            .iov_len = utils.raws.headstx->radiotaphd_tx_size};
+                                    .iov_len = utils.raws.headstx->radiotaphd_tx_size};
       	      struct iovec iov2 = { .iov_base = utils.raws.headstx->ieeehd_tx,
-                                            .iov_len = utils.raws.headstx->ieeehd_tx_size};
+                                    .iov_len = utils.raws.headstx->ieeehd_tx_size};
       	      struct iovec iov3 = { .iov_base = utils.raws.headstx->llchd_tx,
-                                            .iov_len = utils.raws.headstx->llchd_tx_size};
+                                    .iov_len = utils.raws.headstx->llchd_tx_size};
               struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, iovpay};
 	      msg.msg_iovlen = 5;
 #else // RAW
