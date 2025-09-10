@@ -48,42 +48,42 @@ int main(void) {
 #endif // RAW
             msg.msg_iov = iovtab;
 	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
-
-	    printf("(%ld)(%ld)(%ld)\n",len,iovheadpay.iov_len,iovpay.iov_len);
-
 #if RAW
             if (!((len > 0) && 
 #if BOARD
               (headspay.droneid == DRONEID_GRD)
-#else
+#else // BOARD
               (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEID_MAX)
-#endif
+#endif // BOARD
               &&(((uint8_t *)iov3.iov_base)[0]==1)&&(((uint8_t *)iov3.iov_base)[1]==2)
 	      &&(((uint8_t *)iov3.iov_base)[2]==3)&&(((uint8_t *)iov3.iov_base)[3]==4))) {
 	      utils.rawdevs[cpt-1]->stat.fails++;
-	    } else if( headspay.msgcpt == WFB_PRO) {
-              utils.rawdevs[cpt-1]->stat.incoming++;
-	      utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
-              printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iovpay.iov_base)->chan);
-	    }
+	    } else {
+	      if( headspay.msgcpt == WFB_PRO) {
+                utils.rawdevs[cpt-1]->stat.incoming++;
+	        utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+                printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iovpay.iov_base)->chan);
+	      }
 #else // RAW
-            if (len > 0) {}
+            if (len > 0) {
 #endif // RAW
-	    else if( headspay.msgcpt == WFB_TUN) {
-	      if ((len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen)) > 0) printf("TUN write(%ld)\n",len);
-	    } else if( headspay.msgcpt == WFB_VID) {
-              //utils.msgin.eltin[cpt-1].iov[headspay.fec] = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ] ;
-              //utils.msgin.eltin[cpt-1].curr++;
-	      if (headspay.fec < FEC_K) {
-                if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
-	                    (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
-                  printf("VID write(%d)(%ld)\n",headspay.fec,len);
+	      if( headspay.msgcpt == WFB_TUN) {
+	        if ((len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen)) > 0) printf("TUN write(%ld)\n",len);
+	      } 
+	      if( headspay.msgcpt == WFB_VID) {
+                //utils.msgin.eltin[cpt-1].iov[headspay.fec] = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ] ;
+                //utils.msgin.eltin[cpt-1].curr++;
+	        if (headspay.fec < FEC_K) {
+                  if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
+	                      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
+                    printf("VID write(%d)(%ld)\n",headspay.fec,len);
+		  }
 		}
 	      } 
 	    }
 #if RAW
 	    wfb_net_drain(utils.fd[cpt]);
-#endif // RAW
+#endif // RAW3470
 
 /*****************************************************************************/       
           } else if (cpt == utils.nbraws + 1) { // WFB_TUN
