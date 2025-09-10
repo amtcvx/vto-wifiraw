@@ -33,18 +33,25 @@ typedef struct {
 } __attribute__((packed)) wfb_utils_heads_pay_t;
 
 typedef struct {
+  uint8_t seq;
+  uint8_t num;
+} msg_eltout_t; 
+
+typedef struct {
   uint8_t buf_pro[MAXRAWDEV][sizeof(wfb_utils_pro_t)];
   uint8_t buf_tun[ONLINE_MTU];
   uint8_t buf_tel[ONLINE_MTU];
   uint8_t buf_vid[FEC_N][ONLINE_MTU];
   struct iovec iov[WFB_NB][MAXRAWDEV][FEC_N];
   uint8_t currvid;
+  msg_eltout_t eltout[MAXRAWDEV];
 } wfb_utils_msgout_t;
 
 typedef struct {
   uint8_t buf_raw[FEC_N + WFB_NB][ONLINE_MTU];
   struct iovec iov[FEC_N];
   uint8_t curr;
+  uint8_t seq;
 } msg_eltin_t; 
 
 typedef struct {

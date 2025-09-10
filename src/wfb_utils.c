@@ -332,12 +332,17 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 /*****************************************************************************/  
   for (uint8_t i=0; i < putils->nbraws; i++) {
     putils->msgin.eltin[i].curr = 0;
+    putils->msgin.eltin[i].seq = 0;
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iov[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
       putils->msgin.eltin[i].iov[k].iov_len = ONLINE_MTU;
     }
   }
 
+  for (uint8_t j=0;j<putils->nbraws; j++) {
+    putils->msgout.eltout[j].seq = 0;
+    putils->msgout.eltout[j].num = 0;
+  }
   putils->msgout.currvid = 0;
   for (uint8_t i=0;i<WFB_NB;i++) {
     for (uint8_t j=0;j<putils->nbraws; j++) {
