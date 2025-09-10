@@ -62,13 +62,12 @@ int main(void) {
 	      if( headspay.msgcpt == WFB_PRO) {
                 utils.rawdevs[cpt-1]->stat.incoming++;
 	        utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
-                printf("IN (%d)  (%d)\n",cpt-1,((wfb_utils_pro_t *)iovpay.iov_base)->chan);
 	      }
 #else // RAW
             if (len > 0) {
 #endif // RAW
 	      if( headspay.msgcpt == WFB_TUN) {
-	        if ((len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen)) > 0) printf("TUN write(%ld)\n",len);
+	        len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen);
 	      } 
 	      if( headspay.msgcpt == WFB_VID) {
                 //utils.msgin.eltin[cpt-1].iov[headspay.fec] = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ] ;
@@ -76,12 +75,6 @@ int main(void) {
 	        if (headspay.fec < FEC_K) {
                   if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
 	                      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
-                    printf("VID write(%d)(%ld)\n",headspay.fec,len);
-/* 
-		    printf("fec(%d)\n",headspay.fec);
-		    for (uint8_t i=0; i<5; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf(" ... ");
-                    for (uint16_t i=(headspay.msglen-5); i<headspay.msglen; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf("\n");
-*/
 		  }
 		}
 	      } 
@@ -96,7 +89,6 @@ int main(void) {
             piov->iov_len = ONLINE_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
-	    printf("TUN readv(%ld)\n",piov->iov_len);
           } else if (cpt == utils.nbraws + 3) { // WFB_VID
 	    uint8_t curr = 0;
             if (utils.rawchan.mainraw != -1) curr = utils.msgout.currvid;
@@ -104,14 +96,8 @@ int main(void) {
             piov->iov_len = ONLINE_MTU;
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-/*
-            printf("curr(%d)\n",utils.msgout.currvid); 
-	    for (uint8_t i=0; i<5; i++) printf(" %x",*(i+((uint8_t *)piov->iov_base))); printf(" ... ");
-	    for (uint16_t i=(piov->iov_len-5); i<piov->iov_len; i++) printf("%x ",*(i+((uint8_t *)piov->iov_base))); printf("\n");
-*/
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
-	    printf("VID readv(%ld)\n",piov->iov_len);
 	  }
         }
       }
@@ -134,7 +120,6 @@ int main(void) {
 			 (const gf*restrict const*restrict const)datablocks,
 			 (gf*restrict const*restrict const)fecblocks,
 			 (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
-	  printf("ENCODED\n");
 	}
 
         for (uint8_t j=0;j<=jmax;j++) {
@@ -162,15 +147,6 @@ int main(void) {
               msg.msg_iovlen = 2;
 #endif // RAW
       	      msg.msg_iov = iovtab;
-
-              printf("OUT (%d)(%d)  (%ld)\n",i,j,iovpay.iov_len);
-    	      if (i == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iovpay.iov_base)->chan);
-    	      if (i == WFB_VID) printf("fec%d\n",headspay.fec);
-/*
-              printf("fec(%d)\n",headspay.fec);
-              for (uint8_t i=0; i<5; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf(" ... ");
-              for (uint16_t i=(iovpay.iov_len-5); i<iovpay.iov_len; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf("\n");
-*/
 #if RAW
 #else
       	      msg.msg_name = &utils.norawout;
