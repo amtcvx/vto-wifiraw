@@ -77,6 +77,12 @@ int main(void) {
                   if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
 	                      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
                     printf("VID write(%d)(%ld)\n",headspay.fec,len);
+              
+		    printf("fec(%d)\n",headspay.fec);
+		    for (uint8_t i=0; i<5; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf(" ... ");
+                    for (uint16_t i=(headspay.msglen-5); i<headspay.msglen; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf("\n");
+
+		    exit(-1);
 		  }
 		}
 	      } 
@@ -99,6 +105,11 @@ int main(void) {
             piov->iov_len = ONLINE_MTU;
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
+
+            printf("curr(%d)\n",utils.msgout.currvid); 
+	    for (uint8_t i=0; i<5; i++) printf(" %x",*(i+((uint8_t *)piov->iov_base))); printf(" ... ");
+	    for (uint16_t i=(piov->iov_len-5); i<piov->iov_len; i++) printf("%x ",*(i+((uint8_t *)piov->iov_base))); printf("\n");
+
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
 	    printf("VID readv(%ld)\n",piov->iov_len);
@@ -156,6 +167,11 @@ int main(void) {
               printf("OUT (%d)(%d)  (%ld)\n",i,j,iovpay.iov_len);
     	      if (i == WFB_PRO) printf("Chan =%d\n",((wfb_utils_pro_t *)iovpay.iov_base)->chan);
     	      if (i == WFB_VID) printf("fec%d\n",headspay.fec);
+
+              printf("fec(%d)\n",headspay.fec);
+              for (uint8_t i=0; i<5; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf(" ... ");
+              for (uint16_t i=(iovpay.iov_len-5); i<iovpay.iov_len; i++) printf("%x ",*(i+((uint8_t *)iovpay.iov_base))); printf("\n");
+
 #if RAW
 #else
       	      msg.msg_name = &utils.norawout;
@@ -165,8 +181,11 @@ int main(void) {
 #if RAW
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
 #endif // RAW
-    	      if ((i == WFB_VID) && (k == (FEC_N - 1))) utils.msgout.currvid = 0;
     	      utils.msgout.iov[i][j][k].iov_len = 0;
+    	      if ((i == WFB_VID) && (k == (FEC_N - 1))) {
+		utils.msgout.currvid = 0;
+	        exit(-1);
+	      }
 	    }
   	  }
         }
