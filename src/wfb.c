@@ -76,12 +76,48 @@ int main(void) {
                   if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
 	                      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
 		  }
+/*
+                  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+                  uint8_t *outblocks[FEC_N-FEC_K];
+                  unsigned index[FEC_K];
+                  uint8_t *inblocks[FEC_K];
+                  uint8_t  alldata=0;
+                  uint8_t j=FEC_K;
+                  uint8_t idx = 0;
+                  for (uint8_t k=0;k<FEC_K;k++) {
+                    index[k] = 0;
+                    inblocks[k] = (uint8_t *)0;
+                    if (k < (FEC_N - FEC_K)) outblocks[k] = (uint8_t *)0;
+                    if ( utils.msgin.eltin[cpt-1].iov[k] ) {
+                      inblocks[k] = (uint8_t *)utils.msgin.eltin[cpt-1].iov[k].iov_base;
+                      index[k] = k;
+                      alldata |= (1 << k);
+                    } else {
+                      for(;j < FEC_N; j++) {
+                        if ( utils.msgin.eltin[cpt-1].iov[j] ) {
+                          inblocks[k] = (uint8_t *)utils.msgin.eltin[cpt-1].iov[j].iov_base;
+                          outblocks[idx] = &outblocksbuf[idx][0]; idx++;
+                          index[k] = j;
+                          j++;
+      	                  alldata |= (1 << k);
+      	                  break;
+      	                }
+		      }
+		    }
+		  }
+      	          if (alldata == 255) {
+                    fec_decode(utils.fec_p, 
+                             (const unsigned char **)inblocks,
+                             (unsigned char * const*)outblocks,
+                             (unsigned int *)index,
+                             ONLINE_MTU);
+*/
 		}
 	      } 
 	    }
 #if RAW
 	    wfb_net_drain(utils.fd[cpt]);
-#endif // RAW3470
+#endif // RAW
 
 /*****************************************************************************/       
           } else if (cpt == utils.nbraws + 1) { // WFB_TUN
