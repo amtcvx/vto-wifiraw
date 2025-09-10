@@ -190,7 +190,7 @@ void wfb_utils_periodic(wfb_utils_init_t *pinit) {
   printlog(pinit);
   setmainbackup(pinit);
 #else  // RAW
-  pinit->rawchan.mainraw = 1;
+  pinit->rawchan.mainraw = 0;
 #endif  // RAW
 }
 
