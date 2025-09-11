@@ -72,8 +72,6 @@ int main(void) {
 	      } 
               if( headspay.msgcpt == WFB_VID) {
 
-                printf("(%d(%d)  (%d)(%d)\n",headspay.seq, pelt->nxtseq, headspay.fec, pelt->nxtfec);
-
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
 		  if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
@@ -81,21 +79,23 @@ int main(void) {
 		    pelt->nxtfec=0;
 		    if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
 		  }
-		  printf("KO\n");
+		  //printf("KO\n");
 		  pelt->fails = true;
 		} else {
-		  printf("OK\n");
+		  //printf("OK\n");
 
 		  if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++; 
 		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
 
   	          if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
 		}
-/*
+
 	       	pelt->iovfec[headspay.fec].iov_len = headspay.msglen;
 	       	pelt->iovfec[headspay.fec].iov_base = pelt->iovraw[pelt->curr].iov_base;
 		if (pelt->curr < MAXNBMTUIN) pelt->curr=(1 + pelt->curr); else pelt->curr=0;
 
+		printf("curr(%d)\n",pelt->curr);
+/*
                 if (pelt->curseq != headspay.seq) {
                   pelt->curseq = headspay.seq;
 		  if (!(pelt->fails)) {
