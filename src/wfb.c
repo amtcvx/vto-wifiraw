@@ -163,7 +163,7 @@ int main(void) {
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 
-            printf("len(%ld)\n",piov->len);
+            printf("len(%ld)\n",piov->iov_len);
 
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
