@@ -51,7 +51,8 @@ typedef struct {
   uint8_t buf_raw[FEC_N + WFB_NB][ONLINE_MTU];
   struct iovec iov[FEC_N];
   uint8_t curr;
-  uint8_t seq;
+  uint8_t nxtseq;
+  uint8_t nxtfec;
 } msg_eltin_t; 
 
 typedef struct {

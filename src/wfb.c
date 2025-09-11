@@ -68,20 +68,36 @@ int main(void) {
 	      if( headspay.msgcpt == WFB_TUN) {
 	        len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen);
 	      } 
-	      if( headspay.msgcpt == WFB_VID) {
+              if( headspay.msgcpt == WFB_VID) {
                 //utils.msgin.eltin[cpt-1].iov[headspay.fec] = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ] ;
                 //utils.msgin.eltin[cpt-1].curr++;
-		if (utils.msgin.eltin[cpt-1].seq != headspay.seq) {
-		  utils.msgin.eltin[cpt-1].seq = headspay.seq;
+		
+		//if (utils.msgin.eltin[cpt-1].seq != headspay.seq) {
+		//  utils.msgin.eltin[cpt-1].seq = headspay.seq;
 		//  for (uint8_t k=0; k < headspay.fec; k++) utils.msgin.eltin[cpt-1].fec[k] = utils.msgin.eltin[cpt-1].storefec;
 		//  utils.msgin.eltin[cpt-1].fec[headspay.fec] = utils.msgin.eltin[cpt-1].curr;
-		}
 
-	        if (headspay.fec < FEC_K) {
-                  if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
-	                      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
+		msg_eltin_t *ptrelt = &utils.msgin.eltin[cpt-1];
+                if ((ptrelt->nxtseq == headspay.seq)&&(ptrelt->nxtfec == headspay.fec)) {
+
+  	          if (headspay.fec < FEC_K) {
+                    if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
+  	                      (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {
+                      printf("len(%ld)\n",len);
+  		    }
 		  }
+		  if (ptrelt->nxtfec < (FEC_N-1)) (ptrelt->nxtfec)++; else { ptrelt->nxtfec=0; if (ptrelt->nxtseq < 255) (ptrelt->nxtseq)++; else ptrelt->nxtseq = 0; }
+		} else {
+                  printf("IN KO (%d)(%d)  (%d)(%d)\n",headspay.fec, ptrelt->nxtfec, headspay.seq, ptrelt->nxtseq);
+		  if (headspay.fec < (FEC_N-1)) { ptrelt->nxtfec=(headspay.fec+1); ptrelt->nxtseq=headspay.seq; }
+		  else { 
+		    ptrelt->nxtfec=0;
+		    if (headspay.seq < 254) ptrelt->nxtseq=(headspay.seq+1); else ptrelt->nxtseq = 0;
+		  }
+                  printf("OUT KO (%d)(%d)  (%d)(%d)\n",headspay.fec, ptrelt->nxtfec, headspay.seq, ptrelt->nxtseq);
+		}	
 
+/*
                   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
                   uint8_t *outblocks[FEC_N-FEC_K];
                   unsigned index[FEC_K];
@@ -117,7 +133,7 @@ int main(void) {
                              (unsigned int *)index,
                              ONLINE_MTU);
 		  }
-		}
+*/
 	      } 
 	    }
 #if RAW
