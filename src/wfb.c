@@ -31,8 +31,8 @@ int main(void) {
             struct iovec iovheadpay = { .iov_base = &headspay,
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
             msg_eltin_t *pelt = &utils.msgin.eltin[cpt-1];
-            struct iovec iovpay = pelt->iovraw[ pelt->curr ];
-	    memset(&pelt->iovraw[ pelt->curr ].iov_base,0,ONLINE_MTU);
+            struct iovec *piovpay = &pelt->iovraw[pelt->curr];
+	    memset(piovpay->iov_base, 0, ONLINE_MTU);
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
 	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
@@ -41,10 +41,10 @@ int main(void) {
                                   .iov_len = sizeof(utils.raws.headsrx->ieeehd_rx)};
 	    struct iovec iov3 = { .iov_base = utils.raws.headsrx->llchd_rx,
                                   .iov_len = sizeof(utils.raws.headsrx->llchd_rx)};
-            struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, iovpay};
+            struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, *piovpay};
 	    msg.msg_iovlen = 5;
 #else // RAW
-            struct iovec iovtab[2] = {iovheadpay, iovpay};
+            struct iovec iovtab[2] = {iovheadpay, *piovpay};
             msg.msg_iovlen = 2;
 #endif // RAW
             msg.msg_iov = iovtab;
@@ -62,15 +62,17 @@ int main(void) {
 	    } else {
 	      if( headspay.msgcpt == WFB_PRO) {
                 utils.rawdevs[cpt-1]->stat.incoming++;
-	        utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+	        utils.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)piovpay->iov_base)->chan;
 	      }
 #else // RAW
             if (len > 0) {
 #endif // RAW
 	      if( headspay.msgcpt == WFB_TUN) {
-	        len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen);
+	        len = write(utils.fd[utils.nbraws + 1], pelt->iovraw[pelt->curr].iov_base, headspay.msglen);
 	      } 
               if( headspay.msgcpt == WFB_VID) {
+
+                printf("(%d(%d)  (%d)(%d)\n",headspay.seq, pelt->nxtseq, headspay.fec, pelt->nxtfec);
 
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
