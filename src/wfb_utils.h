@@ -51,8 +51,10 @@ typedef struct {
   uint8_t buf_raw[FEC_N + WFB_NB][ONLINE_MTU];
   struct iovec iov[FEC_N];
   uint8_t curr;
+  uint8_t curseq;
   uint8_t nxtseq;
   uint8_t nxtfec;
+  bool fails;
 } msg_eltin_t; 
 
 typedef struct {
@@ -105,7 +107,6 @@ typedef struct {
 
 void wfb_utils_periodic(wfb_utils_init_t *putils);
 void wfb_utils_init(wfb_utils_init_t *putils);
-void wfb_utils_displayvid(wfb_utils_init_t *putils);
 
 
 #endif // WFB_UTILS_H

@@ -172,19 +172,6 @@ void setmainbackup(wfb_utils_init_t *pinit) {
 }
 
 /*****************************************************************************/
-void wfb_utils_displayvid(wfb_utils_init_t *putils) {
-
-  uint8_t *inblocks[FEC_K];
-  uint8_t *outblocks[FEC_N-FEC_K];
-  unsigned index[FEC_K];
-
-  fec_decode(putils->fec_p, (gf const **)inblocks, outblocks, index, ONLINE_MTU);
-              //(const gf*restrict const*restrict const)inblocks,
-              //outblocks,(gf*restrict const*restrict const)outblocks,
-              //(const unsigned*restrict const)index, 
-};
-
-/*****************************************************************************/
 void wfb_utils_periodic(wfb_utils_init_t *pinit) {
 #if RAW
   printlog(pinit);
@@ -331,8 +318,10 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
 
 /*****************************************************************************/  
   for (uint8_t i=0; i < putils->nbraws; i++) {
+    putils->msgin.eltin[i].curseq = 0;
     putils->msgin.eltin[i].nxtseq = 0;
     putils->msgin.eltin[i].nxtfec = 0;
+    putils->msgin.eltin[i].fails = false;
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iov[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
       putils->msgin.eltin[i].iov[k].iov_len = ONLINE_MTU;
