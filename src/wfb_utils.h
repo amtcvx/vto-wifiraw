@@ -12,14 +12,7 @@
 
 #define ONLINE_MTU PAY_MTU
 
-#define MAXNBMTUIN FEC_N + WFB_NB
-
-#if RAW
-#define wfb_utils_datapos 3
-#else
-#define wfb_utils_datapos 1
-#endif
-
+#define MAXNBMTUIN FEC_N + 1
 
 typedef struct {
   int16_t chan;

@@ -71,6 +71,7 @@ int main(void) {
 	        len = write(utils.fd[utils.nbraws + 1], pelt->iovraw[pelt->curr].iov_base, headspay.msglen);
 	      } 
               if( headspay.msgcpt == WFB_VID) {
+                bool clearflag=false;
 
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
@@ -94,8 +95,6 @@ int main(void) {
 	       	pelt->iovfec[headspay.fec].iov_base = pelt->iovraw[pelt->curr].iov_base;
 		if (pelt->curr < MAXNBMTUIN) pelt->curr=(1 + pelt->curr); else pelt->curr=0;
 
-		printf("curr(%d)\n",pelt->curr);
-/*
                 if (pelt->curseq != headspay.seq) {
                   pelt->curseq = headspay.seq;
 		  if (!(pelt->fails)) {
@@ -136,13 +135,14 @@ int main(void) {
                                ONLINE_MTU);
   		    }
 		  }
+		  clearflag = true;
 		}
 
 		for (uint8_t i=imin;i<imax;i++) 
                   if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i].iov_base, pelt->iovfec[i].iov_len, MSG_DONTWAIT, 
   	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
 		imax=0; imin=0;
-*/
+		if (clearflag) {clearflag=false;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
 	      }
 	    }
 #if RAW
@@ -162,6 +162,9 @@ int main(void) {
             piov->iov_len = ONLINE_MTU;
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
+
+            printf("len(%ld)\n",piov->len);
+
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
 	  }
