@@ -12,11 +12,14 @@
 
 #define ONLINE_MTU PAY_MTU
 
+#define MAXNBMTUIN FEC_N + WFB_NB
+
 #if RAW
 #define wfb_utils_datapos 3
 #else
 #define wfb_utils_datapos 1
 #endif
+
 
 typedef struct {
   int16_t chan;
@@ -48,8 +51,9 @@ typedef struct {
 } wfb_utils_msgout_t;
 
 typedef struct {
-  uint8_t buf_raw[FEC_N + WFB_NB][ONLINE_MTU];
-  struct iovec iov[FEC_N];
+  uint8_t buf_raw[MAXNBMTUIN][ONLINE_MTU];
+  struct iovec iovraw[MAXNBMTUIN];
+  struct iovec iovfec[FEC_N];
   uint8_t curr;
   uint8_t curseq;
   uint8_t nxtseq;

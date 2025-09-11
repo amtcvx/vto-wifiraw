@@ -30,7 +30,9 @@ int main(void) {
 	    memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
             struct iovec iovheadpay = { .iov_base = &headspay,
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
-            struct iovec iovpay = utils.msgin.eltin[cpt-1].iov[ utils.msgin.eltin[cpt-1].curr ];
+            msg_eltin_t *pelt = &utils.msgin.eltin[cpt-1];
+            struct iovec iovpay = pelt->iovraw[ pelt->curr ];
+	    memset(&pelt->iovraw[ pelt->curr ].iov_base,0,ONLINE_MTU);
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
 	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
@@ -69,27 +71,33 @@ int main(void) {
 	        len = write(utils.fd[utils.nbraws + 1], iovpay.iov_base, headspay.msglen);
 	      } 
               if( headspay.msgcpt == WFB_VID) {
-		uint8_t imax=0;
-		msg_eltin_t *ptrelt = &utils.msgin.eltin[cpt-1];
-                if ((ptrelt->nxtseq != headspay.seq)||(ptrelt->nxtfec != headspay.fec)) {
-		  if (headspay.fec < (FEC_N-1)) { ptrelt->nxtfec=(headspay.fec+1); ptrelt->nxtseq=headspay.seq; }
+
+		uint8_t imax=0, imin=0;
+                if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
+		  if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
 		  else { 
-		    ptrelt->nxtfec=0;
-		    if (headspay.seq < 254) ptrelt->nxtseq=(headspay.seq+1); else ptrelt->nxtseq = 0;
+		    pelt->nxtfec=0;
+		    if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
 		  }
 		  printf("KO\n");
-		  ptrelt->fails = true;
+		  pelt->fails = true;
 		} else {
 		  printf("OK\n");
 
-		  if (ptrelt->nxtfec < (FEC_N-1)) (ptrelt->nxtfec)++; else { ptrelt->nxtfec=0; if (ptrelt->nxtseq < 255) (ptrelt->nxtseq)++; else ptrelt->nxtseq = 0; }
-  	          if (headspay.fec < FEC_K) imax=1;
-		}
+		  if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++; 
+		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
 
-                if (ptrelt->curseq != headspay.seq) {
-                  ptrelt->curseq = headspay.seq;
-		  if (!(ptrelt->fails)) {
-                    ptrelt->fails = false;
+  	          if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
+		}
+/*
+	       	pelt->iovfec[headspay.fec].iov_len = headspay.msglen;
+	       	pelt->iovfec[headspay.fec].iov_base = pelt->iovraw[pelt->curr].iov_base;
+		if (pelt->curr < MAXNBMTUIN) pelt->curr=(1 + pelt->curr); else pelt->curr=0;
+
+                if (pelt->curseq != headspay.seq) {
+                  pelt->curseq = headspay.seq;
+		  if (!(pelt->fails)) {
+                    pelt->fails = false;
 	            uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
                     uint8_t *outblocks[FEC_N-FEC_K];
                     unsigned index[FEC_K];
@@ -101,14 +109,14 @@ int main(void) {
                       index[k] = 0;
                       inblocks[k] = (uint8_t *)0;
                       if (k < (FEC_N - FEC_K)) outblocks[k] = (uint8_t *)0;
-                      if ( utils.msgin.eltin[cpt-1].iov[k].iov_len != 0 ) {
-                        inblocks[k] = (uint8_t *)utils.msgin.eltin[cpt-1].iov[k].iov_base;
+                      if ( pelt->iovfec[k].iov_len > 0 ) {
+                        inblocks[k] = (uint8_t *)pelt->iovfec[k].iov_base;
                         index[k] = k;
                         alldata |= (1 << k);
                       } else {
                         for(;j < FEC_N; j++) {
-                          if ( utils.msgin.eltin[cpt-1].iov[j].iov_len !=0 ) {
-                            inblocks[k] = (uint8_t *)utils.msgin.eltin[cpt-1].iov[j].iov_base;
+                          if ( pelt->iovfec[j].iov_len > 0) {
+                            inblocks[k] = (uint8_t *)pelt->iovfec[j].iov_base;
                             outblocks[idx] = &outblocksbuf[idx][0]; idx++;
                             index[k] = j;
                             j++;
@@ -127,10 +135,12 @@ int main(void) {
   		    }
 		  }
 		}
-		for (uint8_t i=0;i<imax;i++) 
-                  if ((len = sendto(utils.fd[utils.nbraws + 3], iovpay.iov_base, headspay.msglen, MSG_DONTWAIT, 
+
+		for (uint8_t i=imin;i<imax;i++) 
+                  if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i].iov_base, pelt->iovfec[i].iov_len, MSG_DONTWAIT, 
   	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
-		imax=0;
+		imax=0; imin=0;
+*/
 	      }
 	    }
 #if RAW
