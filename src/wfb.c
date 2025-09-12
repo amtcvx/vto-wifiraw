@@ -32,7 +32,6 @@ int main(void) {
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
             msg_eltin_t *pelt = &utils.msgin.eltin[cpt-1];
             struct iovec *piovpay = &pelt->iovraw[pelt->curr];
-	    memset(piovpay->iov_base, 0, ONLINE_MTU);
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
 	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
@@ -49,6 +48,7 @@ int main(void) {
 #endif // RAW
             msg.msg_iov = iovtab;
 	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
+	    piovpay->iov_len = headspay.msglen;
 #if RAW
             if (!((len > 0) && 
 #if BOARD
@@ -68,7 +68,7 @@ int main(void) {
             if (len > 0) {
 #endif // RAW
 	      if( headspay.msgcpt == WFB_TUN) {
-	        len = write(utils.fd[utils.nbraws + 1], pelt->iovraw[pelt->curr].iov_base, headspay.msglen);
+	        len = write(utils.fd[utils.nbraws + 1], piovpay->iov_base, piovpay->iov_len);
 	      } 
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
@@ -91,8 +91,8 @@ int main(void) {
   	          if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
 		}
 
-	       	pelt->iovfec[headspay.fec].iov_len = headspay.msglen;
-	       	pelt->iovfec[headspay.fec].iov_base = pelt->iovraw[pelt->curr].iov_base;
+	       	pelt->iovfec[headspay.fec].iov_len = piovpay->iov_len;
+	       	pelt->iovfec[headspay.fec].iov_base = piovpay->iov_base;
 		if (pelt->curr < MAXNBMTUIN) pelt->curr=(1 + pelt->curr); else pelt->curr=0;
 
                 if (pelt->curseq != headspay.seq) {
@@ -142,7 +142,7 @@ int main(void) {
                   if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i].iov_base, pelt->iovfec[i].iov_len, MSG_DONTWAIT, 
   	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
 		imax=0; imin=0;
-		if (clearflag) {clearflag=false;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
+		if (clearflag) {clearflag=false;pelt->curr=0;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
 	      }
 	    }
 #if RAW
