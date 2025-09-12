@@ -32,6 +32,13 @@ int main(void) {
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
             msg_eltin_t *pelt = &utils.msgin.eltin[cpt-1];
             struct iovec *piovpay = &pelt->iovraw[pelt->curr];
+
+
+	    uint8_t toto[ONLINE_MTU];
+	    struct iovec titi;
+	    titi.iov_base = &toto;
+	    titi.iov_len = ONLINE_MTU;
+
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
 	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
@@ -43,12 +50,13 @@ int main(void) {
             struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, *piovpay};
 	    msg.msg_iovlen = 5;
 #else // RAW
-            struct iovec iovtab[2] = {iovheadpay, *piovpay};
+            struct iovec iovtab[2] = {iovheadpay, titi};//*piovpay};
             msg.msg_iovlen = 2;
 #endif // RAW
             msg.msg_iov = iovtab;
 	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
-	    piovpay->iov_len = headspay.msglen;
+	    //piovpay->iov_len = headspay.msglen;
+	    titi.iov_len = headspay.msglen;
 #if RAW
             if (!((len > 0) && 
 #if BOARD
@@ -73,9 +81,9 @@ int main(void) {
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
 
-                printf("len(%ld)  ",piovpay->iov_len);
-	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
-	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
+                printf("len(%ld)  ",titi.iov_len);
+	        for (uint8_t i=0;i<5;i++) printf("%x ",toto[i]);printf(" ... ");
+	        for (uint16_t i=titi.iov_len-5;i<titi.iov_len;i++) printf("%x ",toto[i]);printf("\n");
 
 /*
 		uint8_t imax=0, imin=0;
@@ -222,7 +230,7 @@ int main(void) {
               struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, *piovpay};
 	      msg.msg_iovlen = 5;
 #else // RAW
-              struct iovec iovtab[2] = {iovheadpay, piovpay};
+              struct iovec iovtab[2] = {iovheadpay, *piovpay};
               msg.msg_iovlen = 2;
 #endif // RAW
       	      msg.msg_iov = iovtab;
