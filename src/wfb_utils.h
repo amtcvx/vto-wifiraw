@@ -10,9 +10,11 @@
 #include "zfex.h"
 #include "wfb.h"
 
-#define ONLINE_MTU PAY_MTU
+typedef struct {
+  uint16_t feclen;
+} __attribute__((packed)) wfb_utils_fec_t;
 
-#define MAXNBMTUIN FEC_N + 1
+#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
 typedef struct {
   int16_t chan;
@@ -42,6 +44,8 @@ typedef struct {
   uint8_t currvid;
   msg_eltout_t eltout[MAXRAWDEV];
 } wfb_utils_msgout_t;
+
+#define MAXNBMTUIN FEC_N + 1
 
 typedef struct {
   uint8_t buf_raw[MAXNBMTUIN][ONLINE_MTU];
