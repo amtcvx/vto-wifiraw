@@ -145,7 +145,7 @@ int main(void) {
 		if (clearflag) {clearflag=false;pelt->curr=0;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
 */
                 if ((len = sendto(utils.fd[utils.nbraws + 3], piovpay->iov_base, piovpay->iov_len, MSG_DONTWAIT, 
-  	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
+  	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) {};//printf("len(%ld)\n",len);
 
                 printf("len(%ld)  ",piovpay->iov_len);
 	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
@@ -199,7 +199,6 @@ int main(void) {
 			 (const gf*restrict const*restrict const)datablocks,
 			 (gf*restrict const*restrict const)fecblocks,
 			 (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
-	  exit(-1);
 	}
 
         for (uint8_t j=0;j<=jmax;j++) {
