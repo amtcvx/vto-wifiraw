@@ -31,6 +31,7 @@ int main(void) {
             struct iovec iovheadpay = { .iov_base = &headspay,
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
             msg_eltin_t *pelt = &utils.msgin.eltin[cpt-1];
+	    pelt->iovraw[pelt->curr].iov_len = ONLINE_MTU;
 	    struct iovec *piovpay = &pelt->iovraw[pelt->curr];
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
@@ -72,12 +73,13 @@ int main(void) {
 	      } 
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
-
-                printf("len(%ld)  ",piovpay->iov_len);
-	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)pelt->iovraw[pelt->curr].iov_base) + i));printf(" ... ");
-	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)pelt->iovraw[pelt->curr].iov_base) + i));;printf("\n");
-
 /*
+		if (headspay.fec < FEC_K) {
+                  printf("len(%ld)  ",piovpay->iov_len);
+	          for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
+	          for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
+		}
+*/
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
 		  if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
@@ -148,7 +150,7 @@ int main(void) {
   	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
 		imax=0; imin=0;
 		if (clearflag) {clearflag=false;pelt->curr=0;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
-*/
+
 	      }
 	    }
 #if RAW
@@ -238,7 +240,6 @@ int main(void) {
 	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
 	      }
 */
-
 #if RAW
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
 #endif // RAW
