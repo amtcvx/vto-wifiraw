@@ -146,6 +146,11 @@ int main(void) {
 */
                 if ((len = sendto(utils.fd[utils.nbraws + 3], piovpay->iov_base, piovpay->iov_len, MSG_DONTWAIT, 
   	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
+
+                printf("len(%ld)  ",piov->iov_len);
+	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
+	        for (uint8_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
+
 	      }
 	    }
 #if RAW
@@ -166,7 +171,10 @@ int main(void) {
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 
-            printf("len(%ld)\n",piov->iov_len);
+            printf("len(%ld)  ",piov->iov_len);
+	    for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
+	    for (uint8_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
+
 
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
@@ -230,7 +238,7 @@ int main(void) {
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
 #endif // RAW
     	      utils.msgout.iov[i][j][k].iov_len = 0;
-    	      if ((i == WFB_VID) && (k == (FEC_N - 1))) { utils.msgout.currvid = 0; utils.msgout.eltout[j].seq++;};
+    	      if ((i == WFB_VID) && (k == (FEC_N - 1))) { utils.msgout.currvid = 0; utils.msgout.eltout[j].seq++; exit(-1);};
 	    }
   	  }
         }
