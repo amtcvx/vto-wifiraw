@@ -323,8 +323,9 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     putils->msgin.eltin[i].nxtfec = 0;
     putils->msgin.eltin[i].fails = false;
     for (uint8_t k=0; k < MAXNBMTUIN; k++) {
-      putils->msgin.eltin[i].iovraw[k].iov_base = &putils->msgin.eltin[i].buf_raw[k];
-      putils->msgin.eltin[i].iovraw[k].iov_len = ONLINE_MTU;
+      struct iovec *piov = &putils->msgin.eltin[i].iovraw[k];
+      piov->iov_len = ONLINE_MTU;
+      piov->iov_base = &putils->msgin.eltin[i].buf_raw[k][0];
     }
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iovfec[k].iov_len = 0;
