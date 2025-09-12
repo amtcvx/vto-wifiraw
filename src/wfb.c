@@ -31,14 +31,7 @@ int main(void) {
             struct iovec iovheadpay = { .iov_base = &headspay,
                                         .iov_len = sizeof(wfb_utils_heads_pay_t)};
             msg_eltin_t *pelt = &utils.msgin.eltin[cpt-1];
-            struct iovec *piovpay = &pelt->iovraw[pelt->curr];
-
-
-	    uint8_t toto[ONLINE_MTU];
-	    struct iovec titi;
-	    titi.iov_base = &toto;
-	    titi.iov_len = ONLINE_MTU;
-
+	    struct iovec *piovpay = &pelt->iovraw[pelt->curr];
 #if RAW
 	    memset(utils.raws.headsrx->llchd_rx, 0, sizeof(utils.raws.headsrx->llchd_rx));
 	    struct iovec iov1 = { .iov_base = utils.raws.headsrx->radiotaphd_rx,
@@ -50,13 +43,12 @@ int main(void) {
             struct iovec iovtab[5] = {iov1, iov2, iov3, iovheadpay, *piovpay};
 	    msg.msg_iovlen = 5;
 #else // RAW
-            struct iovec iovtab[2] = {iovheadpay, titi};//*piovpay};
+            struct iovec iovtab[2] = {iovheadpay, *piovpay};
             msg.msg_iovlen = 2;
 #endif // RAW
             msg.msg_iov = iovtab;
 	    len = recvmsg(utils.fd[cpt], &msg, MSG_DONTWAIT);
-	    //piovpay->iov_len = headspay.msglen;
-	    titi.iov_len = headspay.msglen;
+	    piovpay->iov_len = headspay.msglen;
 #if RAW
             if (!((len > 0) && 
 #if BOARD
@@ -80,10 +72,15 @@ int main(void) {
 	      } 
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
-
-                printf("len(%ld)  ",titi.iov_len);
-	        for (uint8_t i=0;i<5;i++) printf("%x ",toto[i]);printf(" ... ");
-	        for (uint16_t i=titi.iov_len-5;i<titi.iov_len;i++) printf("%x ",toto[i]);printf("\n");
+/*
+                printf("len(%ld)  ",piovpay->iov_len);
+	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)pelt->iovraw[pelt->curr].iov_base) + i));printf(" ... ");
+	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)pelt->iovraw[pelt->curr].iov_base) + i));;printf("\n");
+*/
+		if (headspay.fec < FEC_K) {
+                  if ((len = sendto(utils.fd[utils.nbraws + 3], piovpay->iov_base, piovpay->iov_len, MSG_DONTWAIT, 
+  	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
+		}
 
 /*
 		uint8_t imax=0, imin=0;
@@ -176,11 +173,11 @@ int main(void) {
             piov->iov_len = ONLINE_MTU;
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-
+/*
             printf("len(%ld)  ",piov->iov_len);
 	    for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
 	    for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
-
+*/
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
 	  }
@@ -240,13 +237,13 @@ int main(void) {
       	      msg.msg_namelen = sizeof(utils.norawout);
 #endif // RAW
       	      len = sendmsg(utils.fd[1 + j], (const struct msghdr *)&msg, MSG_DONTWAIT);
-
+/*
               if (i == WFB_VID) {
                 printf(">> len(%ld)  ",piovpay->iov_len);
 	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
 	      }
-
+*/
 
 #if RAW
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
