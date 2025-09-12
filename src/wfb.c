@@ -74,13 +74,13 @@ int main(void) {
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
 
-                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
-		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
-                  printf("len(%ld)  ",piovpay->iov_len);
-	          for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
-	          for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
-		  headspay.fec = 20;
-		}
+//                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
+//		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
+
+                printf("len(%ld)  ",piovpay->iov_len);
+	        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
+	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
+
 
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
@@ -89,10 +89,10 @@ int main(void) {
 		    pelt->nxtfec=0;
 		    if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
 		  }
-		  printf("KO\n");
+		  //printf("KO\n");
 		  pelt->fails = true;
 		} else {
-		  printf("OK (%d)(%d)\n",headspay.seq,headspay.fec);
+		  //printf("OK (%d)(%d)\n",headspay.seq,headspay.fec);
 
 		  if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++; 
 		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
@@ -173,14 +173,13 @@ int main(void) {
             if (utils.rawchan.mainraw != -1) curr = utils.msgout.currvid;
 	    struct iovec *piov = &utils.msgout.iov[WFB_VID][0][curr];
 
-            uint8_t *ptr = &utils.msgout.buf_vid[curr][0];
-	    memset(ptr, 0, ONLINE_MTU);
+            memset(&utils.msgout.buf_vid[curr][0],0,ONLINE_MTU);
 
             piov->iov_base = &utils.msgout.buf_vid[curr][sizeof(wfb_utils_fec_t)];
 	    piov->iov_len = PAY_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 
-	    memcpy(ptr, &(piov->iov_len), sizeof(wfb_utils_fec_t));
+	    memcpy(&utils.msgout.buf_vid[curr][0], &(piov->iov_len), sizeof(wfb_utils_fec_t));
 	    piov->iov_len += sizeof(wfb_utils_fec_t);
 	    
 
