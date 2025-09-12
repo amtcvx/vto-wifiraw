@@ -72,15 +72,10 @@ int main(void) {
 	      } 
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
-/*
+
                 printf("len(%ld)  ",piovpay->iov_len);
 	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)pelt->iovraw[pelt->curr].iov_base) + i));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)pelt->iovraw[pelt->curr].iov_base) + i));;printf("\n");
-*/
-		if (headspay.fec < FEC_K) {
-                  if ((len = sendto(utils.fd[utils.nbraws + 3], piovpay->iov_base, piovpay->iov_len, MSG_DONTWAIT, 
-  	                              (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
-		}
 
 /*
 		uint8_t imax=0, imin=0;
@@ -173,11 +168,11 @@ int main(void) {
             piov->iov_len = ONLINE_MTU;
 	    memset(piov->iov_base, 0, piov->iov_len);
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-/*
+
             printf("len(%ld)  ",piov->iov_len);
 	    for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
 	    for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
-*/
+
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
 	  }
@@ -202,7 +197,6 @@ int main(void) {
 			 (const gf*restrict const*restrict const)datablocks,
 			 (gf*restrict const*restrict const)fecblocks,
 			 (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
-	  printf("ENCODE\n");
 	}
 
         for (uint8_t j=0;j<=jmax;j++) {
