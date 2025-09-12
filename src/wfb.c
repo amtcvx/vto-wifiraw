@@ -177,6 +177,7 @@ int main(void) {
 	    memset(ptr, 0, ONLINE_MTU);
 
             piov->iov_base = &utils.msgout.buf_vid[curr][sizeof(wfb_utils_fec_t)];
+	    piov->iov_len = PAY_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 
 	    memcpy(ptr, &(piov->iov_len), sizeof(wfb_utils_fec_t));
