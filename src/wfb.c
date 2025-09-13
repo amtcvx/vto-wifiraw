@@ -180,10 +180,10 @@ int main(void) {
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 
 	    ((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr][0])->feclen = piov->iov_len;
-	    piov->iov_len += sizeof(wfb_utils_fec_t);
-	    
 
-            printf("len(%ld)  (%d)(%d) ",piov->iov_len-2,utils.msgout.buf_vid[curr][0],utils.msgout.buf_vid[curr][1]);
+	    piov->iov_len += sizeof(wfb_utils_fec_t);
+
+            printf("len(%ld)  (%d)(%d) ",piov->iov_len,utils.msgout.buf_vid[curr][0],utils.msgout.buf_vid[curr][1]);
 	    for (uint8_t i=2;i<7;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
 	    for (uint16_t i=piov->iov_len-7;i<piov->iov_len-2;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
 
