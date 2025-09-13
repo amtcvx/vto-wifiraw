@@ -77,9 +77,9 @@ int main(void) {
 //                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
 //		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
 
-                printf("len(%ld)  ",piovpay->iov_len);
-	        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
-	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
+                printf("len(%ld)  ",piovpay->iov_len-2);
+	        for (uint8_t i=2;i<7;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
+	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
 
 
 		uint8_t imax=0, imin=0;
@@ -151,7 +151,7 @@ int main(void) {
 
 		for (uint8_t i=imin;i<imax;i++) 
                   if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i].iov_base + sizeof(wfb_utils_fec_t), 
-				    pelt->iovfec[i].iov_len + sizeof(wfb_utils_fec_t), MSG_DONTWAIT, 
+				    pelt->iovfec[i].iov_len - sizeof(wfb_utils_fec_t), MSG_DONTWAIT, 
   	                            (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
 		imax=0; imin=0;
 		if (clearflag) {clearflag=false;pelt->curr=0;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
@@ -179,13 +179,13 @@ int main(void) {
 	    piov->iov_len = PAY_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
 
-	    memcpy(&utils.msgout.buf_vid[curr][0], &(piov->iov_len), sizeof(wfb_utils_fec_t));
+	    ((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr][0])->feclen = piov->iov_len;
 	    piov->iov_len += sizeof(wfb_utils_fec_t);
 	    
 
             printf("len(%ld)  ",piov->iov_len);
-	    for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
-	    for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
+	    for (uint8_t i=2;i<7;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
+	    for (uint16_t i=piov->iov_len-7;i<piov->iov_len-2;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
 
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
