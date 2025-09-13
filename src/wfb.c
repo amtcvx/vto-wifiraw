@@ -77,7 +77,7 @@ int main(void) {
 //                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
 //		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
 
-                printf("len(%ld)  (%d) ",piovpay->iov_len-2, *(uint16_t *)(pelt->iovraw[pelt->curr].iov_base));
+                printf("len(%ld)  (%d)(%d) ",piovpay->iov_len-2, *(uint8_t *)(pelt->iovraw[pelt->curr].iov_base), *(1+((uint8_t *)pelt->iovraw[pelt->curr].iov_base)));
 	        for (uint8_t i=2;i<7;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
 
@@ -183,7 +183,7 @@ int main(void) {
 	    piov->iov_len += sizeof(wfb_utils_fec_t);
 	    
 
-            printf("len(%ld)  (%d) ",piov->iov_len-2,*(uint16_t *)(&utils.msgout.buf_vid[curr][0]));
+            printf("len(%ld)  (%d)(%d) ",piov->iov_len-2,utils.msgout.buf_vid[curr][0],utils.msgout.buf_vid[curr][1]);
 	    for (uint8_t i=2;i<7;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
 	    for (uint16_t i=piov->iov_len-7;i<piov->iov_len-2;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
 
