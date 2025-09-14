@@ -150,8 +150,8 @@ int main(void) {
 		}
 
 		for (uint8_t i=imin;i<imax;i++) 
-                  if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i].iov_base, 
-				    pelt->iovfec[i].iov_len MSG_DONTWAIT, 
+                  if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i].iov_base,
+				    pelt->iovfec[i].iov_len, MSG_DONTWAIT, 
   	                            (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
 		imax=0; imin=0;
 		if (clearflag) {clearflag=false;pelt->curr=0;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
