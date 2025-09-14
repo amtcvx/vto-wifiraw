@@ -73,11 +73,12 @@ int main(void) {
 	      } 
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
-
+/*
                 if ((headspay.seq == 2) && (headspay.fec == 4)) { 
 		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
 		  break;
 		}
+*/
 /*
                 printf("len(%ld)(%d) ",piovpay->iov_len, ((wfb_utils_fec_t *)pelt->iovraw[pelt->curr].iov_base)->feclen);
 	        for (uint8_t i=2;i<7;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
