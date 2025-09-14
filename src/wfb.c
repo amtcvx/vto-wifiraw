@@ -177,7 +177,7 @@ int main(void) {
             piov->iov_base = &utils.msgout.buf_vid[curr][sizeof(wfb_utils_fec_t)];
 	    piov->iov_len = PAY_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-	    ((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr])->feclen = piov->iov_len;
+	    //((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr])->feclen = piov->iov_len;
 	    piov->iov_len += sizeof(wfb_utils_fec_t);
 
             printf("len(%ld)(%d) ",piov->iov_len,((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr])->feclen);
