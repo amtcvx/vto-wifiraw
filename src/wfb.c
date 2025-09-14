@@ -74,15 +74,14 @@ int main(void) {
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
 
-//                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
-//		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
-
+                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
+		printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
+/*
                 printf("len(%ld)(%d) ",piovpay->iov_len, ((wfb_utils_fec_t *)pelt->iovraw[pelt->curr].iov_base)->feclen);
 	        for (uint8_t i=2;i<7;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) 
 			printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
-
-
+*/
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
 		  if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
@@ -90,10 +89,10 @@ int main(void) {
 		    pelt->nxtfec=0;
 		    if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
 		  }
-		  //printf("KO\n");
+		  printf("KO\n");
 		  pelt->fails = true;
 		} else {
-		  //printf("OK (%d)(%d)\n",headspay.seq,headspay.fec);
+		  printf("OK (%d)(%d)\n",headspay.seq,headspay.fec);
 
 		  if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++; 
 		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
@@ -244,14 +243,14 @@ int main(void) {
       	      msg.msg_namelen = sizeof(utils.norawout);
 #endif // RAW
       	      len = sendmsg(utils.fd[1 + j], (const struct msghdr *)&msg, MSG_DONTWAIT);
-
+/*
               if (i == WFB_VID) {
                 printf(">> len(%ld) ",piovpay->iov_len);
 	        for (uint8_t i=2;i<7;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) 
 			printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
 	      }
-
+*/
 #if RAW
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
 #endif // RAW
