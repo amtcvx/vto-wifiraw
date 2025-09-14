@@ -77,7 +77,11 @@ int main(void) {
 //                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
 //		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
 
-                printf("len(%ld)(%d) ",piovpay->iov_len, ((wfb_utils_fec_t *)pelt->iovraw[pelt->curr].iov_base)->feclen);
+		uint8_t d1 = *((uint8_t *)(pelt->iovraw[pelt->curr].iov_base));
+		uint8_t d2 = *((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + 1));
+		uint16_t toto = (uint16_t)((d2 << 8) + (d1 & 0x00ff));
+
+                printf("len(%ld)(%d) ",piovpay->iov_len, toto);
 	        for (uint8_t i=2;i<7;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
 
