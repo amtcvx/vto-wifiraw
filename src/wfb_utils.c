@@ -284,7 +284,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     putils->norawout.sin_family = AF_INET;
     putils->norawout.sin_port = htons(PORT_NORAW);
     putils->norawout.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
-#endif // BOARD
+#endif // RAW
     putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
     putils->readsets[putils->readtabnb].events = POLLIN;
     (putils->readtabnb) += 1;
@@ -324,7 +324,7 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     putils->msgin.eltin[i].fails = false;
     for (uint8_t k=0; k < MAXNBMTUIN; k++) {
       struct iovec *piov = &putils->msgin.eltin[i].iovraw[k];
-      piov->iov_base = &putils->msgin.eltin[i].buf_raw[k];
+      piov->iov_base = &putils->msgin.eltin[i].buf_raw[k][0];
     }
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iovfec[k].iov_len = 0;
@@ -336,13 +336,14 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     putils->msgout.eltout[j].num = 0;
   }
   putils->msgout.currvid = 0;
+
   for (uint8_t i=0;i<WFB_NB;i++) {
     for (uint8_t j=0;j<putils->nbraws; j++) {
       for (uint8_t k=0; k<FEC_N ; k++) {
         struct iovec *piov = &putils->msgout.iov[i][j][k];
 	piov->iov_len = 0;
 	if (i==WFB_PRO) piov->iov_base = &putils->msgout.buf_pro[j][0];
-	if (i==WFB_TUN) piov->iov_base = &putils->msgout.buf_tun;
+	if (i==WFB_TUN) piov->iov_base = &putils->msgout.buf_tun[0];
 	if (i==WFB_VID)  piov->iov_base = &putils->msgout.buf_vid[k][0];
       }
     }
