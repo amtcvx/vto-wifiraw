@@ -14,8 +14,7 @@ typedef struct {
   uint16_t feclen;
 } __attribute__((packed)) wfb_utils_fec_t;
 
-//#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
-#define ONLINE_MTU PAY_MTU
+#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
 typedef struct {
   int16_t chan;

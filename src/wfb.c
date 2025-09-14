@@ -77,7 +77,7 @@ int main(void) {
 //                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
 //		  printf("MISSING (%d)(%d) ",headspay.seq,headspay.fec);
 
-                printf("len(%ld)  (%d)(%d) ",piovpay->iov_len-2, *(uint8_t *)(pelt->iovraw[pelt->curr].iov_base), *(1+((uint8_t *)pelt->iovraw[pelt->curr].iov_base)));
+                printf("len(%ld) ",piovpay->iov_len);
 	        for (uint8_t i=2;i<7;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
 
@@ -174,19 +174,15 @@ int main(void) {
 	    struct iovec *piov = &utils.msgout.iov[WFB_VID][0][curr];
 
             memset(&utils.msgout.buf_vid[curr][0],0,ONLINE_MTU);
-
-//            piov->iov_base = &utils.msgout.buf_vid[curr][sizeof(wfb_utils_fec_t)];
-//	    piov->iov_len = PAY_MTU;
-	    piov->iov_len = ONLINE_MTU;
+            piov->iov_base = &utils.msgout.buf_vid[curr][sizeof(wfb_utils_fec_t)];
+	    piov->iov_len = PAY_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-
-//	    ((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr][0])->feclen = piov->iov_len;
-
-//	    piov->iov_len += sizeof(wfb_utils_fec_t);
+	    ((wfb_utils_fec_t *)&utils.msgout.buf_vid[curr])->feclen = piov->iov_len;
+	    piov->iov_len += sizeof(wfb_utils_fec_t);
 
             printf("len(%ld) ",piov->iov_len);
-	    for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
-	    for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
+	    for (uint8_t i=2;i<7;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
+	    for (uint16_t i=piov->iov_len-7;i<piov->iov_len-2;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
 
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
@@ -249,8 +245,8 @@ int main(void) {
 
               if (i == WFB_VID) {
                 printf(">> len(%ld)  ",piovpay->iov_len);
-	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
-	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
+	        for (uint8_t i=2;i<7;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
+	        for (uint16_t i=piovpay->iov_len-7;i<piovpay->iov_len-2;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
 	      }
 
 #if RAW
