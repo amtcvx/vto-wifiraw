@@ -327,7 +327,8 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
       piov->iov_base = &putils->msgin.eltin[i].buf_raw[k][0];
     }
     for (uint8_t k=0; k < FEC_N; k++) {
-      putils->msgin.eltin[i].iovfec[k].iov_len = 0;
+      putils->msgin.eltin[i].iovfec[k] = (struct iovec *)0;
+      putils->msgin.eltin[i].iovsto[k] = (struct iovec *)0;
     }
   }
 

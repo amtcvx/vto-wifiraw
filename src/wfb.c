@@ -74,12 +74,13 @@ int main(void) {
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
 
-                if ((headspay.seq == 2) && (headspay.fec == 4))  { 
+                if ((headspay.seq == 2) && (headspay.fec == 2))  { 
+                  exit(-1);
 		  printf("MISSING (%d)(%d)\n",headspay.seq,headspay.fec);
 		  break;
 		}
 
-                printf("len(%ld)  ",piovpay->iov_len);
+                printf("(%d)[%d]len(%ld)  ",pelt->curr,headspay.fec,piovpay->iov_len);
 	        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*((uint8_t *)(pelt->iovraw[pelt->curr].iov_base + i)));;printf("\n");
 
@@ -91,10 +92,10 @@ int main(void) {
 		    pelt->nxtfec=0;
 		    if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
 		  }
-		  printf("KO\n");
+//		  printf("KO\n");
 		  pelt->fails = true;
 		} else {
-		  printf("OK (%d)(%d)\n",headspay.seq,headspay.fec);
+//		  printf("OK\n");
 
 		  if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++; 
 		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
@@ -102,16 +103,39 @@ int main(void) {
   	          if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
 		}
 
-	       	pelt->iovfec[headspay.fec].iov_len = piovpay->iov_len;
-	       	pelt->iovfec[headspay.fec].iov_base = piovpay->iov_base;
+		printf("(%d) register (%d)\n",headspay.fec,pelt->curr);
+                 
+		if (pelt->curseq != headspay.seq) pelt->iovsto[headspay.fec] = piovpay; else pelt->iovfec[headspay.fec] = piovpay;
 		if (pelt->curr < MAXNBMTUIN) pelt->curr=(1 + pelt->curr); else pelt->curr=0;
+ 
 
                 if (pelt->curseq != headspay.seq) {
                   pelt->curseq = headspay.seq;
-		  if (pelt->fails) {
 
                     printf("Trying ...\n");
+		    struct iovec *ptmp;
+		    for (uint8_t k=0;k<FEC_N;k++) { 
+		      ptmp = pelt->iovfec[k]; 
+		      if (ptmp) {
+		        printf("[%d](%ld) ",k,ptmp->iov_len); 
+		        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(ptmp->iov_base + i)));printf(" ... ");
+                        for (uint16_t i=ptmp->iov_len-5;i<ptmp->iov_len;i++) printf("%x ",*((uint8_t *)(ptmp->iov_base + i)));;printf("\n");
+		      }
+		    }
+                    printf("\n");
+		    for (uint8_t k=0;k<FEC_N;k++) { 
+		      ptmp = pelt->iovsto[k];
+		      if(ptmp) {
+                        printf("[%d](%ld) ",k,ptmp->iov_len); 
+		        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(ptmp->iov_base + i)));printf(" ... ");
+                        for (uint16_t i=ptmp->iov_len-5;i<ptmp->iov_len;i++) printf("%x ",*((uint8_t *)(ptmp->iov_base + i)));;printf("\n");
+		      }
+		    }
+                    printf("\n");
 
+
+
+		  if (pelt->fails) {
                     pelt->fails = false;
 	            uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
                     uint8_t *outblocks[FEC_N-FEC_K];
@@ -124,14 +148,14 @@ int main(void) {
                       index[k] = 0;
                       inblocks[k] = (uint8_t *)0;
                       if (k < (FEC_N - FEC_K)) outblocks[k] = (uint8_t *)0;
-                      if ( pelt->iovfec[k].iov_len > 0 ) {
-                        inblocks[k] = (uint8_t *)pelt->iovfec[k].iov_base;
+                      if ( pelt->iovfec[k] ) {
+                        inblocks[k] = (uint8_t *)pelt->iovfec[k]->iov_base;
                         index[k] = k;
                         alldata |= (1 << k);
                       } else {
                         for(;j < FEC_N; j++) {
-                          if ( pelt->iovfec[j].iov_len > 0) {
-                            inblocks[k] = (uint8_t *)pelt->iovfec[j].iov_base;
+                          if ( pelt->iovfec[j] ) {
+                            inblocks[k] = (uint8_t *)pelt->iovfec[j]->iov_base;
                             outblocks[idx] = &outblocksbuf[idx][0]; idx++;
                             index[k] = j;
                             j++;
@@ -160,7 +184,7 @@ int main(void) {
   	                            (struct sockaddr *)&(utils.vidout), sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
 */
 		imax=0; imin=0;
-		if (clearflag) {clearflag=false;pelt->curr=0;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i].iov_len=0;};
+		if (clearflag) {clearflag=false;for (uint8_t i=0;i<FEC_N;i++) pelt->iovfec[i] = pelt->iovsto[i];};
 
 	      }
 	    }

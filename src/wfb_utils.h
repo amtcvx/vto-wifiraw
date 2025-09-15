@@ -45,12 +45,13 @@ typedef struct {
   msg_eltout_t eltout[MAXRAWDEV];
 } wfb_utils_msgout_t;
 
-#define MAXNBMTUIN FEC_N + 1
+#define MAXNBMTUIN 1 + 2 * FEC_N
 
 typedef struct {
   uint8_t buf_raw[MAXNBMTUIN][ONLINE_MTU];
   struct iovec iovraw[MAXNBMTUIN];
-  struct iovec iovfec[FEC_N];
+  struct iovec *iovfec[FEC_N];
+  struct iovec *iovsto[FEC_N];
   uint8_t curr;
   uint8_t curseq;
   uint8_t nxtseq;
