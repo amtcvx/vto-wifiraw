@@ -102,7 +102,15 @@ int main(void) {
 		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
   	          if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
 		}
-              
+             
+/*
+		if(headspay.fec < FEC_K) {
+                  printf("len(%ld)  ",piovpay->iov_len);
+	          for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
+	          for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
+		}
+*/
+
 		if (pelt->curseq == headspay.seq) pelt->iovfec[headspay.fec] = piovpay; else { pelt->iovsto = piovpay; pelt->fecsto = headspay.fec; }
 		if (pelt->curr < (MAXNBMTUIN-1)) pelt->curr=(1+pelt->curr); else pelt->curr=0;
 
@@ -185,11 +193,12 @@ int main(void) {
 		}
 
 		for (uint8_t i=imin;i<imax;i++) {
-
+/*
                   struct iovec *ptmp = pelt->iovfec[i];
                   printf("len(%ld)  ",ptmp->iov_len);
 	          for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)ptmp->iov_base)+i));printf(" ... ");
 	          for (uint16_t i=ptmp->iov_len-5;i<ptmp->iov_len;i++) printf("%x ",*(((uint8_t *)ptmp->iov_base)+i));printf("\n");
+*/
 /*	
                   if ((len = sendto(utils.fd[utils.nbraws + 3], pelt->iovfec[i]->iov_base + sizeof(wfb_utils_fec_t), 
 				    pelt->iovfec[i]->iov_len - sizeof(wfb_utils_fec_t), MSG_DONTWAIT, 
