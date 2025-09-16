@@ -322,13 +322,15 @@ void wfb_utils_init(wfb_utils_init_t *putils) {
     putils->msgin.eltin[i].nxtseq = 0;
     putils->msgin.eltin[i].nxtfec = 0;
     putils->msgin.eltin[i].fails = false;
+    putils->msgin.eltin[i].iovsto = (struct iovec *)0;
+    putils->msgin.eltin[i].fecsto = 0;
+
     for (uint8_t k=0; k < MAXNBMTUIN; k++) {
       struct iovec *piov = &putils->msgin.eltin[i].iovraw[k];
       piov->iov_base = &putils->msgin.eltin[i].buf_raw[k][0];
     }
     for (uint8_t k=0; k < FEC_N; k++) {
       putils->msgin.eltin[i].iovfec[k] = (struct iovec *)0;
-      putils->msgin.eltin[i].iovsto[k] = (struct iovec *)0;
     }
   }
 

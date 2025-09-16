@@ -73,7 +73,7 @@ int main(void) {
 	      } 
               if( headspay.msgcpt == WFB_VID) {
                 bool clearflag=false;
-
+/*
                 if ((headspay.seq == 2) && ((headspay.fec == 7) || (headspay.fec == 8) || (headspay.fec == 9) || (headspay.fec == 6) || (headspay.fec == 10))) { 
 		  printf("MISSING (%d)(%d)\n",headspay.seq,headspay.fec);
                   printf("(%d)[%d]len(%ld)  ",pelt->curr,headspay.fec,piovpay->iov_len);
@@ -82,7 +82,8 @@ int main(void) {
 		  break;
                 }
 
-
+*/
+/*
 		uint8_t imax=0, imin=0;
                 if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
 		  if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
@@ -98,13 +99,25 @@ int main(void) {
 		  else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
   	          if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
 		}
-                
-		if (pelt->curseq != headspay.seq) pelt->iovsto[headspay.fec] = piovpay; else pelt->iovfec[headspay.fec] = piovpay;
+ */               
+		if (pelt->curseq == headspay.seq) pelt->iovfec[headspay.fec] = piovpay; else { pelt->iovsto = piovpay; pelt->fecsto = headspay.fec; }
 		if (pelt->curr < (MAXNBMTUIN-1)) pelt->curr=(1+pelt->curr); else pelt->curr=0;
 
                 if (pelt->curseq != headspay.seq) {
                   pelt->curseq = headspay.seq;
 
+
+		  for (uint8_t k=0;k<FEC_N;k++) {
+                    if (pelt->iovfec[k]) {
+                      struct iovec *ptmp = pelt->iovfec[k];
+                      if (k < FEC_K) ptmp->iov_len = ONLINE_MTU;
+                      printf(">> len(%ld)  ",ptmp->iov_len);
+	              for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)ptmp->iov_base)+i));printf(" ... ");
+	              for (uint16_t i=ptmp->iov_len-5;i<ptmp->iov_len;i++) printf("%x ",*(((uint8_t *)ptmp->iov_base)+i));printf("\n");
+		    }
+		  }
+
+/*
 		  if (pelt->fails) {
 
                     printf("Trying ...\n");
@@ -148,16 +161,10 @@ int main(void) {
                                (unsigned int *)index,
                                ONLINE_MTU);
 
-		      for (uint8_t k=0;k<idx;k++){
-		        uint16_t tmplen = ((wfb_utils_fec_t *)&outblocksbuf[k][0])->feclen;
-		        printf("len(%d)",tmplen);
-		        for (uint8_t i=0;i<5;i++) printf("%x ",outblocksbuf[k][i]);printf(" ... ");
-                        for (uint16_t i=tmplen-5;i<tmplen;i++) printf("%x ",outblocksbuf[k][i]);;printf("\n");
 		      }
-
   		    }
 		  }
-
+*/
 		  clearflag = true;
 		}
 /*
@@ -171,7 +178,7 @@ int main(void) {
 		if (clearflag) {
 		  clearflag=false;
 		  for (uint8_t k=0;k<FEC_N;k++) { 
-                    if(pelt->iovsto[k]) { pelt->iovfec[k]=pelt->iovsto[k]; pelt->iovsto[k]=(struct iovec *)0; }
+                    if(pelt->iovsto) { pelt->iovfec[headspay.fec]=pelt->iovsto; pelt->iovsto=(struct iovec *)0; pelt->iovsto=0; }
                     else pelt->iovfec[k]=(struct iovec *)0;
 		  }
 		}
@@ -195,13 +202,14 @@ int main(void) {
             piov->iov_base = &utils.msgout.buf_vid[curr][sizeof(wfb_utils_fec_t)];
 	    piov->iov_len = PAY_MTU;
             piov->iov_len = readv( utils.fd[cpt], piov, 1);
-	    memcpy(&utils.msgout.buf_vid[curr][0], &(piov->iov_len), sizeof(wfb_utils_fec_t));
+            piov->iov_base = &utils.msgout.buf_vid[curr][0];
 	    piov->iov_len += sizeof(wfb_utils_fec_t);
-
+	    ((wfb_utils_fec_t *)piov->iov_base)->feclen = piov->iov_len;
+/*
             printf("len(%ld)  ",piov->iov_len);
 	    for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf(" ... ");
 	    for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*(((uint8_t *)piov->iov_base)+i));printf("\n");
-
+*/
             if (utils.rawchan.mainraw == -1) piov->iov_len = 0;
 	    else if (curr < FEC_K) (utils.msgout.currvid)++;
 	  }
@@ -260,13 +268,13 @@ int main(void) {
       	      msg.msg_namelen = sizeof(utils.norawout);
 #endif // RAW
       	      len = sendmsg(utils.fd[1 + j], (const struct msghdr *)&msg, MSG_DONTWAIT);
-/*
+
               if (i == WFB_VID) {
                 printf(">> len(%ld)  ",piovpay->iov_len);
 	        for (uint8_t i=0;i<5;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf(" ... ");
 	        for (uint16_t i=piovpay->iov_len-5;i<piovpay->iov_len;i++) printf("%x ",*(((uint8_t *)piovpay->iov_base)+i));printf("\n");
 	      }
-*/
+
 #if RAW
       	      if (len > 0) utils.rawdevs[j]->stat.sent++;
 #endif // RAW

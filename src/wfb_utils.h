@@ -51,7 +51,8 @@ typedef struct {
   uint8_t buf_raw[MAXNBMTUIN][ONLINE_MTU];
   struct iovec iovraw[MAXNBMTUIN];
   struct iovec *iovfec[FEC_N];
-  struct iovec *iovsto[FEC_N];
+  struct iovec *iovsto;
+  uint8_t fecsto;
   uint8_t curr;
   uint8_t curseq;
   uint8_t nxtseq;
