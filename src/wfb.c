@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -53,7 +54,7 @@ int main(void) {
   norawinaddr.sin_family = AF_INET;
   norawinaddr.sin_port = htons(PORT_NORAW);
   norawinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
-  if (-1 == bind( fd[readtabnb], (const struct sockaddr *)&norawinaddr, sizeof(struct sockaddr_in))) exit(-1);
+  if (-1 == bind( fd[readtabnb], (const struct sockaddr *)&norawinaddr, sizeof(norawinaddr))) exit(-1);
   struct sockaddr_in norawoutaddr;
   norawoutaddr.sin_family = AF_INET;
   norawoutaddr.sin_port = htons(PORT_NORAW);
@@ -63,28 +64,27 @@ int main(void) {
   readtabnb += 1;
 
   if (-1 == (fd[readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  if (-1 == setsockopt(fd[readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(struct sockaddr_in))) exit(-1);
 #if BOARD
+  if (-1 == setsockopt(fd[readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in vidinaddr;
   vidinaddr.sin_family = AF_INET;
   vidinaddr.sin_port = htons(PORT_VID);
-  vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
-  if (-1 == bind( fd[readtabnb], (const struct sockaddr *)&vidinaddr, sizeof(struct sockaddr_in))) exit(-1);
+  vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
+  if (-1 == bind( fd[readtabnb], (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
   readsets[readtabnb].fd = fd[readtabnb];
   readsets[readtabnb].events = POLLIN;
-  readtabnb += 1;
 #else
   struct sockaddr_in vidoutaddr;
   vidoutaddr.sin_family = AF_INET;
   vidoutaddr.sin_port = htons(PORT_VID);
   vidoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
 #endif // BOARD
-  readsets[readtabnb].fd = fd[readtabnb];
-  readsets[readtabnb].events = POLLIN;
 
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
+  uint64_t exptime;
+  ssize_t len;
   uint8_t buf_vid[FEC_N][ONLINE_MTU];
   struct iovec iov[FEC_N], *iovfec[FEC_N];
   uint8_t curr = 0;
@@ -92,10 +92,14 @@ int main(void) {
   struct iovec *piov;
 
   for(;;) {
-    if (0 != poll(readsets, 1, -1)) {
+    if (0 != poll(readsets, readtabnb+1, -1)) {
       for (uint8_t cpt=0; cpt<readtabnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
+
+          printf("cpt(%d)\n",cpt);
+
           if (cpt == 0) { // TIMER
+	    len = read(fd[cpt], &exptime, sizeof(uint64_t));
             printf("Click\n");
 	  } else {
             if (cpt == 1) { // NORAW
