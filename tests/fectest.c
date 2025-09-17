@@ -40,7 +40,7 @@ int main(void) {
   fec_new(FEC_K, FEC_N, &fec_p);
 
   uint8_t buf_vid[FEC_N][ONLINE_MTU];
-  struct iovec iov[FEC_N];
+  struct iovec iov[FEC_N], *iovfec[FEC_N];
   uint8_t curr = 0;
   for (uint8_t k=0;k<FEC_N;k++) iov[k].iov_len = 0;
 
@@ -72,28 +72,20 @@ int main(void) {
               piov->iov_len += sizeof(wfb_utils_fec_t);
               ((wfb_utils_fec_t *)piov->iov_base)->feclen = piov->iov_len;
   	      curr++;
+	    
+	      printf("len(%ld)  ",piov->iov_len - sizeof(wfb_utils_fec_t));
+	      for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i + sizeof(wfb_utils_fec_t))));printf(" ... ");
+	      for (uint16_t i=piov->iov_len-5-sizeof(wfb_utils_fec_t);i<piov->iov_len-sizeof(wfb_utils_fec_t);i++) 
+	        printf("%x ",*((uint8_t *)(piov->iov_base + i + sizeof(wfb_utils_fec_t))));printf("\n");
 	    }
 	  }
 	}
       }
 
       if (curr == FEC_K) {
+        printf("\n");
+
         curr=0;
- 
-        for (uint8_t k=0;k<FEC_K;k++) {
-	  piov = &iov[k];
-	  printf("len(%ld)  ",piov->iov_len);
-          for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));printf(" ... ");
-          for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));;printf("\n");
-	}
-
-	printf("MISSING \n");
-	piov = &iov[2];
-	printf("len(%ld)  ",piov->iov_len);
-        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));printf(" ... ");
-        for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));;printf("\n");
-	memset(
-
         unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
         uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&buf_vid[f];
         uint8_t *fecblocks[FEC_N-FEC_K];
@@ -105,6 +97,21 @@ int main(void) {
                     (gf*restrict const*restrict const)fecblocks,
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
 
+        for (uint8_t k=0;k<FEC_N;k++) {
+          iovfec[k] = &iov[k];
+          if (k>=FEC_K) { iov[k].iov_base = &buf_vid[k][0]; iov[k].iov_len = ONLINE_MTU; }
+	}
+
+	uint8_t mis = 3;
+	printf("\nMISSING (%d)\n",mis);
+	piov = &iov[mis];
+        printf("len(%ld)  ",piov->iov_len - sizeof(wfb_utils_fec_t));
+        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i + sizeof(wfb_utils_fec_t))));printf(" ... ");
+        for (uint16_t i=piov->iov_len-5-sizeof(wfb_utils_fec_t);i<piov->iov_len-sizeof(wfb_utils_fec_t);i++)
+          printf("%x ",*((uint8_t *)(piov->iov_base + i + sizeof(wfb_utils_fec_t))));printf("\n");
+
+	iovfec[mis] = (struct iovec *)0;
+        printf("\n");
 
 	uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
         uint8_t *outblocks[FEC_N-FEC_K];
@@ -117,46 +124,52 @@ int main(void) {
           index[k] = 0;
           inblocks[k] = (uint8_t *)0;
           if (k < (FEC_N - FEC_K)) outblocks[k] = (uint8_t *)0;
-          if ( pelt->iovfec[k] ) {
-             inblocks[k] = (uint8_t *)pelt->iovfec[k]->iov_base;
-             index[k] = k;
-             alldata |= (1 << k);
-           } else {
-             for(;j < FEC_N; j++) {
-               if ( pelt->iovfec[j] ) {
-                 inblocks[k] = (uint8_t *)pelt->iovfec[j]->iov_base;
-                 outblocks[idx] = &outblocksbuf[idx][0]; idx++;
-                 index[k] = j;
-                 j++;
-                 alldata |= (1 << k);
-                 break;
-               }
-             }
-           }
-         }
-         if ((alldata == 255)&&(idx > 0)&&(idx <= (FEC_N - FEC_K))) {
-           for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-           printf("\nDECODE (%d)\n",idx);
-           fec_decode(fec_p,
-                       (const unsigned char **)inblocks,
-                       (unsigned char * const*)outblocks,
-                       (unsigned int *)index,
-                       ONLINE_MTU);
+          if ( iovfec[k] ) {
+            inblocks[k] = (uint8_t *)iovfec[k]->iov_base;
+            index[k] = k;
+            alldata |= (1 << k);
+          } else {
+            for(;j < FEC_N; j++) {
+              if ( iovfec[j] ) {
+                inblocks[k] = (uint8_t *)iovfec[j]->iov_base;
+                outblocks[idx] = &outblocksbuf[idx][0]; idx++;
+                index[k] = j;
+                j++;
+                alldata |= (1 << k);
+                break;
+              }
+            }
+          }
+        }
 
-           printf("\nrestoring :\n");
-           uint8_t j=0;
-           for (uint8_t k=0;k<FEC_K;k++) {
-             if (!(pelt->iovfec[k])) {
-               iovrecover[k].iov_base = outblocks[j];
-               iovrecover[k].iov_len = ((wfb_utils_fec_t *)outblocks[j])->feclen;
-               pelt->iovfec[k] = &iovrecover[k];
-               struct iovec *ptmp = pelt->iovfec[k];
-               printf("[%d] len(%ld)  ",k,ptmp->iov_len);
-               for (uint16_t i=0;i<ptmp->iov_len;i++) dump2[i]=*(((uint8_t *)ptmp->iov_base)+i);
-               j++;
-             }
-           }
-	 }
+	printf("\n");
+        if ((alldata == 255)&&(idx > 0)&&(idx <= (FEC_N - FEC_K))) {
+          for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
+          printf("\nDECODE (%d)\n",idx);
+          fec_decode(fec_p,
+                     (const unsigned char **)inblocks,
+                     (unsigned char * const*)outblocks,
+                     (unsigned int *)index,
+                     ONLINE_MTU);
+	}
+
+        printf("\nRESTORING\n");
+        uint8_t x=0;
+	struct iovec recover[FEC_N-FEC_K];
+        for (uint8_t k=0;k<FEC_K;k++) {
+          if (!(iovfec[k])) {
+            recover[x].iov_base = outblocks[x];
+            recover[x].iov_len = ((wfb_utils_fec_t *)outblocks[x])->feclen;
+	    iovfec[k] = &recover[x];
+            x++;
+	    piov = iovfec[k];
+            printf("len(%ld)  ",piov->iov_len - sizeof(wfb_utils_fec_t));
+            for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i + sizeof(wfb_utils_fec_t))));printf(" ... ");
+            for (uint16_t i=piov->iov_len-5-sizeof(wfb_utils_fec_t);i<piov->iov_len-sizeof(wfb_utils_fec_t);i++)
+              printf("%x ",*((uint8_t *)(piov->iov_base + i + sizeof(wfb_utils_fec_t))));printf("\n");
+	  }
+	}
+	printf("---------------------------------------------------------------------\n");
       }
     }
   }
