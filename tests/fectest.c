@@ -72,8 +72,6 @@ int main(void) {
               piov->iov_len += sizeof(wfb_utils_fec_t);
               ((wfb_utils_fec_t *)piov->iov_base)->feclen = piov->iov_len;
   	      curr++;
-  
-  	      printf("(%d)(%ld)(%d)\n",curr,piov->iov_len,((wfb_utils_fec_t *)piov->iov_base)->feclen);
 	    }
 	  }
 	}
@@ -81,6 +79,21 @@ int main(void) {
 
       if (curr == FEC_K) {
         curr=0;
+ 
+        for (uint8_t k=0;k<FEC_K;k++) {
+	  piov = &iov[k];
+	  printf("len(%ld)  ",piov->iov_len);
+          for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));printf(" ... ");
+          for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));;printf("\n");
+	}
+
+	printf("MISSING \n");
+	piov = &iov[2];
+	printf("len(%ld)  ",piov->iov_len);
+        for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));printf(" ... ");
+        for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));;printf("\n");
+	memset(
+
         unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
         uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&buf_vid[f];
         uint8_t *fecblocks[FEC_N-FEC_K];
