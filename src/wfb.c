@@ -14,6 +14,16 @@
 typedef enum { WFB_PRO, WFB_TUN, WFB_TEL, WFB_VID, WFB_NB } type_d;
 
 typedef struct {
+  uint8_t droneid;
+  uint8_t msgcpt;
+  uint16_t msglen;
+  uint8_t seq;
+  uint8_t fec;
+  uint8_t num;
+  uint8_t dum;
+} __attribute__((packed)) wfb_utils_heads_pay_t;
+
+typedef struct {
   uint16_t feclen;
 } __attribute__((packed)) wfb_utils_fec_t;
 
@@ -32,6 +42,18 @@ typedef struct {
 #define PORT_NORAW  3000
 #define PORT_VID  5600
 
+
+#define DRONEID_GRD 0
+#define DRONEID_MIN 1
+#define DRONEID_MAX 2
+
+#if BOARD
+#define DRONEID 1
+#else
+#define DRONEID DRONEID_GRD
+#endif // BOARD
+
+
 #define FEC_K   8
 #define FEC_N   12
 
@@ -40,39 +62,41 @@ int main(void) {
 
   struct pollfd readsets[MAXDEV];
   uint8_t fd[MAXDEV];
+  uint8_t readnb=0;
 
-  if (-1 == (fd[0] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
-  readsets[0].fd = fd[0];
-  readsets[0].events = POLLIN;
+  if (-1 == (fd[readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(fd[0], 0, &period, NULL);
+  timerfd_settime(fd[readnb], 0, &period, NULL);
+  readsets[readnb].fd = fd[readnb];
+  readsets[readnb].events = POLLIN;
+  readnb++;
 
-  uint8_t readtabnb=1;
-  if (-1 == (fd[readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  if (-1 == setsockopt(fd[readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == setsockopt(fd[readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in norawinaddr;
   norawinaddr.sin_family = AF_INET;
   norawinaddr.sin_port = htons(PORT_NORAW);
   norawinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
-  if (-1 == bind( fd[readtabnb], (const struct sockaddr *)&norawinaddr, sizeof(norawinaddr))) exit(-1);
+  if (-1 == bind( fd[readnb], (const struct sockaddr *)&norawinaddr, sizeof(norawinaddr))) exit(-1);
   struct sockaddr_in norawoutaddr;
   norawoutaddr.sin_family = AF_INET;
   norawoutaddr.sin_port = htons(PORT_NORAW);
   norawoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
-  readsets[readtabnb].fd = fd[readtabnb];
-  readsets[readtabnb].events = POLLIN;
-  readtabnb += 1;
+  readsets[readnb].fd = fd[readnb];
+  readsets[readnb].events = POLLIN;
+  readnb++;
 
-  if (-1 == (fd[readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
-  if (-1 == setsockopt(fd[readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
-  struct sockaddr_in vidinaddr;
+  if (-1 == setsockopt(fd[readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct sockaddr_in  vidinaddr;
   vidinaddr.sin_family = AF_INET;
   vidinaddr.sin_port = htons(PORT_VID);
   vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
-  if (-1 == bind( fd[readtabnb], (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
-  readsets[readtabnb].fd = fd[readtabnb];
-  readsets[readtabnb].events = POLLIN;
+  if (-1 == bind( fd[readnb], (const struct sockaddr *)&vidinaddr, sizeof( vidinaddr))) exit(-1);
+  readsets[readnb].fd = fd[readnb];
+  readsets[readnb].events = POLLIN;
+  readnb++;
 #else
   struct sockaddr_in vidoutaddr;
   vidoutaddr.sin_family = AF_INET;
@@ -80,9 +104,10 @@ int main(void) {
   vidoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
 #endif // BOARD
 
-
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
+  uint8_t sequence=0;
+  uint8_t num=0;
   uint64_t exptime;
   ssize_t len;
   uint8_t buf_vid[FEC_N][ONLINE_MTU];
@@ -92,10 +117,9 @@ int main(void) {
   struct iovec *piov;
 
   for(;;) {
-    if (0 != poll(readsets, readtabnb+1, -1)) {
-      for (uint8_t cpt=0; cpt<readtabnb; cpt++) {
+    if (0 != poll(readsets, readnb, -1)) {
+      for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
-
           printf("cpt(%d)\n",cpt);
 
           if (cpt == 0) { // TIMER
@@ -206,9 +230,30 @@ int main(void) {
           if (k>=FEC_K) { iov[k].iov_base = &buf_vid[k][0]; iov[k].iov_len = ONLINE_MTU; }
 	}
 
+        for (uint8_t k=0;k<FEC_N;k++) {
+          struct iovec *piovpay = iovfec[k];
 
+          wfb_utils_heads_pay_t headspay =
+                  { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = piovpay->iov_len, .seq = sequence++,
+                    .fec = k, .num = num++ };
 
-	printf("---------------------------------------------------------------------\n");
+          struct iovec iovheadpay = { .iov_base = &headspay,
+                                    .iov_len = sizeof(wfb_utils_heads_pay_t)};
+          struct msghdr msg;
+          struct iovec iovtab[2] = {iovheadpay, *piovpay};
+          msg.msg_iovlen = 2;
+          msg.msg_name = &norawoutaddr;
+          msg.msg_namelen = sizeof(norawoutaddr);
+
+          len = sendmsg(fd[1], (const struct msghdr *)&msg, MSG_DONTWAIT);
+
+          struct iovec *piov = piovpay;
+          printf(">>len(%ld)  ",piov->iov_len);
+          for (uint8_t i=0;i<5;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i )));printf(" ... ");
+          for (uint16_t i=piov->iov_len-5;i<piov->iov_len;i++) printf("%x ",*((uint8_t *)(piov->iov_base + i)));printf("\n");
+
+	  printf("---------------------------------------------------------------------\n");
+	}
       }
 #endif // BOARD
     }
