@@ -137,6 +137,9 @@ int main(void) {
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
 
+
+  struct iovec iovfec[FEC_N];
+
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
@@ -191,13 +194,16 @@ int main(void) {
                     if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
                   }
 
-                  if (msgincurseq == headspay.seq) {
-                    if (headspay.fec < FEC_K) {
+                  if (msgincurseq == headspay.seq) { iovfec[headspay.fec] = iovpay; 
+
+                    if (headspay.fec < FEC_N) {
 		      inblocks[headspay.fec] = (uint8_t *)&iovpay.iov_base; 
 		      index[headspay.fec] = headspay.fec;
 		    } else {
-                      for(uint8_t k=0;k<FEC_K;k++) {
-                        if (!(inblocks[k])) {
+                      for(uint8_t i=0;i<FEC_K;i++) {
+                        if (!(inblocks[i])) {
+                          for(uint8_t k=FEC_K;k<FEC_N;k++) {
+
                           inblocks[k]=(uint8_t *)&iovpay.iov_base;
                           index[k]=k;
 			  outblocks[outblocksidx] = &outblocksbuf[outblocksidx][0]; 
@@ -205,15 +211,48 @@ int main(void) {
 			}
 		      }
 		    }
+
 		  } else { inblocksto = (uint8_t *)&iovpay.iov_base; fecsto = headspay.fec; }
 
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
                   if (msgincurseq != headspay.seq) {
                     msgincurseq = headspay.seq;
+                      clearflag = true;
 
                     if (msginfails) {
                       msginfails = false;
+
+/*
+                    uint8_t Outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+                    uint8_t *Outblocks[FEC_N-FEC_K];
+                    unsigned Index[FEC_K];
+                    uint8_t *Inblocks[FEC_K];
+                    uint8_t  alldata=0;
+                    uint8_t j=FEC_K;
+                    uint8_t idx = 0;
+                    for (uint8_t k=0;k<FEC_K;k++) {
+                      Index[k] = 0;
+                      Inblocks[k] = (uint8_t *)0;
+                      if (k < (FEC_N - FEC_K)) Outblocks[k] = (uint8_t *)0;
+                      if ( iovfec[k].iov_len>0 ) {
+                        Inblocks[k] = (uint8_t *)&iovfec[k].iov_base;
+                        Index[k] = k;
+                        alldata |= (1 << k);
+                      } else {
+                        for(;j < FEC_N; j++) {
+                          if ( iovfec[j].iov_len>0 ) {
+                            Inblocks[k] = (uint8_t *)&iovfec[j].iov_base;
+                            Outblocks[idx] = &Outblocksbuf[idx][0]; idx++;
+                            Index[k] = j;
+                            j++;
+                            alldata |= (1 << k);
+                            break;
+                          }
+                        }
+                      }
+                    }
+*/
 
 		      if ((outblocksidx > 0)&&(outblocksidx <= (FEC_N - FEC_K))) {
                         printf("\nDECODE (%d)\n",outblocksidx);
@@ -246,11 +285,17 @@ int main(void) {
 
                   if (clearflag) {
                     clearflag=false;
+/*
+		    for (uint8_t k=0;k<FEC_N;k++) { iovfec[k].iov_base = 0; iovfec[k].iov_len=0; }
+		    iovfec[fecsto].iov_base = inblocksto;
+		    iovfec[fecsto].iov_len = fecstolen;
+*/
                     memset(inblocks, 0, sizeof(inblocks));
                     memset(outblocks, 0, sizeof(outblocks));
                     memset(index, 0, sizeof(index));
 		    outblocksidx=0;
-		    clearflag=true;
+                    inblocks[fecsto]=inblocksto;
+
 		  }
 		}
 #endif // BOARD
