@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -120,6 +121,16 @@ int main(void) {
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;;
 
+  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+  uint8_t *outblocks[FEC_N-FEC_K];
+  uint8_t *inblocks[FEC_K];
+  uint8_t *inblocksto;
+  uint8_t fecsto;
+  uint8_t msgincurseq=0;
+  uint8_t msginnxtseq=0;
+  uint8_t msginnxtfec=0;
+  bool msginfails = false;
+
   ssize_t vidlen=0;
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
@@ -148,37 +159,36 @@ int main(void) {
 //              }
 #if BOARD
 #else
-
                 if( headspay.msgcpt == WFB_VID) {
 
                   bool clearflag=false;
-                  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
-                  uint8_t *outblocks[FEC_N-FEC_K];
                   struct iovec iovrecover[FEC_N-FEC_K];
                   uint8_t imax=0, imin=0;
-                  if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
-                    if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
+                  if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
+                    if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
                     else {
-                      pelt->nxtfec=0;
-                      if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
+                      msginnxtfec=0;
+                      if (headspay.seq < 254) msginnxtseq=(headspay.seq+1); else msginnxtseq=0;
                     }
                     printf("KO\n");
-                    pelt->fails = true;
+                    msginfails = true;
                   } else {
                     printf("OK\n");
-                    if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++;
-                    else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
+                    if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
+                    else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
                     if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
                   }
 
-                  if (pelt->curseq == headspay.seq) pelt->iovfec[headspay.fec] = piovpay; else { pelt->iovsto = piovpay; pelt->fecsto = headspay.fec; }
-                  if (pelt->curr < (MAXNBRAWBUF-1)) pelt->curr=(1+pelt->curr); else pelt->curr=0;
+                  if (msgincurseq == headspay.seq) inblocks[headspay.fec] = (uint8_t *)&iovpay.iov_base; else { inblocksto = (uint8_t *)&iovpay.iov_base; fecsto = headspay.fec; }
+                  if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
-                  if (pelt->curseq != headspay.seq) {
-                    pelt->curseq = headspay.seq;
+                  if (msgincurseq != headspay.seq) {
+                    msgincurseq = headspay.seq;
 
-                    if (pelt->fails) {
-                      pelt->fails = false;
+                    if (msginfails) {
+                      msginfails = false;
+		    }
+		  }
 
 /*
       	      uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
@@ -282,7 +292,6 @@ int main(void) {
 	kmin=(vidcur-1);
         if (vidcur == FEC_K) {
 	  vidcur=0; kmax=FEC_N;
-
           unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
           uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&vidbuf[f];
           uint8_t *fecblocks[FEC_N-FEC_K];
@@ -299,7 +308,7 @@ int main(void) {
           for (uint8_t k=kmin;k<kmax;k++) {
             if (k>=FEC_K)  vidlen = ONLINE_MTU;
             wfb_utils_heads_pay_t headspay =
-            { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence++, .fec = k, .num = num++ };
+            { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
             struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
             struct iovec iovtab[2] = {iovheadpay, iovpay};
@@ -312,6 +321,7 @@ int main(void) {
 */
 	  }
 	  vidlen = 0;
+	  if (vidcur==0) sequence++;
 	}
       }
     }
