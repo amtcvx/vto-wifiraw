@@ -105,7 +105,7 @@ int main(void) {
   struct sockaddr_in vidoutaddr;
   vidoutaddr.sin_family = AF_INET;
   vidoutaddr.sin_port = htons(PORT_VID);
-  vidoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
+  vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
 
   fec_t *fec_p;
@@ -150,6 +150,36 @@ int main(void) {
 #else
 
                 if( headspay.msgcpt == WFB_VID) {
+
+                  bool clearflag=false;
+                  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+                  uint8_t *outblocks[FEC_N-FEC_K];
+                  struct iovec iovrecover[FEC_N-FEC_K];
+                  uint8_t imax=0, imin=0;
+                  if ((pelt->nxtseq != headspay.seq)||(pelt->nxtfec != headspay.fec)) {
+                    if (headspay.fec < (FEC_N-1)) { pelt->nxtfec=(headspay.fec+1); pelt->nxtseq=headspay.seq; }
+                    else {
+                      pelt->nxtfec=0;
+                      if (headspay.seq < 254) pelt->nxtseq=(headspay.seq+1); else pelt->nxtseq = 0;
+                    }
+                    printf("KO\n");
+                    pelt->fails = true;
+                  } else {
+                    printf("OK\n");
+                    if (pelt->nxtfec < (FEC_N-1)) (pelt->nxtfec)++;
+                    else { pelt->nxtfec=0; if (pelt->nxtseq < 255) (pelt->nxtseq)++; else pelt->nxtseq = 0; }
+                    if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
+                  }
+
+                  if (pelt->curseq == headspay.seq) pelt->iovfec[headspay.fec] = piovpay; else { pelt->iovsto = piovpay; pelt->fecsto = headspay.fec; }
+                  if (pelt->curr < (MAXNBRAWBUF-1)) pelt->curr=(1+pelt->curr); else pelt->curr=0;
+
+                  if (pelt->curseq != headspay.seq) {
+                    pelt->curseq = headspay.seq;
+
+                    if (pelt->fails) {
+                      pelt->fails = false;
+
 /*
       	      uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
               uint8_t *outblocks[FEC_N-FEC_K];
@@ -209,9 +239,18 @@ int main(void) {
       	      }
 */
                   if(headspay.fec < FEC_K) {
+
+                    vidlen = ((wfb_utils_fec_t *)iovpay.iov_base)->feclen; 
+
+    	            printf("(%d)len(%d)(%ld)  ",headspay.fec,headspay.msglen,vidlen);
+
+    	            for (uint8_t i=0;i<5;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf(" ... ");
+    	            for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf("\n");
+
                     if ((len = sendto(fd[2], iovpay.iov_base + sizeof(wfb_utils_fec_t),
-                                    iovpay.iov_len - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
-                                    (struct sockaddr *)& vidoutaddr, sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
+                                    vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
+                                    (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr))) > 0) printf("len(%ld)\n",len);
+
 		  }
 		}
 #endif // BOARD
