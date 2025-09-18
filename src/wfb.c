@@ -11,7 +11,7 @@
 
 #include "zfex.h"
 
-typedef enum { WFB_PRO, WFB_TUN, WFB_TEL, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_TIM, WFB_RAW, WFB_VID, WFB_NB } type_d;
 
 typedef struct {
   uint8_t droneid;
@@ -62,6 +62,7 @@ int main(void) {
 
   struct pollfd readsets[MAXNBDEV];
   uint8_t fd[MAXNBDEV];
+  uint8_t readtab[WFB_NB];
   uint8_t readnb=0;
 
   readtab[readnb] = WFB_TIM;
@@ -119,26 +120,18 @@ int main(void) {
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;;
 
-  ssize_t vidlen;
+  ssize_t vidlen=0;
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
-
-  printf("(%d)\n",readnb);
 
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
-
-          printf("(%d)\n",cpt);
-   
-          if (readtab[ctp] == WFB_TIM ) { // TIMER
-			  
+          if (readtab[cpt] == WFB_TIM ) { // TIMER
 	    len = read(fd[cpt], &exptime, sizeof(uint64_t)); printf("Click\n");
-
 	  } else {
-            if (cpt == WFB_RAW) { // NORAW
-			   
+            if (readtab[cpt] == WFB_RAW) { // NORAW
               wfb_utils_heads_pay_t headspay;
               memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
 
@@ -150,13 +143,13 @@ int main(void) {
               len = recvmsg(fd[cpt], &msg, MSG_DONTWAIT);
 
               if (len > 0) {
-                if( headspay.msgcpt == WFB_TUN) {
-//                  len = write(utils.fd[utils.nbraws + 1], piovpay->iov_base, piovpay->iov_len);
-		} else {
+//              if( headspay.msgcpt == WFB_TUN) {
+//                len = write(utils.fd[utils.nbraws + 1], piovpay->iov_base, piovpay->iov_len);
+//              }
 #if BOARD
 #else
 
-                  if( headspay.msgcpt == WFB_VID) {
+                if( headspay.msgcpt == WFB_VID) {
 /*
       	      uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
               uint8_t *outblocks[FEC_N-FEC_K];
@@ -215,73 +208,72 @@ int main(void) {
       	        }
       	      }
 */
-                    if(headspay.fec < FEC_K) {
-                      if ((len = sendto(fd[2], iovpay.iov_base + sizeof(wfb_utils_fec_t),
+                  if(headspay.fec < FEC_K) {
+                    if ((len = sendto(fd[2], iovpay.iov_base + sizeof(wfb_utils_fec_t),
                                     iovpay.iov_len - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
                                     (struct sockaddr *)& vidoutaddr, sizeof(struct sockaddr))) > 0) printf("len(%ld)\n",len);
-		    }
 		  }
-#endif // BOARD
 		}
+#endif // BOARD
 	      }
 	    } else {
 #if BOARD
-              if (cpt == 2) { // VID
-                if (vidcur < (FEC_K+1)) {
-                  memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
-    	          struct iovec iov;
-                  iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
-                  iov.iov_len = PAY_MTU;
-                  vidlen = readv( fd[cpt], &iov, 1);
-                  ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen + sizeof(wfb_utils_fec_t);
-      	          vidcur++;
-/*	    
-    	          printf("len(%ld)  ",vidlen);
-    	          for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur][i]);printf(" ... ");
-    	          for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur][i]);printf("\n");
+              if (readtab[cpt] == WFB_VID) { // VID
+                memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
+    	        struct iovec iov;
+                iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
+                iov.iov_len = PAY_MTU;
+                vidlen = readv( fd[cpt], &iov, 1) + sizeof(wfb_utils_fec_t);
+                ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
+      	        vidcur++;
+/*
+    	        printf("(%d)len(%ld)  ",vidcur-1,vidlen);
+    	        for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);printf(" ... ");
+    	        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
 */
-    	        }
 	      }
 #endif // BOARD
 	    }
           }
         }
-      }
-      uint8_t kmin,kmax; 
-#if BOARD
-      if (vidcur == FEC_K) {
-        vidcur = 0;
 
-        unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
-        uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&vidbuf[f];
-        uint8_t *fecblocks[FEC_N-FEC_K];
-        for (uint8_t f=0; f<(FEC_N - FEC_K); f++) {
-          fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
-        }
-        fec_encode(fec_p,
+        uint8_t kmin,kmax; 
+
+#if BOARD
+	kmin=(vidcur-1);
+        if (vidcur == FEC_K) {
+	  vidcur=0; kmax=FEC_N;
+
+          unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
+          uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)&vidbuf[f];
+          uint8_t *fecblocks[FEC_N-FEC_K];
+          for (uint8_t f=0; f<(FEC_N - FEC_K); f++) {
+            fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
+          }
+          fec_encode(fec_p,
                     (const gf*restrict const*restrict const)datablocks,
                     (gf*restrict const*restrict const)fecblocks,
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
-	kmin=FEC_K;kmax=FEC_N;
-      } else { kmin=vidcur;kmax=vidcur+1; }
+        } else kmax=vidcur;
 #endif // BOARD
-      for (uint8_t k=kmin;k<kmax;k++) {
-
-        wfb_utils_heads_pay_t headspay =
-          { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence++, .fec = k, .num = num++ };
-
-        struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-        struct iovec iovpay = { .iov_base = &vidbuf[vidcur][0], .iov_len = vidlen };
-        struct iovec iovtab[2] = {iovheadpay, iovpay};
-
-	struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
-
-        len = sendmsg(fd[1], (const struct msghdr *)&msg, MSG_DONTWAIT);
+        if (vidlen>0) {
+          for (uint8_t k=kmin;k<kmax;k++) {
+            if (k>=FEC_K)  vidlen = ONLINE_MTU;
+            wfb_utils_heads_pay_t headspay =
+            { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence++, .fec = k, .num = num++ };
+            struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+            struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
+            struct iovec iovtab[2] = {iovheadpay, iovpay};
+  	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
+            len = sendmsg(fd[WFB_RAW], (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
-        printf(">>len(%ld)  ",vidlen);
-        for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
-        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
-*/	
+            printf("(%d)>>len(%ld)  ",k,vidlen);
+            for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
+            for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
+*/
+	  }
+	  vidlen = 0;
+	}
       }
     }
   }
