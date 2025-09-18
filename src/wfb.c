@@ -163,6 +163,16 @@ int main(void) {
 #else
                 if( headspay.msgcpt == WFB_VID) {
 
+
+		   if ((headspay.seq==1)&&(headspay.fec==2)) {
+                     printf("\nMISSING (%d)(%d)\n",headspay.seq,headspay.fec);
+    	             printf("len(%d)  ",headspay.msglen);
+    	             for (uint8_t i=0;i<5;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf(" ... ");
+    	             for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf("\n");
+		     break;
+		   }
+
+
                   bool clearflag=false;
                   struct iovec iovrecover[FEC_N-FEC_K];
                   uint8_t imax=0, imin=0;
@@ -223,19 +233,24 @@ int main(void) {
 		    }
 		  }
 
-                  if(headspay.fec < FEC_K) {
+                  for (uint8_t i=imin;i<imax;i++) {
+                    inblocks[fecsto]=inblocksto;
 
-                    vidlen = ((wfb_utils_fec_t *)iovpay.iov_base)->feclen; 
-
-    	            printf("(%d)len(%d)(%ld)  ",headspay.fec,headspay.msglen,vidlen);
-
-    	            for (uint8_t i=0;i<5;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf(" ... ");
-    	            for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf("\n");
-
-                    if ((len = sendto(fd[2], iovpay.iov_base + sizeof(wfb_utils_fec_t),
+		     vidlen = ((wfb_utils_fec_t *)iovpay.iov_base)->feclen;
+                    
+		     if ((len = sendto(fd[2], iovpay.iov_base + sizeof(wfb_utils_fec_t),
                                     vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
                                     (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr))) > 0) printf("len(%ld)\n",len);
+		  }
+                  imax=0; imin=0;
 
+                  if (clearflag) {
+                    clearflag=false;
+                    memset(inblocks, 0, sizeof(inblocks));
+                    memset(outblocks, 0, sizeof(outblocks));
+                    memset(index, 0, sizeof(index));
+		    outblocksidx=0;
+		    clearflag=true;
 		  }
 		}
 #endif // BOARD
