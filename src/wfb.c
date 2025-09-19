@@ -226,10 +226,17 @@ int main(void) {
 		  }
 
                   for (uint8_t i=imin;i<imax;i++) {
-		     vidlen = ((wfb_utils_fec_t *)inblocks[i])->feclen;
-		     if ((len = sendto(fd[2], inblocks[i] + sizeof(wfb_utils_fec_t),
+                     uint8_t *ptr;
+		     if (i==fecsto) ptr=inblocksto; else ptr=inblocks[i];
+		     vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
+		     printf("(%d)len(%ld)  ",i,vidlen);
+                     for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
+                     for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
+
+		     if ((len = sendto(fd[2], ptr + sizeof(wfb_utils_fec_t),
                                     vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
                                     (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr))) > 0) printf("len(%ld)\n",len);
+
 		  }
                   imax=0; imin=0;
 
