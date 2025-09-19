@@ -123,12 +123,12 @@ int main(void) {
 
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
   uint8_t *outblocks[FEC_N-FEC_K];
-  uint8_t outblocksidx = 0;
-  uint8_t *inblocks[FEC_K];
-  uint8_t *inblocksto; 
-  int8_t index[FEC_K]; memset(index,-1,sizeof(index));
-  uint8_t indexcpt=0;
+  uint8_t outblocksidx=0;
   int8_t fecsto=-1;
+  uint8_t *inblocksto;
+  unsigned index[FEC_K];
+  uint8_t *inblocks[FEC_N];
+  uint8_t indexcpt=0;
   uint8_t msgincurseq=0;
   uint8_t msginnxtseq=0;
   uint8_t msginnxtfec=0;
@@ -166,15 +166,17 @@ int main(void) {
 #if BOARD
 #else
                 if( headspay.msgcpt == WFB_VID) {
-/*
+                  if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
+
+
 		   if ((headspay.seq==1)&&(headspay.fec==2)) {
                      printf("\nMISSING (%d)(%d)\n",headspay.seq,headspay.fec);
     	             printf("len(%d)  ",headspay.msglen);
     	             for (uint8_t i=0;i<5;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf(" ... ");
-    	             for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf("\n");
+    	             for (uint16_t i=headspay.msglen-5;i<headspay.msglen;i++) printf("%x ",*(uint8_t *)(iovpay.iov_base + i));printf("\n");
 		     break;
 		   }
-*/
+
 
                   bool clearflag=false;
                   struct iovec iovrecover[FEC_N-FEC_K];
@@ -194,31 +196,30 @@ int main(void) {
                     if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
                   }
 
-                  if (msgincurseq == headspay.seq) {
-
-                    if (headspay.fec < FEC_K) {
-		      inblocks[headspay.fec] = (uint8_t *)&iovpay.iov_base; 
-		      index[headspay.fec] = headspay.fec;
-		    } else {
-                      if (index[outblocksidx] < 0) {
-                        index[outblocksidx] = headspay.fec;
-		        outblocks[outblocksidx] = &outblocksbuf[outblocksidx][0]; 
-		        outblocksidx++;
-		      }
-		    }
-		  } else { inblocksto = (uint8_t *)&iovpay.iov_base; fecsto = headspay.fec; }
-
-                  if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
-
-                  if (msgincurseq != headspay.seq) {
-
-                    printf("\n");for (uint8_t i=0;i<sizeof(index);i++) printf(" [%d](%d)",i,index[i]); printf("\n");
-
+                  if (msgincurseq == headspay.seq) inblocks[headspay.fec] = (uint8_t *)&iovpay.iov_base;
+		  else { 
+		    inblocksto=(uint8_t *)&iovpay.iov_base; fecsto=headspay.fec;
                     msgincurseq = headspay.seq;
                     clearflag = true;
 
                     if (msginfails) {
                       msginfails = false;
+		      for (uint8_t i=0;i<FEC_K;i++) {
+                        if (inblocks[i]) index[i]=i;
+			else {
+			  for (uint8_t j=FEC_K;j<FEC_N;j++) {
+                            if (inblocks[j]) { 
+			      inblocks[i]=inblocks[j];
+			      index[i]=j;
+			      outblocks[outblocksidx]=&outblocksbuf[outblocksidx][0]; 
+			      outblocksidx++; 
+			      break; 
+			    }
+			  }
+			}
+		      }
+
+                      printf("\n>> ");for (uint8_t i=0;i<sizeof(index);i++) printf(" [%d](%d)(%p)",i,index[i],inblocks[i]); printf("\n");
 
                       printf("\nDECODE (%d)\n",outblocksidx);
                       fec_decode(fec_p,
@@ -227,12 +228,15 @@ int main(void) {
                            (unsigned int *)index,
                            ONLINE_MTU);
 
-		      for (uint8_t i=0;i<=outblocksidx;i++) {
-                        vidlen = ((wfb_utils_fec_t *)&outblocksbuf[i][0]);
+		      for (uint8_t k=0;k<outblocksidx;k++) {
+                        vidlen = ((wfb_utils_fec_t *)outblocks[k])->feclen;
 		        printf("len(%ld)  ",vidlen);
-                        for (uint8_t i=0;i<5;i++) printf("%x ",outblocksbuf[i][0]);printf(" ... ");
-                        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",outblocksbuf[i][0]); printf("\n");
+/*
+                        for (uint8_t i=0;i<5;i++) printf("%x ",outblocksbuf[k][i]);printf(" ... ");
+                        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",outblocksbuf[k][i]); printf("\n");
+*/
 		      }
+
 		    }
 		  }
 /*
@@ -253,9 +257,10 @@ int main(void) {
 */
                     memset(inblocks, 0, sizeof(inblocks));
                     memset(outblocks, 0, sizeof(outblocks));
-                    memset(index, -1, sizeof(index));
+                    memset(index, 0, sizeof(index));
 		    outblocksidx=0; indexcpt=0;
-                    if(fecsto>=0) { inblocks[fecsto]=inblocksto; index[fecsto]=fecsto; fecsto=-1; }
+                    if((fecsto>=0)&&(fecsto<FEC_K)) { inblocks[fecsto]=inblocksto; index[fecsto]=fecsto; fecsto=-1; } 
+		    else exit(-1);
 
 		  }
 		}
