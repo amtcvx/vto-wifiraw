@@ -138,7 +138,7 @@ int main(void) {
   uint8_t vidcur=0;;
 
 
-  struct iovec iovfec[FEC_N];
+//  struct iovec iovfec[FEC_N];
 
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
@@ -194,22 +194,15 @@ int main(void) {
                     if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
                   }
 
-                  if (msgincurseq == headspay.seq) { iovfec[headspay.fec] = iovpay; 
+                  if (msgincurseq == headspay.seq) {
 
-                    if (headspay.fec < FEC_N) {
+                    if (headspay.fec < FEC_K) {
 		      inblocks[headspay.fec] = (uint8_t *)&iovpay.iov_base; 
 		      index[headspay.fec] = headspay.fec;
 		    } else {
-                      for(uint8_t i=0;i<FEC_K;i++) {
-                        if (!(inblocks[i])) {
-                          for(uint8_t k=FEC_K;k<FEC_N;k++) {
-
-                          inblocks[k]=(uint8_t *)&iovpay.iov_base;
-                          index[k]=k;
-			  outblocks[outblocksidx] = &outblocksbuf[outblocksidx][0]; 
-			  outblocksidx++;
-			}
-		      }
+                      index[outblocksidx]=headspay.fec;
+		      outblocks[outblocksidx] = &outblocksbuf[outblocksidx][0]; 
+		      outblocksidx++;
 		    }
 
 		  } else { inblocksto = (uint8_t *)&iovpay.iov_base; fecsto = headspay.fec; }
@@ -218,65 +211,29 @@ int main(void) {
 
                   if (msgincurseq != headspay.seq) {
                     msgincurseq = headspay.seq;
-                      clearflag = true;
+                    clearflag = true;
 
                     if (msginfails) {
                       msginfails = false;
 
-/*
-                    uint8_t Outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
-                    uint8_t *Outblocks[FEC_N-FEC_K];
-                    unsigned Index[FEC_K];
-                    uint8_t *Inblocks[FEC_K];
-                    uint8_t  alldata=0;
-                    uint8_t j=FEC_K;
-                    uint8_t idx = 0;
-                    for (uint8_t k=0;k<FEC_K;k++) {
-                      Index[k] = 0;
-                      Inblocks[k] = (uint8_t *)0;
-                      if (k < (FEC_N - FEC_K)) Outblocks[k] = (uint8_t *)0;
-                      if ( iovfec[k].iov_len>0 ) {
-                        Inblocks[k] = (uint8_t *)&iovfec[k].iov_base;
-                        Index[k] = k;
-                        alldata |= (1 << k);
-                      } else {
-                        for(;j < FEC_N; j++) {
-                          if ( iovfec[j].iov_len>0 ) {
-                            Inblocks[k] = (uint8_t *)&iovfec[j].iov_base;
-                            Outblocks[idx] = &Outblocksbuf[idx][0]; idx++;
-                            Index[k] = j;
-                            j++;
-                            alldata |= (1 << k);
-                            break;
-                          }
-                        }
-                      }
-                    }
-*/
-
-		      if ((outblocksidx > 0)&&(outblocksidx <= (FEC_N - FEC_K))) {
-                        printf("\nDECODE (%d)\n",outblocksidx);
-                        fec_decode(fec_p,
+                      printf("\nDECODE (%d)\n",outblocksidx);
+                      fec_decode(fec_p,
                            (const unsigned char **)inblocks,
                            (unsigned char * const*)outblocks,
                            (unsigned int *)index,
                            ONLINE_MTU);
 
-			for (uint8_t i=0;i<=outblocksidx;i++) {
-                          vidlen = ((wfb_utils_fec_t *)&outblocksbuf[i][0]);
-			  printf("len(%ld)  ",vidlen);
-                          for (uint8_t i=0;i<5;i++) printf("%x ",outblocksbuf[i][0]);printf(" ... ");
-                          for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",outblocksbuf[i][0]); printf("\n");
-			}
+		      for (uint8_t i=0;i<=outblocksidx;i++) {
+                      vidlen = ((wfb_utils_fec_t *)&outblocksbuf[i][0]);
+		      printf("len(%ld)  ",vidlen);
+                      for (uint8_t i=0;i<5;i++) printf("%x ",outblocksbuf[i][0]);printf(" ... ");
+                      for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",outblocksbuf[i][0]); printf("\n");
 		      }
 		    }
 		  }
 
                   for (uint8_t i=imin;i<imax;i++) {
-                    inblocks[fecsto]=inblocksto;
-
 		     vidlen = ((wfb_utils_fec_t *)iovpay.iov_base)->feclen;
-                    
 		     if ((len = sendto(fd[2], iovpay.iov_base + sizeof(wfb_utils_fec_t),
                                     vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
                                     (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr))) > 0) printf("len(%ld)\n",len);
