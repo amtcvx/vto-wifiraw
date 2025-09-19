@@ -127,6 +127,7 @@ int main(void) {
   int8_t fecsto=-1;
   uint8_t *inblocksto;
   unsigned index[FEC_K];
+  uint8_t recov[FEC_K];
   uint8_t *inblocks[FEC_N];
   uint8_t indexcpt=0;
   uint8_t msgincurseq=0;
@@ -138,8 +139,6 @@ int main(void) {
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
 
-
-//  struct iovec iovfec[FEC_N];
 
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
@@ -201,6 +200,7 @@ int main(void) {
 			      inblocks[i]=inblocks[j];
 			      index[i]=j;
 			      outblocks[outblocksidx]=&outblocksbuf[outblocksidx][0]; 
+			      recov[outblocksidx]=i;
 			      outblocksidx++; 
 			      break; 
 			    }
@@ -214,14 +214,18 @@ int main(void) {
                            (unsigned char * const*)outblocks,
                            (unsigned int *)index,
                            ONLINE_MTU);
-/*
+
 		      for (uint8_t k=0;k<outblocksidx;k++) {
+                        inblocks[recov[k]] = outblocks[k];
+/*
                         vidlen = ((wfb_utils_fec_t *)outblocks[k])->feclen;
 		        printf("len(%ld)  ",vidlen);
                         for (uint8_t i=0;i<5;i++) printf("%x ",outblocksbuf[k][i]);printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",outblocksbuf[k][i]); printf("\n");
-		      }
 */
+		      }
+		      imin=recov[0];imax=imin+1;
+		      printf("recov(%d)\n",imin);
 		    }
 		  }
 
@@ -245,6 +249,7 @@ int main(void) {
                     memset(inblocks, 0, sizeof(inblocks));
                     memset(outblocks, 0, sizeof(outblocks));
                     memset(index, 0, sizeof(index));
+                    memset(recov, 0, sizeof(recov));
 		    outblocksidx=0; indexcpt=0;
                     if((fecsto>=0)&&(fecsto<FEC_K)) { inblocks[fecsto]=inblocksto; index[fecsto]=fecsto; fecsto=-1; } 
 		    else exit(-1);
