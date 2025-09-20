@@ -166,6 +166,14 @@ int main(void) {
 #if BOARD
 #else
                 if( headspay.msgcpt == WFB_VID) {
+
+
+//		  if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); break; } TODO BUG
+//		  if (headspay.fec == 0) { printf("Missing (%d)\n",headspay.fec); break; } TODO BUG
+
+
+
+
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
                   bool clearflag=false;
@@ -176,14 +184,16 @@ int main(void) {
                       msginnxtfec=0;
                       if (headspay.seq < 254) msginnxtseq=(headspay.seq+1); else msginnxtseq=0;
                     }
-//                    printf("KO\n");
+                    printf("KO\n");
                     msginfails = true;
                   } else {
-//                    printf("OK\n");
+                    printf("OK\n");
                     if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
                     else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
                     if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
                   }
+
+		  if (msginfails) { imax=0; imin=0; }
 
 		  alldata++;
                   if (msgincurseq == headspay.seq) inblocks[headspay.fec] = iovpay.iov_base;
@@ -191,6 +201,8 @@ int main(void) {
 		    inblocksto=iovpay.iov_base; fecsto=headspay.fec;
                     msgincurseq = headspay.seq;
                     clearflag = true;
+
+		    imin=FEC_K;imax=FEC_K+1;
 
                     if ((msginfails)&&(alldata>=(FEC_K-1))) {
 		      for (uint8_t i=0;i<FEC_K;i++) {
@@ -208,8 +220,8 @@ int main(void) {
 			  }
 			}
 		      }
-                      for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-                      printf("\nDECODE (%d)\n",outblocksidx);
+ //                   for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
+ //                   printf("\nDECODE (%d)\n",outblocksidx);
                       fec_decode(fec_p,
                            (const unsigned char **)inblocks,
                            (unsigned char * const*)outblocks,
@@ -225,14 +237,18 @@ int main(void) {
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",outblocksbuf[k][i]); printf("\n");
 */
 		      }
-		      imin=recov[0];imax=imin+1;
+		      imin=recov[0];imax=(FEC_K+1);
 		      printf("recov(%d)\n",imin);
 		    }
 		  }
 
                   for (uint8_t i=imin;i<imax;i++) {
                      uint8_t *ptr;
-		     if (i==fecsto) ptr=inblocksto; else ptr=inblocks[i];
+		     if ((i==imax-1)&&(imax==(FEC_K+1))) ptr=inblocksto;
+	             else ptr=inblocks[i];
+			     
+
+//		     if (i==fecsto) ptr=inblocksto; else ptr=inblocks[i];
 		     vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
 		     printf("(%d)len(%ld)  ",i,vidlen);
                      for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
@@ -243,7 +259,6 @@ int main(void) {
                                     (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr))) > 0) printf("len(%ld)\n",len);
 
 		  }
-                  imax=0; imin=0;
 
                   if (clearflag) {
                     clearflag=false;
