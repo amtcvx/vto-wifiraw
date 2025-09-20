@@ -125,6 +125,7 @@ int main(void) {
   uint8_t *outblocks[FEC_N-FEC_K];
   uint8_t outblocksidx=0;
   int8_t fecsto=-1;
+  int8_t alldata=0;
   uint8_t *inblocksto;
   unsigned index[FEC_K];
   uint8_t recov[FEC_K];
@@ -184,14 +185,14 @@ int main(void) {
                     if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
                   }
 
+		  alldata++;
                   if (msgincurseq == headspay.seq) inblocks[headspay.fec] = iovpay.iov_base;
 		  else { 
 		    inblocksto=iovpay.iov_base; fecsto=headspay.fec;
                     msgincurseq = headspay.seq;
                     clearflag = true;
 
-                    if (msginfails) {
-                      msginfails = false;
+                    if ((msginfails)&&(alldata>=(FEC_K-1))) {
 		      for (uint8_t i=0;i<FEC_K;i++) {
                         if (inblocks[i]) index[i]=i;
 			else {
@@ -246,11 +247,12 @@ int main(void) {
 
                   if (clearflag) {
                     clearflag=false;
+		    msginfails = false;
                     memset(inblocks, 0, sizeof(inblocks));
                     memset(outblocks, 0, sizeof(outblocks));
                     memset(index, 0, sizeof(index));
                     memset(recov, 0, sizeof(recov));
-		    outblocksidx=0; indexcpt=0;
+		    outblocksidx=0; indexcpt=0; alldata=1;
                     if((fecsto>=0)&&(fecsto<FEC_K)) { inblocks[fecsto]=inblocksto; index[fecsto]=fecsto; fecsto=-1; } 
 		    else exit(-1);
 
