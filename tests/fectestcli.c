@@ -16,6 +16,7 @@ gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265en
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools
 
 */
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -81,6 +82,14 @@ int main(void) {
   readsets.fd = rawfd;
   readsets.events = POLLIN;
 
+  uint8_t msgincurseq=0;
+  uint8_t msginnxtseq=0;
+  uint8_t msginnxtfec=0;
+  bool msginfails = false;
+  uint8_t *inblocksto;
+  int8_t fecsto=-1;
+
+
   for(;;) {
     if (0 != poll(&readsets, 1, -1)) {
       if (readsets.revents == POLLIN) {
@@ -98,13 +107,37 @@ int main(void) {
 	if (rawlen > 0) {
           if(headspay.msgcpt == WFB_VID) {
 
+
+//	    if (headspay.fec == 0) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; break; }
+
+
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
-	    inblocks[headspay.fec] = iovpay.iov_base;
+	    printf("(%d)   (%d)\n",headspay.seq,headspay.fec);
+
+            uint8_t imax=0, imin=0;
+            if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
+              msginfails = true; printf("KO (%d)(%d)  (%d)(%d)\n",msginnxtseq,headspay.seq,msginnxtfec,headspay.fec);
+              if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
+              else {
+                msginnxtfec=0;
+                if (headspay.seq < 254) msginnxtseq=(headspay.seq+1); else msginnxtseq=0;
+              }
+            } else {
+              printf("OK\n");
+              if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
+              else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
+              if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
+            }
 
 
-	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0 ; }
-
+            if (msgincurseq == headspay.seq) { inblocks[headspay.fec]=iovpay.iov_base; printf("in|%d)\n",headspay.fec); }
+            else {
+              inblocksto=iovpay.iov_base; fecsto=headspay.fec; printf("sso(%d)\n",headspay.fec);
+              msgincurseq = headspay.seq;
+	      exit(-1);
+	    }
+/*
 
 	    if (headspay.fec==(FEC_N-1)) {
               unsigned index[FEC_K];
@@ -150,6 +183,7 @@ int main(void) {
               }
               printf("\n");
 	    }
+*/
 	  }
 	}
       }
