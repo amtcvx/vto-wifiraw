@@ -3,11 +3,15 @@ gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEO
 
 gcc fectestcli.o ../obj/zfex.o -g -o fectestcli
 
+
 On 192.168.3.2
 sudo ./fectestcli
+gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! avdec_h265 !  videoconvert ! autovideosink sync=false
 
 On 192.168.3.1
-gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! avdec_h265 !  videoconvert ! autovideosink sync=false
+sudo ./fectestserv
+gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
+
 
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools
 
@@ -99,10 +103,10 @@ int main(void) {
 	    inblocks[headspay.fec] = iovpay.iov_base;
 
 
-	    if (headspay.fec == 4) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0 ; }
+	    if (headspay.fec == 0) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0 ; }
 
 
-	    if (headspay.fec==(FEC_K-1)) {
+	    if (headspay.fec==FEC_K) {
               unsigned index[FEC_K];
               uint8_t recov[FEC_K];
               uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
