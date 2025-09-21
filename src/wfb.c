@@ -168,8 +168,7 @@ int main(void) {
                 if( headspay.msgcpt == WFB_VID) {
 
 
-//		  if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); break; } TODO BUG
-//		  if (headspay.fec == 0) { printf("Missing (%d)\n",headspay.fec); break; } TODO BUG
+		  if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); break; }
 
 
 
