@@ -110,18 +110,21 @@ int main(void) {
         unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
         uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)vidbuf[f];
         uint8_t *fecblocks[FEC_N-FEC_K];
-        for (uint8_t f=0; f<(FEC_N - FEC_K); f++) {
-          fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
-        }
+        for (uint8_t f=0; f<(FEC_N - FEC_K); f++) fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
         fec_encode(fec_p,
                     (const gf*restrict const*restrict const)datablocks,
                     (gf*restrict const*restrict const)fecblocks,
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
+      }
 
-	for (uint8_t k=0;k<FEC_N;k++) {
 
-	  if (k<FEC_K) vidlen = ((wfb_utils_fec_t *)&vidbuf[k][0])->feclen;
-	  else vidlen = ONLINE_MTU;
+      if (vidlen>0) {
+        uint8_t kmin=vidcur-1; uint8_t kmax=kmin+1;
+        if (vidcur>0) { kmin=vidcur; kmax=FEC_N; }
+
+        for (uint8_t k=kmin;k<kmax;k++) {
+
+	  if (k>=FEC_K) vidlen=ONLINE_MTU;
  
 	  wfb_utils_heads_pay_t headspay =
             { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
