@@ -117,12 +117,12 @@ int main(void) {
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
       }
 
-/*
+   //if (vidcur==0) {
+
       if (vidlen>0) {
+
         uint8_t kmin=vidcur-1; uint8_t kmax=kmin+1;
         if (vidcur==0) { kmin=(FEC_K-1); kmax=FEC_N; }
-*/
-      if (vidcur==0) {
 
         for (uint8_t k=0;k<FEC_N;k++) {
 
