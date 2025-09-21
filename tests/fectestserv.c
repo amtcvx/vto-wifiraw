@@ -117,8 +117,6 @@ int main(void) {
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
       }
 
-   //if (vidcur==0) {
-
       if (vidlen>0) {
 
         uint8_t kmin=vidcur-1; uint8_t kmax=kmin+1;

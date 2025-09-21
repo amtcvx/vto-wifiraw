@@ -103,10 +103,10 @@ int main(void) {
 	    inblocks[headspay.fec] = iovpay.iov_base;
 
 
-	    if (headspay.fec == 0) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0 ; }
+	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0 ; }
 
 
-	    if (headspay.fec==FEC_K) {
+	    if (headspay.fec==FEC_N) {
               unsigned index[FEC_K];
               uint8_t recov[FEC_K];
               uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
