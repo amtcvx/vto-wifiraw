@@ -124,7 +124,7 @@ int main(void) {
         uint8_t kmin=vidcur-1; uint8_t kmax=kmin+1;
         if (vidcur==0) { kmin=(FEC_K-1); kmax=FEC_N; }
 
-        for (uint8_t k=0;k<FEC_N;k++) {
+        for (uint8_t k=min;k<kmax;k++) {
 
 	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
  
