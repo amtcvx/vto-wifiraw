@@ -126,7 +126,7 @@ int main(void) {
 
         for (uint8_t k=0;k<FEC_N;k++) {
 
-	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0]); else vidlen=ONLINE_MTU;
+	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
  
 	  wfb_utils_heads_pay_t headspay =
             { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
