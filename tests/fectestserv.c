@@ -104,7 +104,7 @@ int main(void) {
       }
 
       if (vidcur == FEC_K) {
-        printf("\n");
+        printf("ENCODE\n");
 
         vidcur=0;
         unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
@@ -123,9 +123,12 @@ int main(void) {
 //        if (vidcur==0) { kmin=(FEC_K-1); kmax=FEC_N; }
 
 // OPTION 2) : grouped
-      if (vidcur==0) { uint8_t kmin=0; uint8_t kmax=FEC_N; 
+      if (vidcur == 0) { 
+	uint8_t kmin=0; uint8_t kmax=FEC_N; 
 
         for (uint8_t k=kmin;k<kmax;k++) {
+
+          printf("(%d)\n",k);
 
 	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
  
@@ -143,7 +146,7 @@ int main(void) {
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
 
 	  vidlen = 0;
-          if ((vidcur==0)&&(k=(FEC_N-1))) sequence++;
+          if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
 	}
 	printf("\n");
       }
