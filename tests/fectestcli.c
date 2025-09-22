@@ -64,13 +64,6 @@ typedef struct {
 /*****************************************************************************/
 int main(void) {
 
-  uint32_t CRCTable[256];
-  uint32_t crc32 = 1;
-  for (unsigned int i = 128; i; i >>= 1) { 
-    crc32 = (crc32 >> 1) ^ (crc32 & 1 ? 0xedb88320 : 0);
-    for (unsigned int j = 0; j < 256; j += 2*i) CRCTable[i + j] = crc32 ^ CRCTable[j];
-  }
-
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
   
@@ -128,13 +121,9 @@ int main(void) {
           if(headspay.msgcpt == WFB_VID) {
   
   
-//  	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; } 
-  
-  
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
  
             uint8_t imax=0, imin=0;
-/*
             if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
               msginfails = true; 
               if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
@@ -148,103 +137,85 @@ int main(void) {
               if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
             }
     	    if (msginfails) {imax=0; imin=0;}
-*/
+
 	    uint8_t *inblocksto, fecsto=0;
-/*
-// OPTION 1) : on time
-//            if (msgincurseq == headspay.seq) { inblocks[headspay.fec]=iovpay.iov_base; printf("in|%d)\n",headspay.fec); }
-//            else { inblocksto=iovpay.iov_base; fecsto=headspay.fec;
-*/
-// OPTION 2) : grouped
-            inblocks[headspay.fec]=iovpay.iov_base;
-	    uint8_t *ptr=inblocks[headspay.fec];
-            if (headspay.fec < FEC_K) vidlen = ((wfb_utils_fec_t *)ptr)->feclen; else vidlen=ONLINE_MTU;
+            if (msgincurseq == headspay.seq) { inblocks[headspay.fec]=iovpay.iov_base; }
+            else { 
+	      inblocksto=iovpay.iov_base; fecsto=headspay.fec;
+	      msgincurseq = headspay.seq;
+              clearflag=true;
 
-            uint32_t crc32 = 0xFFFFFFFFu;
-            for (size_t c = 0; c < vidlen; c++) {
-              crc32 ^= *(ptr+c);
-              crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
-            }
-            crc32 ^= 0xFFFFFFFFu;
+              if (msginfails) {
+                msginfails = false;
 
-            printf("(%08x) len(%ld)  ",crc32,vidlen);
-            for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
-            for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
-/*
-            if (headspay.fec == (FEC_N-1)) {
-              unsigned index[FEC_K];
-              uint8_t recov[FEC_K];
-              uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
-              uint8_t *outblocks[FEC_N-FEC_K];
-              uint8_t outblocksidx=0;
-              for (uint8_t i=0;i<FEC_K;i++) {
-                if (inblocks[i]) index[i]=i;
-                else {
-                  for (uint8_t j=FEC_K;j<FEC_N;j++) {
-                    if (inblocks[j]) {
-                      inblocks[i]=inblocks[j];
-                      index[i]=j;
-                      outblocks[outblocksidx]=&outblocksbuf[outblocksidx][0];
-                      recov[outblocksidx]=i;
-                      outblocksidx++;
-                      break;
+                unsigned index[FEC_K];
+                uint8_t recov[FEC_K];
+                uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+                uint8_t *outblocks[FEC_N-FEC_K];
+                uint8_t outblocksidx=0;
+                for (uint8_t i=0;i<FEC_K;i++) {
+                  if (inblocks[i]) index[i]=i;
+                  else {
+                    for (uint8_t j=FEC_K;j<FEC_N;j++) {
+                      if (inblocks[j]) {
+                        inblocks[i]=inblocks[j];
+                        index[i]=j;
+                        outblocks[outblocksidx]=&outblocksbuf[outblocksidx][0];
+                        recov[outblocksidx]=i;
+                        outblocksidx++;
+                        break;
+                      }
                     }
                   }
                 }
-              }
-    
-              for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-              printf("\nDECODE (%d)\n",outblocksidx);
-              fec_decode(fec_p,
-                         (const unsigned char **)inblocks,
-                         (unsigned char * const*)outblocks,
-                         (unsigned int *)index,
-                         ONLINE_MTU);
-          
-              printf("RESTORING\n");
-              for (uint8_t k=0;k<outblocksidx;k++) {
-                inblocks[recov[k]] = outblocks[k];
-         
-                uint8_t *ptr=inblocks[recov[k]];
-                vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
-          
-                printf("(%d)len(%ld)  ",recov[k],vidlen);
-                for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
-                for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-              }
-
-    	      imin=recov[0];imax=(FEC_K+1);
-    	      inblocks[FEC_K]=inblocksto;
-    	      clearflag=true;
-              printf("\n");
-    	    }
+/*      
+                for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
+                printf("\nDECODE (%d)\n",outblocksidx);
+*/
+                fec_decode(fec_p,
+                           (const unsigned char **)inblocks,
+                           (unsigned char * const*)outblocks,
+                           (unsigned int *)index,
+                           ONLINE_MTU);
+            
+                for (uint8_t k=0;k<outblocksidx;k++) {
+                  inblocks[recov[k]] = outblocks[k];
+           
+                  uint8_t *ptr=inblocks[recov[k]];
+                  vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
+ /*           
+                  printf("(%d)len(%ld)  ",recov[k],vidlen);
+                  for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
+                  for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
+*/
+                }
+  
+      	        imin=recov[0];imax=(FEC_K+1);
+      	        inblocks[FEC_K]=inblocksto;
+      	        clearflag=true;
+//                printf("\n");
+	      }
+      	    }
     
             for (uint8_t i=imin;i<imax;i++) {
               uint8_t *ptr=inblocks[i];
               vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
-
-              uint32_t crc32 = 0xFFFFFFFFu;
-              for (size_t c = 0; c < vidlen; c++) {
-                crc32 ^= *(ptr+c);
-                crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
-              }
-              crc32 ^= 0xFFFFFFFFu;
-
-              printf("(%08x) len(%ld)  ",crc32,vidlen);
+/*
+              printf("len(%ld)  ",vidlen);
               for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
               for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
-    
-              if ((vidlen = sendto(vidfd, ptr + sizeof(wfb_utils_fec_t),
+*/ 
+              vidlen = sendto(vidfd, ptr + sizeof(wfb_utils_fec_t),
                                    vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
-                                   (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr))) > 0) printf("len(%ld)\n",vidlen);
+                                   (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+//	      printf("len(%ld)\n",vidlen);
             }
 
             if (clearflag) {
               clearflag=false;
               memset(inblocks, 0, sizeof(inblocks));
-              inblocks[FEC_K+1]=inblocksto;
+              inblocks[fecsto]=inblocksto;
 	    }
-*/
   	  }
 	}
       }
