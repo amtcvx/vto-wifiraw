@@ -143,7 +143,7 @@ int main(void) {
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
 
 	  vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1)))  ( sequence++; exit(-1); } 
+          if ((vidcur == 0)&&(k == (FEC_N-1)))  { sequence++; exit(-1); } 
 	}
 	printf("\n");
       }
