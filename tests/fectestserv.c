@@ -55,6 +55,13 @@ typedef struct {
 /*****************************************************************************/
 int main(void) {
 
+  uint32_t CRCTable[256];
+  uint32_t crc32 = 1; 
+  for (unsigned int i = 128; i; i >>= 1) { 
+    crc32 = (crc32 >> 1) ^ (crc32 & 1 ? 0xedb88320 : 0);
+    for (unsigned int j = 0; j < 256; j += 2*i) CRCTable[i + j] = crc32 ^ CRCTable[j];
+  }
+
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
   uint8_t sequence=0;
@@ -136,9 +143,16 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
+          uint32_t crc32 = 0xFFFFFFFFu;
+          for (size_t c = 0; c < vidlen; c++) {
+            crc32 ^= vidbuf[k][c];
+            crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
+          }
+          crc32 ^= 0xFFFFFFFFu;
+
           rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
-          printf("len(%ld)  ",vidlen);
+          printf("(%08x) len(%ld)  ",crc32,vidlen);
           for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
 

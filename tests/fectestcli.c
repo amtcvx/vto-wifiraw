@@ -60,8 +60,16 @@ typedef struct {
 #define PORT_NORAW  3000
 #define PORT_VID  5600
 
+
 /*****************************************************************************/
 int main(void) {
+
+  uint32_t CRCTable[256];
+  uint32_t crc32 = 1;
+  for (unsigned int i = 128; i; i >>= 1) { 
+    crc32 = (crc32 >> 1) ^ (crc32 & 1 ? 0xedb88320 : 0);
+    for (unsigned int j = 0; j < 256; j += 2*i) CRCTable[i + j] = crc32 ^ CRCTable[j];
+  }
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
@@ -120,36 +128,42 @@ int main(void) {
           if(headspay.msgcpt == WFB_VID) {
   
   
-//  	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; }  TODO
-//  	    if (headspay.fec == 1) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; } TODO
-  	    if (headspay.fec == 0) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; }
+  	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; } 
   
   
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
-  
-    	    printf("(%d)   (%d)\n",headspay.seq,headspay.fec);
-    
+ 
             uint8_t imax=0, imin=0;
+/*
             if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
-              msginfails = true; printf("KO (%d)(%d)  (%d)(%d)\n",msginnxtseq,headspay.seq,msginnxtfec,headspay.fec);
+              msginfails = true; 
               if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
               else {
                 msginnxtfec=0;
                 if (headspay.seq < 254) msginnxtseq=(headspay.seq+1); else msginnxtseq=0;
               }
             } else {
-              printf("OK\n");
               if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
               else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
               if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
             }
     	    if (msginfails) {imax=0; imin=0;}
-
+*/
 	    uint8_t *inblocksto, fecsto=0;
-            if (msgincurseq == headspay.seq) { inblocks[headspay.fec]=iovpay.iov_base; printf("in|%d)\n",headspay.fec); }
-            else {
-              inblocksto=iovpay.iov_base; fecsto=headspay.fec; printf("sso(%d)\n",headspay.fec);
-  //	    if (headspay.fec==(FEC_N-1)) {
+/*
+// OPTION 1) : on time
+//            if (msgincurseq == headspay.seq) { inblocks[headspay.fec]=iovpay.iov_base; printf("in|%d)\n",headspay.fec); }
+//            else { inblocksto=iovpay.iov_base; fecsto=headspay.fec;
+*/
+// OPTION 2) : grouped
+            inblocks[headspay.fec]=iovpay.iov_base;
+	    uint8_t *ptr=inblocks[headspay.fec];
+            if (headspay.fec < FEC_K) vidlen = ((wfb_utils_fec_t *)ptr)->feclen; else vidlen=ONLINE_MTU;
+            printf("len(%ld)  ",vidlen);
+            for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
+            for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
+
+            if (headspay.fec == (FEC_N-1)) {
               unsigned index[FEC_K];
               uint8_t recov[FEC_K];
               uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
@@ -191,8 +205,6 @@ int main(void) {
                 for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
               }
 
-	      exit(-1);
-
     	      imin=recov[0];imax=(FEC_K+1);
     	      inblocks[FEC_K]=inblocksto;
     	      clearflag=true;
@@ -202,7 +214,15 @@ int main(void) {
             for (uint8_t i=imin;i<imax;i++) {
               uint8_t *ptr=inblocks[i];
               vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
-              printf(">>(%d)len(%ld)  ",i,vidlen);
+
+              uint32_t crc32 = 0xFFFFFFFFu;
+              for (size_t c = 0; c < vidlen; c++) {
+                crc32 ^= *(ptr+c);
+                crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
+              }
+              crc32 ^= 0xFFFFFFFFu;
+
+              printf("(%08x) len(%ld)  ",crc32,vidlen);
               for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
               for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
     
