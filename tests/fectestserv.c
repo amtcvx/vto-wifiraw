@@ -97,15 +97,14 @@ int main(void) {
 	vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
 	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
 	vidcur++;
-	    
+/*	    
 	printf("(%d)len(%ld)  ",vidcur-1,vidlen);
 	for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);;printf(" ... ");
 	for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
+*/
       }
 
       if (vidcur == FEC_K) {
-        printf("ENCODE\n");
-
         vidcur=0;
         unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
         uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)vidbuf[f];
@@ -128,8 +127,6 @@ int main(void) {
 
         for (uint8_t k=kmin;k<kmax;k++) {
 
-          printf("(%d)\n",k);
-
 	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
  
 	  wfb_utils_heads_pay_t headspay =
@@ -141,12 +138,12 @@ int main(void) {
 
           rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
-          printf("(%d)>>len(%ld)  ",k,vidlen);
+          printf("len(%ld)  ",vidlen);
           for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
 
 	  vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
+          if ((vidcur == 0)&&(k == (FEC_N-1)))  ( sequence++; exit(-1); } 
 	}
 	printf("\n");
       }
