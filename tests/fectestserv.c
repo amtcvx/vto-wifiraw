@@ -104,11 +104,18 @@ int main(void) {
 	vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
 	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
 	vidcur++;
-/*	    
-	printf("(%d)len(%ld)  ",vidcur-1,vidlen);
+	    
+        uint32_t crc32 = 0xFFFFFFFFu;
+        for (size_t c = 0; c < vidlen; c++) {
+          crc32 ^= vidbuf[vidcur-1][c];
+          crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
+        }
+        crc32 ^= 0xFFFFFFFFu;
+
+        printf("(%08x) len(%ld)  ",crc32,vidlen);
 	for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);;printf(" ... ");
 	for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
-*/
+
       }
 
       if (vidcur == FEC_K) {

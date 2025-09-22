@@ -128,7 +128,7 @@ int main(void) {
           if(headspay.msgcpt == WFB_VID) {
   
   
-  	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; } 
+//  	    if (headspay.fec == 3) { printf("Missing (%d)\n",headspay.fec); inblocks[headspay.fec]=(uint8_t *)0; continue; } 
   
   
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
@@ -159,10 +159,18 @@ int main(void) {
             inblocks[headspay.fec]=iovpay.iov_base;
 	    uint8_t *ptr=inblocks[headspay.fec];
             if (headspay.fec < FEC_K) vidlen = ((wfb_utils_fec_t *)ptr)->feclen; else vidlen=ONLINE_MTU;
-            printf("len(%ld)  ",vidlen);
+
+            uint32_t crc32 = 0xFFFFFFFFu;
+            for (size_t c = 0; c < vidlen; c++) {
+              crc32 ^= *(ptr+c);
+              crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
+            }
+            crc32 ^= 0xFFFFFFFFu;
+
+            printf("(%08x) len(%ld)  ",crc32,vidlen);
             for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
             for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
-
+/*
             if (headspay.fec == (FEC_N-1)) {
               unsigned index[FEC_K];
               uint8_t recov[FEC_K];
@@ -236,6 +244,7 @@ int main(void) {
               memset(inblocks, 0, sizeof(inblocks));
               inblocks[FEC_K+1]=inblocksto;
 	    }
+*/
   	  }
 	}
       }
