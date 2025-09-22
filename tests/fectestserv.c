@@ -133,24 +133,17 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
-          uint32_t crc32 = 0xFFFFFFFFu;
-          for (size_t c = 0; c < vidlen; c++) {
-            crc32 ^= vidbuf[k][c];
-            crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
-          }
-          crc32 ^= 0xFFFFFFFFu;
-
           rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-
-          printf("(%08x) len(%ld)  ",crc32,vidlen);
-//          if (vidlen < 64) for (uint8_t i=0;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
+/*
+          printf("len(%ld)  ",vidlen);
+          if (vidlen < 64) for (uint8_t i=0;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
           for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
-
+*/
 	  vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1)))  { sequence++; exit(-1); } 
+          if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
 	}
-	printf("\n");
+//	printf("\n");
       }
     }
   }
