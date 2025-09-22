@@ -92,7 +92,7 @@ int main(void) {
 	uint8_t *inblocks[FEC_N];
         for (uint8_t k=0;k<FEC_N;k++) if(k<FEC_K) inblocks[k]=&vidbuf[k][0]; else inblocks[k]=fecblocks[k-FEC_K];
 
-	uint8_t misnb=0; printf("MISSING (%d)\n",misnb);inblocks[misnb]=(int8_t *)0;
+	uint8_t misnb=3; printf("MISSING (%d)\n",misnb);inblocks[misnb]=(int8_t *)0;
 
 
         unsigned index[FEC_K];
