@@ -104,18 +104,6 @@ int main(void) {
 	vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
 	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
 	vidcur++;
-	    
-        uint32_t crc32 = 0xFFFFFFFFu;
-        for (size_t c = 0; c < vidlen; c++) {
-          crc32 ^= vidbuf[vidcur-1][c];
-          crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff];
-        }
-        crc32 ^= 0xFFFFFFFFu;
-
-        printf("(%08x) len(%ld)  ",crc32,vidlen);
-	for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);;printf(" ... ");
-	for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
-
       }
 
       if (vidcur == FEC_K) {
@@ -130,14 +118,9 @@ int main(void) {
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
       }
 
-// OPTION 1) : on time
-//      if (vidlen>0) {
-//        uint8_t kmin=vidcur-1; uint8_t kmax=kmin+1;
-//        if (vidcur==0) { kmin=(FEC_K-1); kmax=FEC_N; }
-
-// OPTION 2) : grouped
-      if (vidcur == 0) { 
-	uint8_t kmin=0; uint8_t kmax=FEC_N; 
+      if (vidlen>0) {
+        uint8_t kmin=vidcur-1; uint8_t kmax=kmin+1;
+        if (vidcur==0) { kmin=(FEC_K-1); kmax=FEC_N; }
 
         for (uint8_t k=kmin;k<kmax;k++) {
 
@@ -160,6 +143,7 @@ int main(void) {
           rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
           printf("(%08x) len(%ld)  ",crc32,vidlen);
+//          if (vidlen < 64) for (uint8_t i=0;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
           for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
 
