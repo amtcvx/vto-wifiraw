@@ -133,13 +133,17 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
-          rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-/*
+
+
+          if ((sequence == 0) && ((k == 0)||(k == 1)||(k == 2))||(k == 3)) printf("missing (%d)è(%d)\n",sequence,k);
+	  else rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+
+
           printf("len(%ld)  ",vidlen);
           if (vidlen < 64) for (uint8_t i=0;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
           for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
-*/
+
 	  vidlen = 0;
           if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
 	}
