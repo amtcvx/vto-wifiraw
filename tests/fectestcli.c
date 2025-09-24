@@ -67,13 +67,6 @@ int main(void) {
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
   
-  ssize_t rawlen;
-  uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
-  uint8_t rawcur=0;
-  
-  uint8_t *inblocks[FEC_N];
-  ssize_t vidlen=0;
-  
   uint8_t rawfd; 
   if (-1 == (rawfd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
   if (-1 == setsockopt(rawfd, SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
@@ -95,13 +88,24 @@ int main(void) {
   struct pollfd readsets;
   readsets.fd = rawfd;
   readsets.events = POLLIN;
+
+  ssize_t rawlen;
+  uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
+  uint8_t rawcur=0;
   
+  unsigned index[FEC_K];
+  uint8_t *inblocks[FEC_K+1];
+  uint8_t recov[FEC_N-FEC_K];
+  int8_t recovcpt=-1;
+
+  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+  uint8_t *outblocks[FEC_N-FEC_K];
+  uint8_t outblocksidx=0;
+
+  ssize_t vidlen=0;
   uint8_t msgincurseq=0;
   uint8_t msginnxtseq=0;
   uint8_t msginnxtfec=0;
-  uint8_t msginnb=0;
-  uint8_t msginnbfec=0;
-  uint8_t msginnbdata=0;
   bool failflag = false;
   bool clearflag = false;
 
@@ -125,14 +129,14 @@ int main(void) {
   
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
-	    msginnb++;
- 
             uint8_t imax=0, imin=0;
             if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
 
               printf("KO(%d)\n",headspay.fec);
+
+              if (headspay.fec<FEC_K) inblocks[recov[recovcpt++]]=iovpay.iov_base; 
+
 	      failflag = true;
-		    
               if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
               else {
                 msginnxtfec=0;
@@ -142,7 +146,8 @@ int main(void) {
 
               printf("OK(%d)\n",headspay.fec);
 
-              if (headspay.fec < FEC_K) msginnbdata++;else msginnbfec++;
+              if (headspay.fec<FEC_K) { inblocks[headspay.fec]=iovpay.iov_base; index[headspay.fec] = headspay.fec; }
+	      else {  inblocks[recov[--recovcpt]] = iovpay.iov_base; } //index[ ] = headspay.fec; }
 
               if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
               else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
@@ -153,18 +158,14 @@ int main(void) {
     	    if (failflag) {imax=0; imin=0;}
 
 	    uint8_t *inblocksto, fecsto=0;
-            if (msgincurseq == headspay.seq) { inblocks[headspay.fec]=iovpay.iov_base; }
-            else {
+            if (msgincurseq == headspay.seq) { 
               msgincurseq = headspay.seq;
 
 	      inblocksto=iovpay.iov_base; fecsto=headspay.fec;
-              if (headspay.fec < FEC_K) msginnbdata--;else msginnbfec--;
-
               clearflag=true;
 
-
               if (failflag) {
-
+/*
                 printf("(%d)(%d)(%d)\n",msginnbdata,msginnbfec,msginnb);
                 unsigned index[FEC_K];
                 uint8_t recov[FEC_K];
@@ -186,7 +187,7 @@ int main(void) {
                     }
                   }
                 }
-
+*/
                 for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                 printf("\nDECODE (%d)\n",outblocksidx);
 
@@ -234,7 +235,6 @@ int main(void) {
 	      failflag=false;
               memset(inblocks, 0, sizeof(inblocks));
               inblocks[fecsto]=inblocksto;
-	      msginnbdata=0; msginnbfec=0; msginnb=1;
 	    }
   	  }
 	}
