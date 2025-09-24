@@ -98,6 +98,9 @@ int main(void) {
   uint8_t recov[FEC_N-FEC_K];
   int8_t recovcpt=-1;
 
+  uint8_t *inblocksto;
+  int8_t inblockstofec=-1;
+
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
   uint8_t *outblocks[FEC_N-FEC_K];
   uint8_t outblocksidx=0;
@@ -132,9 +135,10 @@ int main(void) {
             uint8_t imax=0, imin=0;
             if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
 
-              printf("KO(%d)\n",headspay.fec);
+              printf("KO(%d)\n",msginnxtfec);
 
-              if (headspay.fec<FEC_K) inblocks[recov[recovcpt++]]=iovpay.iov_base; 
+              if(msgincurseq != headspay.seq) { inblocksto=iovpay.iov_base; inblockstofec=msginnxtfec; printf("inblockstofec(%d)\n", inblockstofec); }
+	      else  if (headspay.fec<FEC_K) inblocks[recov[recovcpt++]]=iovpay.iov_base;
 
 	      failflag = true;
               if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
@@ -146,27 +150,26 @@ int main(void) {
 
               printf("OK(%d)\n",headspay.fec);
 
-              if (headspay.fec<FEC_K) { inblocks[headspay.fec]=iovpay.iov_base; index[headspay.fec] = headspay.fec; }
-	      else {  inblocks[recov[--recovcpt]] = iovpay.iov_base; } //index[ ] = headspay.fec; }
+              if(msgincurseq != headspay.seq) { inblocksto=iovpay.iov_base; inblockstofec=headspay.fec; printf("inblockstofec(%d)\n", inblockstofec); }
+	      else {
+	        if (headspay.fec<FEC_K) { inblocks[headspay.fec]=iovpay.iov_base; index[headspay.fec] = headspay.fec; }
+	        else {  inblocks[recov[recovcpt]] = iovpay.iov_base; index[recovcpt] = headspay.fec; recovcpt--; }
+              }
 
               if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
               else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
               if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
             }
 
+    	    if (failflag) { imax=0; imin=0; }
 
-    	    if (failflag) {imax=0; imin=0;}
-
-	    uint8_t *inblocksto, fecsto=0;
-            if (msgincurseq == headspay.seq) { 
+            if (msgincurseq != headspay.seq) { 
               msgincurseq = headspay.seq;
 
-	      inblocksto=iovpay.iov_base; fecsto=headspay.fec;
               clearflag=true;
 
               if (failflag) {
 /*
-                printf("(%d)(%d)(%d)\n",msginnbdata,msginnbfec,msginnb);
                 unsigned index[FEC_K];
                 uint8_t recov[FEC_K];
                 uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
@@ -187,10 +190,11 @@ int main(void) {
                     }
                   }
                 }
-*/
+i*/
                 for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                 printf("\nDECODE (%d)\n",outblocksidx);
 
+		exit(-1);
                 fec_decode(fec_p,
                            (const unsigned char **)inblocks,
                            (unsigned char * const*)outblocks,
@@ -210,12 +214,11 @@ int main(void) {
                 }
   
       	        imin=recov[0];imax=(FEC_K+1);
-      	        inblocks[FEC_K]=inblocksto;
 
 	      }
 
       	    }
-   /* 
+ 
             for (uint8_t i=imin;i<imax;i++) {
               uint8_t *ptr=inblocks[i];
               vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
@@ -229,12 +232,11 @@ int main(void) {
                                    (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
               printf("len(%ld)\n",vidlen);
             }
-*/
+
             if (clearflag) {
               clearflag=false;
 	      failflag=false;
               memset(inblocks, 0, sizeof(inblocks));
-              inblocks[fecsto]=inblocksto;
 	    }
   	  }
 	}
