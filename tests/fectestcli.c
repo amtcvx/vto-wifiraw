@@ -133,13 +133,27 @@ int main(void) {
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
             uint8_t imax=0, imin=0;
-            if ((msginnxtseq != headspay.seq)||(msginnxtfec != headspay.fec)) {
+            if (msginnxtseq == headspay.seq) {
 
-              printf("KO(%d)\n",msginnxtfec);
+	      if (msginnxtfec != headspay.fec) {
 
+                 printf("KO(%d)\n",msginnxtfec);
+                 printf("  OK(%d)\n",headspay.fec);
+
+	         inblocks[headspay.fec]=iovpay.iov_base;
+	      }
+	    }
+
+	    msginnxtseq = (headspay.seq+1);
+	    msginnxtfec = (headspay.fec+1)
+	  }
+	}
+
+
+/*
               if(msgincurseq != headspay.seq) { inblocksto=iovpay.iov_base; inblockstofec=msginnxtfec; printf("inblockstofec(%d)\n", inblockstofec); }
 	      else  if (headspay.fec<FEC_K) inblocks[recov[recovcpt++]]=iovpay.iov_base;
-
+*/
 	      failflag = true;
               if (headspay.fec < (FEC_N-1)) { msginnxtfec=(headspay.fec+1); msginnxtseq=headspay.seq; }
               else {
@@ -149,18 +163,31 @@ int main(void) {
             } else {
 
               printf("OK(%d)\n",headspay.fec);
-
+/*
               if(msgincurseq != headspay.seq) { inblocksto=iovpay.iov_base; inblockstofec=headspay.fec; printf("inblockstofec(%d)\n", inblockstofec); }
 	      else {
 	        if (headspay.fec<FEC_K) { inblocks[headspay.fec]=iovpay.iov_base; index[headspay.fec] = headspay.fec; }
 	        else {  inblocks[recov[recovcpt]] = iovpay.iov_base; index[recovcpt] = headspay.fec; recovcpt--; }
               }
-
+*/
               if (msginnxtfec < (FEC_N-1)) msginnxtfec++;
               else { msginnxtfec=0; if (msginnxtseq < 255) msginnxtseq++; else msginnxtseq=0; }
               if (headspay.fec < FEC_K) {imin=headspay.fec; imax=(1+imin); }
             }
+	  }
+	}
+      }
+    }
+  }
+}
 
+
+
+
+
+
+
+/*
     	    if (failflag) { imax=0; imin=0; }
 
             if (msgincurseq != headspay.seq) { 
@@ -169,7 +196,7 @@ int main(void) {
               clearflag=true;
 
               if (failflag) {
-/*
+
                 unsigned index[FEC_K];
                 uint8_t recov[FEC_K];
                 uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
@@ -190,7 +217,7 @@ int main(void) {
                     }
                   }
                 }
-i*/
+
                 for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                 printf("\nDECODE (%d)\n",outblocksidx);
 
@@ -244,3 +271,4 @@ i*/
     }
   }
 }
+*/
