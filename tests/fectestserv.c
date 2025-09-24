@@ -136,7 +136,8 @@ int main(void) {
 
 
           if ((sequence == 0) && (k == 0)) printf("missing (%d)è(%d)\n",sequence,k);
-	  else rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+	  else 
+	  rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
 
           printf("((%ld)len(%ld)  ",rawlen,vidlen);
