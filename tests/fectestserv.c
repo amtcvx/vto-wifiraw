@@ -135,11 +135,11 @@ int main(void) {
 
 
 
-          if ((sequence == 0) && ((k == 0)||(k == 1)||(k == 2))||(k == 3)) printf("missing (%d)è(%d)\n",sequence,k);
+          if ((sequence == 0) && (k == 0)) printf("missing (%d)è(%d)\n",sequence,k);
 	  else rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
 
-          printf("len(%ld)  ",vidlen);
+          printf("((%ld)len(%ld)  ",rawlen,vidlen);
           if (vidlen < 64) for (uint8_t i=0;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
           for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
