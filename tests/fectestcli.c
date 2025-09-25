@@ -138,16 +138,16 @@ int main(void) {
   	      if (msginnxtfec != headspay.fec) {
                  failflag = true;
                  printf("KO(%d)\n",msginnxtfec);
-  		 if (headspay.fec < FEC_K) { recov[++recovcpt] = msginnxtfec; }
+  		 if (headspay.fec < FEC_K) { recovcpt++; recov[recovcpt] = msginnxtfec; }
                  printf("  OK(%d)\n",headspay.fec);
   	      }
 
-              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; imin = headspay.fec; imax = imin+1 ; }
+              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; if (!failflag) { imin = headspay.fec; imax = imin+1 ;} }
   	      else  {
                 if (recovcpt <= 0) inblocks[headspay.fec] = iovpay.iov_base;
   	        else {
-  		  inblocks[recov[recovcpt-1]] = iovpay.iov_base; 
-		  index[recov[recovcpt-1]] = headspay.fec; 
+  		  inblocks[recov[recovcpt]] = iovpay.iov_base; 
+		  index[recov[recovcpt]] = headspay.fec; 
 		  recovcpt--; 
 		  outblocks[outblocksidx]=&outblocksbuf[outblocksidx][0];
 		  outblocksidx++;
@@ -164,6 +164,7 @@ int main(void) {
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
               inblockstofec = headspay.fec;
+	      imin = FEC_K; imax = imin + 1;
               clearflag=true;
 
               if (failflag) {
@@ -186,6 +187,7 @@ int main(void) {
                   printf("(%d)len(%ld)  ",recov[k],vidlen);
                   for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                   for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
+		  printf("\n");
                 }
   
       	        imin=recov[0];imax=(FEC_K+1);
