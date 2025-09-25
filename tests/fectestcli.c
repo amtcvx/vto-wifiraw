@@ -142,7 +142,7 @@ int main(void) {
                  printf("  OK(%d)\n",headspay.fec);
   	      }
 
-              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; }
+              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; imin = headspay.fec; imax = imin+1 ; }
   	      else  {
                 if (recovcpt <= 0) inblocks[headspay.fec] = iovpay.iov_base;
   	        else {
@@ -158,6 +158,9 @@ int main(void) {
   	      else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
 
 	    } else {
+
+              printf("RESUME\n");
+
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
               inblockstofec = headspay.fec;
@@ -199,7 +202,7 @@ int main(void) {
                                    vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
                                    (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
 
-              printf("len(%ld)  ",vidlen);
+              printf("[%d]len(%ld)  ",i,vidlen);
               for (uint8_t j=0;j<5;j++) printf("%x ",*(uint8_t *)(j + ptr));printf(" ... ");
               for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(uint8_t *)(j + ptr)); printf("\n");
             }
@@ -209,6 +212,7 @@ int main(void) {
 	      failflag=false;
               memset(inblocks, 0, sizeof(inblocks));
               inblocks[inblockstofec] = inblocks[FEC_K];
+	      msginnxtfec = inblockstofec+1;
 	    }
   	  }
 	}
