@@ -142,7 +142,7 @@ int main(void) {
               if (headspay.fec < FEC_K) { 
 
 	        inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++; 
-		if (!failflag) { imin = headspay.fec; imax = (imin+1); }
+		imin = headspay.fec; imax = (imin+1);
 
 	      } else  {
                
@@ -154,11 +154,15 @@ int main(void) {
 		      inblocksnb--; 
 		      outblocks[outblocksidx]=&outblocksbuf[outblocksidx][0];
 		      outblockrecov[outblocksidx] = k;
+
+		      printf("(%d)\n", outblockrecov[outblocksidx]);
 		      outblocksidx++;
 		    }
 		  }
 		}
 	      }
+
+	      if (failflag) { imin = 0; imax = 0; }
 
 	    } else {
 
@@ -182,20 +186,20 @@ int main(void) {
                          ONLINE_MTU);
             
                 for (uint8_t k=0;k<outblocksidx;k++) {
-                  inblocks[index[k]] = outblocks[k];
+                  inblocks[ outblockrecov[outblocksidx] ] = outblocks[k];
            
-                  uint8_t *ptr=inblocks[index[k]];
+                  uint8_t *ptr=inblocks[ outblockrecov[outblocksidx] ];
+
                   vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
            
-                  printf("(%d)len(%ld)  ",index[k],vidlen);
+                  printf("(%d)len(%ld)  ", outblockrecov[outblocksidx] ,vidlen);
+
                   for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                   for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
 		  printf("\n");
                 }
-
-      	        imin=outblockrecov[0];imax=(FEC_K+1);
 	      }
-
+	      imin = outblockrecov[0]; imax = (FEC_K+1);
       	    }
 
             for (uint8_t i=imin;i<imax;i++) {
@@ -205,11 +209,10 @@ int main(void) {
 		printf("len(%ld) ",tmp);
                 for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
                 for (uint16_t j=tmp-5;j<tmp;j++) printf("%x ",*(j + ptr)); printf("\n");
-/*
+
                 vidlen = sendto(vidfd, ptr + sizeof(wfb_utils_fec_t),
                                    vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
                                    (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
-*/
 	      }
 	    }
 
