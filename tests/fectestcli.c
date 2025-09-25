@@ -96,7 +96,7 @@ int main(void) {
   unsigned index[FEC_K];
   uint8_t *inblocks[FEC_K+1];
   uint8_t recov[FEC_N-FEC_K];
-  int8_t recovcpt=0;
+  int8_t recovcpt=-1;
 
   int8_t inblockstofec=-1;
 
@@ -138,12 +138,14 @@ int main(void) {
   	      if (msginnxtfec != headspay.fec) {
                  failflag = true;
                  printf("KO(%d)\n",msginnxtfec);
-  		 if (headspay.fec < FEC_K) { recovcpt++; recov[recovcpt] = msginnxtfec; }
+  		 if (headspay.fec < FEC_K) { recovcpt++; recov[recovcpt] = msginnxtfec;  }
                  printf("  OK(%d)\n",headspay.fec);
   	      }
 
-              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; if (!failflag) { imin = headspay.fec; imax = imin+1 ;} }
-  	      else  {
+              if (headspay.fec < FEC_K) { 
+	        inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; 
+		if (!failflag) { imin = headspay.fec; imax = imin+1 ;} 
+	      } else  {
                 if (recovcpt <= 0) inblocks[headspay.fec] = iovpay.iov_base;
   	        else {
   		  inblocks[recov[recovcpt]] = iovpay.iov_base; 
@@ -191,7 +193,6 @@ int main(void) {
                 }
   
       	        imin=recov[0];imax=(FEC_K+1);
-
 	      }
 
       	    }
