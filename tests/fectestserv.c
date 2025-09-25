@@ -105,9 +105,10 @@ int main(void) {
 	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
 	vidcur++;
 /*
-        printf(">>len(%ld)  ",vidlen);
-        for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);printf(" ... ");
-        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
+	uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen;
+        printf(">>len(%ld)  ",tmp);
+        for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
+        for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
 */
       }
 
@@ -140,16 +141,15 @@ int main(void) {
 
 
 
-          if ((sequence == 0) && (k == 0)) printf("missing (%d)(%d)\n",sequence,k);
-	  else {
-	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+            if ((sequence == 0) && ((k == 7)||(k == 7))) printf("missing (%d)(%d)\n",sequence,k);
+            else 
+	      rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
-	    if (k<FEC_K) {
-              vidlen = vidlen - sizeof(wfb_utils_fec_t);
-              printf("[%d]len(%ld)  ",k,vidlen);
-              for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
-              for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
-	    }
+	  if (k<FEC_K) {
+	    uint8_t *ptr = vidbuf[k]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen;
+            printf("len(%ld)  ",tmp);
+            for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
+            for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
 	  }
 
 	  vidlen = 0;
