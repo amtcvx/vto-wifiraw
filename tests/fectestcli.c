@@ -133,7 +133,8 @@ int main(void) {
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
             if (headspay.fec < FEC_K) { 
-	      if ((msginnxtfec != headspay.fec)||(msginnxtseq != headspay.seq)) if (failfec < 0) { failfec = headspay.fec; printf("failfec(%d)\n",failfec); }
+	      if ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec)) if (failfec < 0) failfec = msginnxtfec; 
+
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
               else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
 	    }
@@ -177,7 +178,7 @@ int main(void) {
 
                 printf("recovcpt(%d) inblocksnb(%d) lostcpt(%d)\n",recovcpt,inblocksnb,lostcpt);
 
-                if((inblocksnb + recovcpt) == FEC_K) { 
+                if((inblocksnb + recovcpt) == (FEC_K-1)) { 
 		
                   for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                   printf("\nDECODE (%d)\n",recovcpt);
