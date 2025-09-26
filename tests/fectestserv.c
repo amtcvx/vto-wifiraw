@@ -51,16 +51,13 @@ typedef struct {
 #define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
 #define IP_REMOTE_RAW "192.168.3.2"
+#define IP_LOCAL "127.0.0.1"
+
+#define PORT_NORAW  3000
+#define PORT_VID  5600
 
 /*****************************************************************************/
 int main(void) {
-
-  uint32_t CRCTable[256];
-  uint32_t crc32 = 1; 
-  for (unsigned int i = 128; i; i >>= 1) { 
-    crc32 = (crc32 >> 1) ^ (crc32 & 1 ? 0xedb88320 : 0);
-    for (unsigned int j = 0; j < 256; j += 2*i) CRCTable[i + j] = crc32 ^ CRCTable[j];
-  }
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
@@ -72,13 +69,13 @@ int main(void) {
   ssize_t vidlen=0;
 
   uint8_t rawfd;
-  ssize_t rawlen=0;
+  ssize_t rawlen;
 
   if (-1 == (rawfd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
   if (-1 == setsockopt(rawfd, SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in norawoutaddr;
   norawoutaddr.sin_family = AF_INET;
-  norawoutaddr.sin_port = htons(3000);
+  norawoutaddr.sin_port = htons(PORT_NORAW);
   norawoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
 
   uint8_t vidfd;
@@ -86,8 +83,8 @@ int main(void) {
   if (-1 == setsockopt(vidfd, SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in vidinaddr;
   vidinaddr.sin_family = AF_INET;
-  vidinaddr.sin_port = htons(5600);
-  vidinaddr.sin_addr.s_addr =inet_addr("127.0.0.1");
+  vidinaddr.sin_port = htons(PORT_VID);
+  vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
   if (-1 == bind( vidfd, (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
 
   struct pollfd readsets;
@@ -139,15 +136,14 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
-
-
-            if ((sequence == 0) && ((k == 7)||(k == 7))) printf("missing (%d)(%d)\n",sequence,k);
+            if ((sequence == 0) && ((k == 0)||(k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) printf("missing (%d)(%d)\n",sequence,k);
             else 
-	      rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+
+	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
 	  if (k<FEC_K) {
 	    uint8_t *ptr = vidbuf[k]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen;
-            printf("len(%ld)  ",tmp);
+            printf("len(%ld) ",tmp);
             for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
             for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
 	  }
@@ -155,7 +151,6 @@ int main(void) {
 	  vidlen = 0;
           if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; printf("\n"); }
 	}
-//	printf("\n");
       }
     }
   }
