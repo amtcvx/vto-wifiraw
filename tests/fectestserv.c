@@ -135,10 +135,11 @@ int main(void) {
             struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
-
-            if ((sequence == 0) && ((k == 3)||(k == 4)||(k == 5)||(k == 7)||(k == 3)||(k == 3))) printf("missing (%d)(%d)\n",sequence,k);
+            if (((k == 5)||(k == 7)||(k == 8)||(k == 9))) printf("missing (%d)(%d)\n",sequence,k);
+//            if ((sequence == 0) && ((k == 5)||(k == 7)||(k == 8)||(k == 9))) printf("missing (%d)(%d)\n",sequence,k);
+//            if ((sequence == 0) && ((k == 4)||(k == 5)||(k == 6)||(k == 7))) printf("missing (%d)(%d)\n",sequence,k);
+//            if ((sequence == 0) && ((k == 3)||(k == 4)||(k == 5)||(k == 6))) printf("missing (%d)(%d)\n",sequence,k);
             else 
-
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
 	  if (k<FEC_K) {
