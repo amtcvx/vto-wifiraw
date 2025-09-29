@@ -132,11 +132,21 @@ int main(void) {
 
             if (headspay.fec < FEC_K) { 
               
-	      if ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec)) if (failfec < 0) failfec = msginnxtfec; 
+	      printf("(%d)(%d)   (%d)(%d)   (%d)\n", msginnxtseq, headspay.seq, msginnxtfec, headspay.fec, inblockstofec);
 
-              if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
-              else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
+	      if (((msginnxtfec == (FEC_K-1)) && (msginnxtseq != headspay.seq)) 
+	        || ((msginnxtfec < (FEC_K-1)) && (msginnxtseq == headspay.seq))) 
+	          if (failfec < 0) failfec = msginnxtfec;
+
+
+              if (headspay.fec < (FEC_K-1)) { msginnxtfec = headspay.fec+1;  msginnxtseq = headspay.seq; }
+              else { msginnxtfec = 0; 
+	       if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; 
+	       printf("Bing (%d)(%d)\n",msginnxtseq,headspay.seq);
+	      }
 	    }
+
+            printf("failfec(%d)\n",failfec);
 
 	    uint8_t imax=0, imin=0;
             if (msgincurseq == headspay.seq) { 
@@ -189,14 +199,16 @@ int main(void) {
               
                     for (uint8_t k=0;k<recovcpt;k++) {
                       inblocks[ outblockrecov[k] ] = outblocks[k];
- /* 
+ 
                       uint8_t *ptr=inblocks[ outblockrecov[k] ];
-                      vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
-                      printf(">>len(%ld)  ", vidlen);
+                      vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+
+		      ptr += sizeof(wfb_utils_fec_t);
+                      printf("recover len(%ld)  ", vidlen);
                       for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                       for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
   	  	      printf("\n");
-*/
+
                     }
   	          } else { 
 		    imin = failfec; imax = (FEC_K+1); 
@@ -209,15 +221,14 @@ int main(void) {
             for (uint8_t i=imin;i<imax;i++) {
               uint8_t *ptr=inblocks[i];
 	      if (ptr) {
-                vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
-/*
+                vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+		ptr += sizeof(wfb_utils_fec_t);
+
 		printf("len(%ld) ",vidlen);
                 for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
                 for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr)); printf("\n");
-*/
-                vidlen = sendto(vidfd, ptr + sizeof(wfb_utils_fec_t),
-                                   vidlen - sizeof(wfb_utils_fec_t), MSG_DONTWAIT,
-                                   (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+
+                vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
 	      }
 	    }
 
