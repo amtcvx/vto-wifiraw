@@ -131,22 +131,19 @@ int main(void) {
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
             if (headspay.fec < FEC_K) { 
-              
-	      printf("(%d)(%d)   (%d)(%d)   (%d)\n", msginnxtseq, headspay.seq, msginnxtfec, headspay.fec, inblockstofec);
 
-	      if (((msginnxtfec == (FEC_K-1)) && (msginnxtseq != headspay.seq)) 
-	        || ((msginnxtfec < (FEC_K-1)) && (msginnxtseq == headspay.seq))) 
+	      if (((msginnxtfec == (FEC_K-1)) && (msginnxtfec != headspay.seq)) 
+	        || ((msginnxtfec < (FEC_K-1)) && (msginnxtfec != headspay.fec) && (msginnxtseq == headspay.seq)))
 	          if (failfec < 0) failfec = msginnxtfec;
 
 
               if (headspay.fec < (FEC_K-1)) { msginnxtfec = headspay.fec+1;  msginnxtseq = headspay.seq; }
-              else { msginnxtfec = 0; 
-	       if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; 
-	       printf("Bing (%d)(%d)\n",msginnxtseq,headspay.seq);
+              else { 
+	        msginnxtfec = 0; 
+	        if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; 
 	      }
-	    }
 
-            printf("failfec(%d)\n",failfec);
+	    }
 
 	    uint8_t imax=0, imin=0;
             if (msgincurseq == headspay.seq) { 
@@ -205,9 +202,9 @@ int main(void) {
 
 		      ptr += sizeof(wfb_utils_fec_t);
                       printf("recover len(%ld)  ", vidlen);
+
                       for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                       for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-  	  	      printf("\n");
 
                     }
   	          } else { 
@@ -234,7 +231,7 @@ int main(void) {
 
             if (clearflag) {
               clearflag=false;
-              memset(inblocks, 0, (FEC_K-1)*sizeof(uint8_t *));
+              memset(inblocks, 0, FEC_K*sizeof(uint8_t *));
               inblocks[inblockstofec] = inblocks[FEC_K];
 
               //printf("\n");
