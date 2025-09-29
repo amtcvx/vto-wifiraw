@@ -101,12 +101,13 @@ int main(void) {
 	vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
 	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
 	vidcur++;
-/*
-	uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen;
-        printf(">>len(%ld)  ",tmp);
+
+	uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+	ptr += sizeof(wfb_utils_fec_t);
+        printf("len(%ld) ",tmp);
         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
         for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
-*/
+
       }
 
       if (vidcur == FEC_K) {
@@ -135,10 +136,10 @@ int main(void) {
             struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
-/*
-            if ((k == 4)||(k == 5)||(k == 6)||(k == 7)) printf("missing (%d)(%d)\n",sequence,k);
+
+            if (k == 7) printf("missing (%d)(%d)\n",sequence,k);
             else 
-*/
+
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
 	  if (k<FEC_K) {
