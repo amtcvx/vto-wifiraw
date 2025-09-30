@@ -180,15 +180,15 @@ int main(void) {
                 imin = failfec; imax = (FEC_K + 1);
 	         
                 if (recovcpt > 0) {
-		  if ((inblocksnb + recovcpt) == FEC_K) { 
+		  if (((inblocksnb + recovcpt) == FEC_K) && (index[0] != index[7])) {  // TODO
 
   	            imin = outblockrecov[0]; 
 		    if (failfec == 0) imax = FEC_K;
 		    if (failfec > 0) imax = (FEC_K + 1);
-/* 		
+ 		
                     for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                     printf("\nENCODE (%d)\n",recovcpt);
-*/  
+  
                     fec_decode(fec_p,
                            (const unsigned char **)inblocks,
                            (unsigned char * const*)outblocks,
