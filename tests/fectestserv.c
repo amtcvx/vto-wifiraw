@@ -137,7 +137,8 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
-          if (k == 7) printf("missing (%d)(%d)\n",sequence,k);
+	  uint8_t dum=0;
+          if ((k == 7)||(k == 7)||(k == 7)||(k == 11)||(k == 11)) dum=1; // printf("missing (%d)(%d)\n",sequence,k);
           else 
 
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
