@@ -135,7 +135,7 @@ int main(void) {
 
                 if ((msginnxtfec != headspay.fec) && 
   		   (((msginnxtfec < (FEC_K-1)) && (msginnxtseq == headspay.seq)) || (msginnxtfec == (FEC_K-1)))) 
-	           if (failfec < 0) { failfec = msginnxtfec; printf("failfec (%d)\n",msginnxtfec); }
+	           if (failfec < 0) { failfec = msginnxtfec; } // printf("failfec (%d)\n",msginnxtfec); }
 	      }
 
               if (headspay.fec < (FEC_K-1)) { msginnxtfec = headspay.fec+1;  msginnxtseq = headspay.seq; }
@@ -145,14 +145,12 @@ int main(void) {
 	      }
 	    }
 
-
 	    uint8_t imax=0, imin=0;
             if (msgincurseq == headspay.seq) { 
 
 	      inblocks[headspay.fec] = iovpay.iov_base;
-
 	      if (headspay.fec < FEC_K) {
-	        if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); } else { imin = 0; imax = 0; } 
+	        if ((inblockstofec < 0) && (failfec < 0)) { imin = headspay.fec; imax = (imin+1); } 
 	      }
 
 	    } else {
@@ -160,11 +158,10 @@ int main(void) {
               msgincurseq = headspay.seq;
               inblocks[FEC_N] = iovpay.iov_base;
               clearflag=true;
-/*
-	      imax = (FEC_N + 1);
-	      if (inblockstofec < 0) imin = msginstartfec; 
+
+	      if (inblockstofec < 0) { imin = 0; imax = 0; }
 	      else {
-              
+
 	        imin = 0;
   
                 if (failfec >= 0) {
@@ -177,12 +174,12 @@ int main(void) {
   		  uint8_t *outblocks[FEC_N-FEC_K];
   		  uint8_t outblockrecov[FEC_N-FEC_K];
   
-  		  memset(index,-1,(FEC_N-FEC_K));
+  		  memset(index,0,FEC_K);
                   for (uint8_t i=0;i<FEC_K;i++) {
   		    if (inblocks[i]) { index[i] = i; alldata |= (1 << i); }
   		    else {
                       for (uint8_t j=FEC_K;j<FEC_N;j++) {
-  		        if (!inblocks[j]) {
+  		        if (inblocks[j]) {
                           inblocks[i] = inblocks[j];
   			  index[i] = j; alldata |= (1 << i);
   		  	  outblocks[recovcpt]=&outblocksbuf[recovcpt][0];
@@ -198,10 +195,9 @@ int main(void) {
                     if (alldata != 255) for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0;
                     else {
   
-    	            imin = outblockrecov[0]; 
-  		    if (failfec == 0) imax = FEC_N;
-  		    if (failfec > 0) imax = (FEC_N + 1);
-  		
+    	              imin = inblockstofec; imax = FEC_N;
+  		      if (failfec == 0) { imax = FEC_N; imin = outblockrecov[0]; }
+
                       for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                       printf("\nENCODE (%d)\n",recovcpt);
    
@@ -226,7 +222,6 @@ int main(void) {
   		  }
   		}
   	      }
-*/
 	    }
 
             for (uint8_t i=imin;i<imax;i++) {
@@ -235,12 +230,12 @@ int main(void) {
     	      if (ptr) {
                 vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
     	        ptr += sizeof(wfb_utils_fec_t);
-    
-    	        printf("len(%ld) ",vidlen);
 
+		printf("len(%ld) ",vidlen);
                 for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
                 for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
 		printf("\n");
+
                 vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
     	      }
     	    }
