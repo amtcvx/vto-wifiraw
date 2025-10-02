@@ -144,8 +144,9 @@ int main(void) {
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
 	  if (k<FEC_K) {
-	    uint8_t *ptr = vidbuf[k]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen;
-            printf("len(%ld) ",tmp);
+	    uint8_t *ptr = vidbuf[k]; ssize_t tmp;
+	    if (k<FEC_K) tmp = ((wfb_utils_fec_t *)ptr)->feclen; else tmp = ONLINE_MTU;
+            printf("(%d] len(%ld) ",k,tmp);
             for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
             for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
 	  }
