@@ -96,11 +96,12 @@ int main(void) {
   int8_t inblockstofec=-1;
   int8_t failfec=-1;
 
+  int16_t msgincurseq=-1;
+
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
 
   ssize_t vidlen=0;
   int8_t msginstartfec=-1;
-  int8_t msgincurseq=-1;
   uint8_t msginnxtseq=0;
   uint8_t msginnxtfec=0;
   bool clearflag = false;
@@ -129,7 +130,7 @@ int main(void) {
             if (headspay.fec < FEC_K) { 
 
               if (msgincurseq < 0) { msgincurseq = headspay.seq; msginstartfec = headspay.fec; }
-/*
+
               if (inblockstofec >= 0) {
 
                 if ((msginnxtfec != headspay.fec) && 
@@ -142,7 +143,6 @@ int main(void) {
 	        msginnxtfec = 0; 
 	        if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; 
 	      }
-*/
 	    }
 
 
@@ -150,20 +150,19 @@ int main(void) {
             if (msgincurseq == headspay.seq) { 
 
 	      inblocks[headspay.fec] = iovpay.iov_base;
-/*
+
 	      if (headspay.fec < FEC_K) {
 	        if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); } else { imin = 0; imax = 0; } 
 	      }
-*/
+
 	    } else {
 
               msgincurseq = headspay.seq;
               inblocks[FEC_N] = iovpay.iov_base;
               clearflag=true;
-
+/*
 	      imax = (FEC_N + 1);
 	      if (inblockstofec < 0) imin = msginstartfec; 
-/*
 	      else {
               
 	        imin = 0;
@@ -227,7 +226,6 @@ int main(void) {
   		  }
   		}
   	      }
-
 */
 	    }
 
@@ -238,7 +236,7 @@ int main(void) {
                 vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
     	        ptr += sizeof(wfb_utils_fec_t);
     
-    	        printf("(%d) len(%ld) ",i,vidlen);
+    	        printf("len(%ld) ",vidlen);
 
                 for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
                 for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
@@ -249,6 +247,7 @@ int main(void) {
 
             if (clearflag) {
               clearflag=false;
+	      failfec = -1;
               memset(inblocks, 0, (FEC_N * sizeof(uint8_t *)));
               inblockstofec = headspay.fec;
               inblocks[inblockstofec] = inblocks[FEC_N];
