@@ -124,7 +124,7 @@ int main(void) {
   
         if (rawlen > 0) {
           if(headspay.msgcpt == WFB_VID) {
-  
+ 
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
             if (headspay.fec < FEC_K) { 
@@ -155,6 +155,8 @@ int main(void) {
 
 	    } else {
 
+printf("ON-C (%d)(%d)\n",inblockstofec,failfec);
+
               msgincurseq = headspay.seq;
               inblocks[FEC_N] = iovpay.iov_base;
               clearflag=true;
@@ -162,10 +164,14 @@ int main(void) {
 	      if (inblockstofec < 0) { imin = 0; imax = 0; }
 	      else {
 
+printf("ON-D (%d)(%d)\n",inblockstofec,failfec);
+
 	        imin = 0;
   
                 if (failfec >= 0) {
   
+printf("ON-E (%d)(%d)\n",headspay.fec);
+
                   imin = failfec; imax = (FEC_N + 1);
  
 		  uint8_t alldata=0; 
@@ -176,17 +182,18 @@ int main(void) {
   
   		  memset(index,0,FEC_K);
 		  uint8_t j=FEC_K;
+
                   for (uint8_t i=0;i<FEC_K;i++) {
   		    if (inblocks[i]) { index[i] = i; alldata |= (1 << i); }
   		    else {
                       while (j<FEC_N) {
-  		        if (inblocks[j]) {
-                          inblocks[i] = inblocks[j];
-  			  index[i] = j; alldata |= (1 << i);
+                        j++;
+  		        if (inblocks[j-1]) {
+                          inblocks[i] = inblocks[j-1];
+  			  index[i] = (j - 1); alldata |= (1 << i);
   		  	  outblocks[recovcpt]=&outblocksbuf[recovcpt][0];
   			  outblockrecov[recovcpt] = i;
                           recovcpt++;
-			  j++;
                           break;
 			}
   		      }
@@ -211,14 +218,14 @@ int main(void) {
                 
                       for (uint8_t k=0;k<recovcpt;k++) {
                         inblocks[ outblockrecov[k] ] = outblocks[k];
-/* 
+ 
                         uint8_t *ptr=inblocks[ outblockrecov[k] ];
                         vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
   		        ptr += sizeof(wfb_utils_fec_t);
                         printf("recover len(%ld)  ", vidlen);
                         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-*/
+
                       }
 		    }
   		  }
