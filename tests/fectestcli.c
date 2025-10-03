@@ -175,16 +175,18 @@ int main(void) {
   		  uint8_t outblockrecov[FEC_N-FEC_K];
   
   		  memset(index,0,FEC_K);
+		  uint8_t j=FEC_K;
                   for (uint8_t i=0;i<FEC_K;i++) {
   		    if (inblocks[i]) { index[i] = i; alldata |= (1 << i); }
   		    else {
-                      for (uint8_t j=FEC_K;j<FEC_N;j++) {
+                      while (j<FEC_N) {
   		        if (inblocks[j]) {
                           inblocks[i] = inblocks[j];
   			  index[i] = j; alldata |= (1 << i);
   		  	  outblocks[recovcpt]=&outblocksbuf[recovcpt][0];
   			  outblockrecov[recovcpt] = i;
                           recovcpt++;
+			  j++;
                           break;
 			}
   		      }
@@ -197,10 +199,10 @@ int main(void) {
   
     	              imin = inblockstofec; imax = FEC_N;
   		      if (failfec == 0) { imax = FEC_N; imin = outblockrecov[0]; }
-
+/*
                       for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                       printf("\nENCODE (%d)\n",recovcpt);
-   
+*/   
                       fec_decode(fec_p,
                              (const unsigned char **)inblocks,
                              (unsigned char * const*)outblocks,
@@ -209,14 +211,14 @@ int main(void) {
                 
                       for (uint8_t k=0;k<recovcpt;k++) {
                         inblocks[ outblockrecov[k] ] = outblocks[k];
- 
+/* 
                         uint8_t *ptr=inblocks[ outblockrecov[k] ];
                         vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
   		        ptr += sizeof(wfb_utils_fec_t);
                         printf("recover len(%ld)  ", vidlen);
                         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-
+*/
                       }
 		    }
   		  }
