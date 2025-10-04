@@ -168,29 +168,29 @@ int main(void) {
 	      if (inblockstofec < 0) { imin = 0; imax = 0; }
 	      else {
 
-	        imin = 0;
+                imax = (FEC_K+1);
  
                 if (failfec >= 0) {
-  
-                  imin = failfec; imax = (FEC_K + 1);
- 
-                  if (recovcpt > 0) {
-                    if ((inblocksnb + recovcpt) != (FEC_K-1)) for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0;
-                    else {
-  
-    	              imin = inblockstofec; imax = FEC_K;
-  		      if (failfec == 0) imin = outblockrecov[0];
+	         
+		  printf("(%d)(%d)(%d)\n",failfec,recovcpt,inblocksnb);	
 
-                      for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-                      printf("\nENCODE (%d)\n",recovcpt);
+		  imin = failfec;
+ 
+                  if ((recovcpt + inblocksnb) != (FEC_K-1))  { printf("reset (%d)\n",recovcpt);for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
+                  else {
+  
+                    imin = outblockrecov[0];
+
+                    for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
+                    printf("\nENCODE (%d)\n",recovcpt);
    
-                      fec_decode(fec_p,
+                    fec_decode(fec_p,
                              (const unsigned char **)inblocks,
                              (unsigned char * const*)outblocks,
                              (unsigned int *)index,
                              ONLINE_MTU);
                 
-                      for (uint8_t k=0;k<recovcpt;k++) {
+                    for (uint8_t k=0;k<recovcpt;k++) {
                         inblocks[ outblockrecov[k] ] = outblocks[k];
  
                         uint8_t *ptr=inblocks[ outblockrecov[k] ];
@@ -200,7 +200,6 @@ int main(void) {
                         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
 
-                      }
 		    }
   		  }
   		}
