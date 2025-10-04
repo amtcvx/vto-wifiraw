@@ -131,12 +131,9 @@ int main(void) {
 
               if (msgincurseq < 0) { msgincurseq = headspay.seq; msginstartfec = headspay.fec; }
 
-              if (inblockstofec >= 0) {
-
-                if ((msginnxtfec != headspay.fec) && 
-  		   (((msginnxtfec < (FEC_K-1)) && (msginnxtseq == headspay.seq)) || (msginnxtfec == (FEC_K-1)))) 
-	           if (failfec < 0) { failfec = msginnxtfec; } // printf("failfec (%d)\n",msginnxtfec); }
-	      }
+              if (inblockstofec >= 0) 
+  		if (!((msginnxtseq == headspay.seq) && (msginnxtfec == headspay.fec)))
+	          if (failfec < 0) failfec = msginnxtfec;
 
               if (headspay.fec < (FEC_K-1)) { msginnxtfec = headspay.fec+1;  msginnxtseq = headspay.seq; }
               else { 
@@ -155,8 +152,6 @@ int main(void) {
 
 	    } else {
 
-printf("ON-C (%d)(%d)\n",inblockstofec,failfec);
-
               msgincurseq = headspay.seq;
               inblocks[FEC_N] = iovpay.iov_base;
               clearflag=true;
@@ -164,14 +159,10 @@ printf("ON-C (%d)(%d)\n",inblockstofec,failfec);
 	      if (inblockstofec < 0) { imin = 0; imax = 0; }
 	      else {
 
-printf("ON-D (%d)(%d)\n",inblockstofec,failfec);
-
 	        imin = 0;
   
                 if (failfec >= 0) {
   
-printf("ON-E (%d)(%d)\n",headspay.fec);
-
                   imin = failfec; imax = (FEC_N + 1);
  
 		  uint8_t alldata=0; 
