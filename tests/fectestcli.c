@@ -143,12 +143,8 @@ int main(void) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-	      printf("failfec(%d)(%d)(%d)(%d)(%d)\n",failfec,msginnxtseq,headspay.seq,msginnxtfec,headspay.fec);
-
               if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec)) 
 	        && (failfec < 0)) { failfec = msginnxtfec; failseq = msginnxtseq; }
-
-	      printf("failfec(%d)\n",failfec);
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1; else { 
 	        msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -163,6 +159,8 @@ int main(void) {
  
 	        if (displayflag) { imin = headspay.fec; imax = (imin+1); } 
 	        inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
+
+		printf("set[%d][%d]",headspay.seq,headspay.fec);
 
 	      } else {
 
@@ -183,13 +181,15 @@ int main(void) {
               imin = FEC_K; imax = (FEC_K+1);
 
 	      displayflag=false;
-	      printf("(%d)(%d)(%d)(%d)\n",headspay.seq,failseq,failfec,inblockstofec);
 
   	      if (inblockstofec >= 0) {
 
                 if (failfec >= 0) {
 
-	          if (failseq == msginnxtseq) {
+	          printf("(%d)(%d)(%d)(%d)\n",failfec,failseq,msginnxtseq,headspay.seq);
+
+                  if (((failfec == (FEC_K-1)) && (failseq == msginnxtseq)) ||
+                    ((failfec < (FEC_K-1)) && (headspay.seq == msginnxtseq))) {
 
   		    imin = failfec;
    
@@ -240,7 +240,9 @@ int main(void) {
 
             if (clearflag) {
               clearflag=false; displayflag=true;
-	      failfec = -1; inblocksnb=0; recovcpt=0; failseq = -1;
+	      failfec = -1; inblocksnb=0; recovcpt=0; failseq = -1; 
+	     
+	      msginnxtseq = headspay.seq;
 
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
               inblockstofec = headspay.fec;
