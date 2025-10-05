@@ -110,8 +110,10 @@ int main(void) {
   int16_t inblockstoseq=-1;
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
+  int16_t failseq=-1;
 
   bool clearflag = false;
+  bool displayflag = true;
 
 
   ssize_t vidlen=0;
@@ -141,8 +143,12 @@ int main(void) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-              if ((inblockstofec >= 0) && (msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec) 
-	        && (failfec < 0)) failfec = msginnxtfec;
+	      printf("failfec(%d)(%d)(%d)(%d)(%d)\n",failfec,msginnxtseq,headspay.seq,msginnxtfec,headspay.fec);
+
+              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec)) 
+	        && (failfec < 0)) { failfec = msginnxtfec; failseq = msginnxtseq; }
+
+	      printf("failfec(%d)\n",failfec);
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1; else { 
 	        msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -153,7 +159,9 @@ int main(void) {
 
 	      if (headspay.fec < FEC_K) {
 
-	        if (failfec < 0) {; } //imin = headspay.fec; imax = (imin+1); } 
+                if (failfec >= 0) displayflag = false;
+ 
+	        if (displayflag) { imin = headspay.fec; imax = (imin+1); } 
 	        inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
 
 	      } else {
@@ -172,16 +180,17 @@ int main(void) {
               inblocks[FEC_K] = iovpay.iov_base;
               clearflag=true;
 
-	      if (headspay.seq == msginnxtseq) {
-  	        if (inblockstofec < 0) { imin = 0; imax = 0; }
-  	        else {
- 
-		  printf("(%d)\n",failfec);
+              imin = FEC_K; imax = (FEC_K+1);
 
-                  imax = (FEC_K+1);
-   
-                  if (failfec >= 0) {
-  	         
+	      displayflag=false;
+	      printf("(%d)(%d)(%d)(%d)\n",headspay.seq,failseq,failfec,inblockstofec);
+
+  	      if (inblockstofec >= 0) {
+
+                if (failfec >= 0) {
+
+	          if (failseq == msginnxtseq) {
+
   		    imin = failfec;
    
                     if ((recovcpt + inblocksnb) != (FEC_K-1))  { printf("reset (%d)\n",recovcpt);for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
@@ -214,8 +223,6 @@ int main(void) {
   	      }
 	    }
 
-	    printf("[%d][%d][%d]------------------------------------------\n",failfec,headspay.seq,headspay.fec);
-
             for (uint8_t i=imin;i<imax;i++) {
               uint8_t *ptr=inblocks[i];
     	      if (ptr) {
@@ -232,8 +239,8 @@ int main(void) {
     	    }
 
             if (clearflag) {
-              clearflag=false;
-	      failfec = -1; inblocksnb=0; recovcpt=0;
+              clearflag=false; displayflag=true;
+	      failfec = -1; inblocksnb=0; recovcpt=0; failseq = -1;
 
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
               inblockstofec = headspay.fec;
