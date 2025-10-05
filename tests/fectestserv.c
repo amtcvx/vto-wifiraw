@@ -146,11 +146,13 @@ int main(void) {
 
 //          if ((k == 5)||(k == 9)||(k == 10)||(k == 11)) dum=1;
 //          if ((k == 7)||(k == 9)||(k == 10)||(k == 11)) dum=1;
+//
+//          if ((sequence == 3) && (k == 2)) dum=1;
 
-// TODO          if ((k == 0)||(k == 9)||(k == 10)||(k == 11)) dum=1;
-            if (k == 0) dum=1;
+// TODO     if ((k == 0)||(k == 9)||(k == 10)||(k == 11)) dum=1;
 
-          else 
+            if ((sequence == 3) && (k == 7)) dum=1;
+            else 
 
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
