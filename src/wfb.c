@@ -9,10 +9,14 @@
 #include <poll.h>
 #include <sys/uio.h>
 #include <sys/timerfd.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
 
 #include "zfex.h"
 
-typedef enum { WFB_TIM, WFB_RAW, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
 
 typedef struct {
   uint8_t droneid;
@@ -43,6 +47,10 @@ typedef struct {
 #define PORT_NORAW  3000
 #define PORT_VID  5600
 
+#define TUN_MTU 1400
+#define TUNIP_BOARD     "10.0.1.2"
+#define TUNIP_GROUND    "10.0.1.1"
+#define IPBROAD         "255.255.255.0"
 
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
@@ -90,6 +98,40 @@ int main(void) {
   readsets[readnb].events = POLLIN;
   readnb++;
 
+
+  readtab[readnb] = WFB_TUN;
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(struct ifreq));
+  struct sockaddr_in addr, dstaddr;
+#if BOARD
+  strcpy(ifr.ifr_name,"airtun");
+  addr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
+  dstaddr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
+#else
+  strcpy(ifr.ifr_name, "grdtun");
+  addr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
+  dstaddr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
+#endif // BOARD
+  if (0 > (*fd = open("/dev/net/tun",O_RDWR))) exit(-1);
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (ioctl(*fd, TUNSETIFF, &ifr ) < 0 ) exit(-1);
+  if (-1 == (fd[readnb] = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
+  addr.sin_family = AF_INET;
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd[readnb], SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
+  addr.sin_addr.s_addr = inet_addr(IPBROAD);
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd[readnb], SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
+  dstaddr.sin_family = AF_INET;
+  memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
+  if (ioctl( fd[readnb], SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
+  ifr.ifr_mtu = TUN_MTU;
+  if (ioctl( fd[readnb], SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
+  ifr.ifr_flags = IFF_UP ;
+  if (ioctl( fd[readnb], SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
+  readnb++;
+
+
   readtab[readnb] = WFB_VID;
   if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
@@ -117,6 +159,9 @@ int main(void) {
 
   ssize_t len;
   ssize_t vidlen=0;
+
+  uint8_t tunbuf[ONLINE_MTU];
+  ssize_t tunlen=0;
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;;
@@ -168,85 +213,50 @@ int main(void) {
               len = recvmsg(fd[cpt], &msg, MSG_DONTWAIT);
 
               if (len > 0) {
-//              if( headspay.msgcpt == WFB_TUN) {
-//                len = write(utils.fd[utils.nbraws + 1], piovpay->iov_base, piovpay->iov_len);
-//              }
+                if( headspay.msgcpt == WFB_TUN) len = write(fd[1], iovpay.iov_base, iovpay.iov_len);
 #if BOARD
 #else
                 if( headspay.msgcpt == WFB_VID) {
-
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
-
                   if (headspay.fec < FEC_K) {
-
                     if (msgincurseq < 0) msgincurseq = headspay.seq;
-
                     if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
                       && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
-
                     if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1; else {
                       msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
                   }
 
                   uint8_t imax=0, imin=0;
                   if (msgincurseq == headspay.seq) {
-      
                     if (headspay.fec < FEC_K) {
-      
                       if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); }
                       inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
-      
                     } else {
-      
                       for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) {
                         inblocks[k] = iovpay.iov_base; index[k] = headspay.fec;
                         outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
                         break;
-      
                       }
                     }
-      
                   } else {
-      
                     msgincurseq = headspay.seq;
                     inblocks[FEC_K] = iovpay.iov_base;
                     clearflag=true;
-      
                     imin = FEC_K; imax = (FEC_K+1);
-      
                     if (inblockstofec >= 0) {
-      
                       if ((failfec == 0) && (!(bypassflag))) { imin = 0; imax = 0; }
-      
                       if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
-      
                         imin = failfec;
-      
                         if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                         else {
-      
                           imin = outblockrecov[0];
-/* 
-                          for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-                          printf("\nENCODE (%d)\n",recovcpt);
-*/
                           fec_decode(fec_p,
                                      (const unsigned char **)inblocks,
                                      (unsigned char * const*)outblocks,
                                      (unsigned int *)index,
                                      ONLINE_MTU);
       
-                          for (uint8_t k=0;k<recovcpt;k++) {
-                              inblocks[ outblockrecov[k] ] = outblocks[k];
-/*  
-                              uint8_t *ptr=inblocks[ outblockrecov[k] ];
-                              vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-                              ptr += sizeof(wfb_utils_fec_t);
-                              printf("recover len(%ld)  ", vidlen);
-                              for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
-                              for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-*/
-                          }
+                          for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = outblocks[k];
                         }
                       }
                     }
@@ -257,12 +267,6 @@ int main(void) {
                     if (ptr) {
                       vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
                       ptr += sizeof(wfb_utils_fec_t);
-/*
-                      printf("len(%ld) ",vidlen);
-                      for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
-                      for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
-                      printf("\n");
-*/
                       vidlen = sendto(fd[2], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
                     }
                   }
@@ -272,9 +276,7 @@ int main(void) {
                     if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
                     else failfec = -1;
                     msginnxtseq = headspay.seq;
-      
                     inblocksnb=0; recovcpt=0;
-      
                     memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
                     inblockstofec = headspay.fec;
                     inblocks[inblockstofec] = inblocks[FEC_K];
@@ -283,8 +285,16 @@ int main(void) {
 #endif // BOARD
 	      }
 	    } else {
+
+              if (readtab[cpt] == WFB_TUN) { 
+                memset(&tunbuf[0],0,ONLINE_MTU);
+		struct iovec iov;
+		iov.iov_base = &tunbuf[0];
+		iov.iov_len = ONLINE_MTU;
+		tunlen = readv( fd[cpt], &iov, 1);
+	      }
 #if BOARD
-              if (readtab[cpt] == WFB_VID) { // VID
+              if (readtab[cpt] == WFB_VID) { 
                 memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	        struct iovec iov;
                 iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
@@ -292,11 +302,6 @@ int main(void) {
                 vidlen = readv( fd[cpt], &iov, 1) + sizeof(wfb_utils_fec_t);
                 ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
       	        vidcur++;
-/*
-    	        printf("(%d)len(%ld)  ",vidcur-1,vidlen);
-    	        for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);printf(" ... ");
-    	        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
-*/
 	      }
 #endif // BOARD
 	    }
@@ -333,11 +338,6 @@ int main(void) {
   	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
             len = sendmsg(fd[WFB_RAW], (const struct msghdr *)&msg, MSG_DONTWAIT);
-/*
-            printf("(%d)>>len(%ld)  ",k,vidlen);
-            for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[k][i]);printf(" ... ");
-            for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[k][i]);printf("\n");
-*/
 #if BOARD
 	    vidlen = 0;
             if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
