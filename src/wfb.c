@@ -71,18 +71,18 @@ int main(void) {
 
   struct pollfd readsets[MAXNBDEV];
   uint8_t fd[MAXNBDEV];
-  uint8_t readtab[WFB_NB];
+  uint8_t readtab[WFB_NB],socktab[WFB_NB];
   uint8_t readnb=0;
 
-  readtab[readnb] = WFB_TIM;
+  readtab[readnb] = WFB_TIM; socktab[WFB_TIM] = readnb;
   if (-1 == (fd[readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(fd[readnb], 0, &period, NULL);
   readsets[readnb].fd = fd[readnb];
   readsets[readnb].events = POLLIN;
   readnb++;
-
-  readtab[readnb] = WFB_RAW;
+/*
+  readtab[readnb] = WFB_RAW; socktab[WFB_RAW] = readnb;
   if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
   if (-1 == setsockopt(fd[readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in norawinaddr;
@@ -97,9 +97,8 @@ int main(void) {
   readsets[readnb].fd = fd[readnb];
   readsets[readnb].events = POLLIN;
   readnb++;
-
-
-  readtab[readnb] = WFB_TUN;
+*/
+  readtab[readnb] = WFB_TUN; socktab[WFB_TUN] = readnb;
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(struct ifreq));
   struct sockaddr_in addr, dstaddr;
@@ -130,9 +129,8 @@ int main(void) {
   ifr.ifr_flags = IFF_UP ;
   if (ioctl( fd[readnb], SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
   readnb++;
-
-
-  readtab[readnb] = WFB_VID;
+/*
+  readtab[readnb] = WFB_VID; socktab[WFB_VID] = readnb;
   if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
   if (-1 == setsockopt(fd[readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
@@ -150,7 +148,7 @@ int main(void) {
   vidoutaddr.sin_port = htons(PORT_VID);
   vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
-
+*/
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
   uint8_t sequence=0;
@@ -194,11 +192,22 @@ int main(void) {
 
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
+
+      printf("OUT\n");
+
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
+
+
+      printf("cpt(%d)\n",cpt);
+
+
           if (readtab[cpt] == WFB_TIM ) { // TIMER
-	    len = read(fd[WFB_TIM], &exptime, sizeof(uint64_t)); printf("Click\n");
+					  
+	    len = read(fd[socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); printf("Click\n");
+
 	  } else {
+/*
             if (readtab[cpt] == WFB_RAW) {
 					   
               wfb_utils_heads_pay_t headspay;
@@ -210,10 +219,10 @@ int main(void) {
               struct iovec iovtab[2] = {iovheadpay, iovpay};
 
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2 };
-              len = recvmsg(fd[cpt], &msg, MSG_DONTWAIT);
+              len = recvmsg(fd[socktab[WFB_RAW]], &msg, MSG_DONTWAIT);
 
               if (len > 0) {
-                if( headspay.msgcpt == WFB_TUN) len = write(fd[WFB_TUN], iovpay.iov_base, iovpay.iov_len);
+                if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
 #if BOARD
 #else
                 if( headspay.msgcpt == WFB_VID) {
@@ -267,7 +276,7 @@ int main(void) {
                     if (ptr) {
                       vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
                       ptr += sizeof(wfb_utils_fec_t);
-                      vidlen = sendto(fd[WFB_VID], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+                      vidlen = sendto(fd[socktab[WFB_VID]], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
                     }
                   }
       
@@ -291,23 +300,25 @@ int main(void) {
 		struct iovec iov;
 		iov.iov_base = &tunbuf[0];
 		iov.iov_len = ONLINE_MTU;
-		tunlen = readv( fd[WFB_TUN], &iov, 1);
+		tunlen = readv( fd[socktab[WFB_TUN]], &iov, 1);
 	      }
+
 #if BOARD
               if (readtab[cpt] == WFB_VID) { 
                 memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	        struct iovec iov;
                 iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
                 iov.iov_len = PAY_MTU;
-                vidlen = readv( fd[WFB_VID], &iov, 1) + sizeof(wfb_utils_fec_t);
+                vidlen = readv( fd[socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fec_t);
                 ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
       	        vidcur++;
 	      }
 #endif // BOARD
 	    }
+*/
           }
         }
-
+/*
 #if BOARD
         uint8_t kmin,kmax;
 	kmin=(vidcur-1);
@@ -337,13 +348,14 @@ int main(void) {
               struct iovec iovtab[2] = {iovheadpay, iovpay};
   	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
 
-            len = sendmsg(fd[WFB_RAW], (const struct msghdr *)&msg, MSG_DONTWAIT);
+            len = sendmsg(fd[socktab[WFB_RAW]], (const struct msghdr *)&msg, MSG_DONTWAIT);
 #if BOARD
 	    vidlen = 0;
             if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
           }
 #endif // BOARD
 	}
+*/
       }
     }
   }
