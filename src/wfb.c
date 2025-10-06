@@ -118,7 +118,6 @@ int main(void) {
   ssize_t len;
   ssize_t vidlen=0;
 
-  ssize_t rawlen;
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;;
 
@@ -141,7 +140,6 @@ int main(void) {
 
   uint8_t msginnxtfec=0;
 
-  int16_t inblockstoseq=-1;
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
 
@@ -195,7 +193,7 @@ int main(void) {
       
                     if (headspay.fec < FEC_K) {
       
-                      if ((failfec < 0) || (failfec > 0) && (headspay.fec < failfec)) { imin = headspay.fec; imax = (imin+1); }
+                      if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); }
                       inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
       
                     } else {
@@ -294,20 +292,19 @@ int main(void) {
                 vidlen = readv( fd[cpt], &iov, 1) + sizeof(wfb_utils_fec_t);
                 ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
       	        vidcur++;
-
+/*
     	        printf("(%d)len(%ld)  ",vidcur-1,vidlen);
     	        for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);printf(" ... ");
     	        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
-
+*/
 	      }
 #endif // BOARD
 	    }
           }
         }
 
-        uint8_t kmin,kmax; 
-
 #if BOARD
+        uint8_t kmin,kmax;
 	kmin=(vidcur-1);
         if (vidcur == FEC_K) {
 	  vidcur=0; kmax=FEC_N;
