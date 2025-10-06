@@ -197,7 +197,7 @@ int main(void) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
           if (readtab[cpt] == WFB_TIM ) { // TIMER
-	    len = read(fd[cpt], &exptime, sizeof(uint64_t)); printf("Click\n");
+	    len = read(fd[WFB_TIM], &exptime, sizeof(uint64_t)); printf("Click\n");
 	  } else {
             if (readtab[cpt] == WFB_RAW) {
 					   
@@ -213,7 +213,7 @@ int main(void) {
               len = recvmsg(fd[cpt], &msg, MSG_DONTWAIT);
 
               if (len > 0) {
-                if( headspay.msgcpt == WFB_TUN) len = write(fd[1], iovpay.iov_base, iovpay.iov_len);
+                if( headspay.msgcpt == WFB_TUN) len = write(fd[WFB_TUN], iovpay.iov_base, iovpay.iov_len);
 #if BOARD
 #else
                 if( headspay.msgcpt == WFB_VID) {
@@ -267,7 +267,7 @@ int main(void) {
                     if (ptr) {
                       vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
                       ptr += sizeof(wfb_utils_fec_t);
-                      vidlen = sendto(fd[2], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+                      vidlen = sendto(fd[WFB_VID], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
                     }
                   }
       
@@ -291,7 +291,7 @@ int main(void) {
 		struct iovec iov;
 		iov.iov_base = &tunbuf[0];
 		iov.iov_len = ONLINE_MTU;
-		tunlen = readv( fd[cpt], &iov, 1);
+		tunlen = readv( fd[WFB_TUN], &iov, 1);
 	      }
 #if BOARD
               if (readtab[cpt] == WFB_VID) { 
@@ -299,7 +299,7 @@ int main(void) {
     	        struct iovec iov;
                 iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
                 iov.iov_len = PAY_MTU;
-                vidlen = readv( fd[cpt], &iov, 1) + sizeof(wfb_utils_fec_t);
+                vidlen = readv( fd[WFB_VID], &iov, 1) + sizeof(wfb_utils_fec_t);
                 ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
       	        vidcur++;
 	      }
