@@ -138,6 +138,7 @@ int main(void) {
             struct msghdr msg={ .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr)};
 
 	  uint8_t dum=0;
+          if (sequence == 3) exit(-1);
 
 //            if ((sequence == 3) && ((k == 5)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 //            if ((sequence == 3) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
@@ -154,7 +155,8 @@ int main(void) {
 
 //            if ((sequence == 3) && (k == 7)) dum=1;
 //            if ((sequence == 3) && (k == 2)) dum=1;
-            if ((sequence == 3) && (k == 0)) dum=1;
+            
+            if ((sequence == 2) && (k == 0)) dum=1;
             else 
 
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
