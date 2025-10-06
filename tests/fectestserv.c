@@ -101,13 +101,13 @@ int main(void) {
 	vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
 	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
 	vidcur++;
-
+/*
 	uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
 	ptr += sizeof(wfb_utils_fec_t);
         printf("len(%ld) ",tmp);
         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
         for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
-
+i*/
       }
 
       if (vidcur == FEC_K) {
@@ -138,26 +138,25 @@ int main(void) {
             struct msghdr msg={ .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr)};
 
 	  uint8_t dum=0;
-          if (sequence == 3) exit(-1);
 
 //            if ((sequence == 3) && ((k == 5)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 //            if ((sequence == 3) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//          if ((sequence == 3) && ((k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+//            if ((sequence == 3) && ((k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 
-//          if ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11)) dum=1;
-//          if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10))) dum=1;
+//            if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+//            if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10))) dum=1;
 
 //            if ((sequence == 3) && ((k == 7)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 //            if ((sequence == 3) && ((k == 5)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 //
 
-// TODO     if ((k == 0)||(k == 9)||(k == 10)||(k == 11)) dum=1;
+//            if ((sequence == 3) && ((k == 0)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 
-//            if ((sequence == 3) && (k == 7)) dum=1;
-//            if ((sequence == 3) && (k == 2)) dum=1;
+//            if ((sequence == 2) && (k == 7)) dum=1;
+//            if ((sequence == 2) && (k == 2)) dum=1;
             
-            if ((sequence == 2) && (k == 0)) dum=1;
-            else 
+//            if ((sequence == 2) && (k == 0)) dum=1;
+//            else 
 
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
