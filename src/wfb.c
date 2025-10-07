@@ -73,6 +73,7 @@ int main(void) {
   struct pollfd readsets[MAXNBDEV];
   uint8_t fd[MAXNBDEV];
   uint8_t readtab[WFB_NB],socktab[WFB_NB];
+  ssize_t lentab[WFB_NB];
   uint8_t readnb=0;
 
   readtab[readnb] = WFB_TIM; socktab[WFB_TIM] = readnb;
@@ -150,15 +151,11 @@ int main(void) {
   uint64_t exptime;
 
   ssize_t len;
-  ssize_t vidlen=0;
-
-  ssize_t dumlen=0;
-
-//  uint8_t tunbuf[ONLINE_MTU];
-//  ssize_t tunlen=0;
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;;
+
+  uint8_t tunbuf[ONLINE_MTU];
 
 #if BOARD
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
@@ -206,7 +203,7 @@ int main(void) {
             len = recvmsg(fd[socktab[WFB_RAW]], &msg, MSG_DONTWAIT);
 
             if (len > 0) {
-//            if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
+//              if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
 #if BOARD
 #else
               if( headspay.msgcpt == WFB_VID) {
@@ -258,7 +255,7 @@ int main(void) {
                 for (uint8_t i=imin;i<imax;i++) {
                   uint8_t *ptr=inblocks[i];
                   if (ptr) {
-                    vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+                    ssize_t vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
                     ptr += sizeof(wfb_utils_fec_t);
                     vidlen = sendto(fd[socktab[WFB_VID]], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
                   }
@@ -284,8 +281,8 @@ int main(void) {
             struct iovec iov;
             iov.iov_base = &tunbuf[0];
 	    iov.iov_len = ONLINE_MTU;
-	    tunlen = readv( fd[socktab[WFB_TUN]], &iov, 1);
-	    printf("tunlen(%ld)\n",tunlen);
+	    lentab[WFB_TUN] = readv( fd[socktab[WFB_TUN]], &iov, 1);
+	    printf("tunlen(%ld)\n",lentab[WFB_TUN]);
 	  }
 */
 #if BOARD
@@ -294,16 +291,16 @@ int main(void) {
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
             iov.iov_len = PAY_MTU;
-            vidlen = readv( fd[socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fec_t);
-            ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
+            lentab[WFB_VID] = readv( fd[socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fec_t);
+            ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID];
       	    vidcur++;
 	  }
 #endif // BOARD
         } // readsets[cpt].revents == POLLIN 
       } // for 
 
+      uint8_t kmin = 0, kmax = 1;
 #if BOARD
-      uint8_t kmin,kmax;
       kmin=(vidcur-1);
       if (vidcur == FEC_K) {
         vidcur=0; kmax=FEC_N;
@@ -316,27 +313,32 @@ int main(void) {
                     (gf*restrict const*restrict const)fecblocks,
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
       } else kmax=vidcur;
-      if (vidlen>0) {
-        for (uint8_t k=kmin;k<kmax;k++) {
-          if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
-          struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
-#else
-      if (dumlen>0) { uint8_t k=0, dumbuf[1];
-          struct iovec iovpay = { .iov_base = &dumbuf, .iov_len = vidlen };
 #endif // BOARD
-          wfb_utils_heads_pay_t headspay =
-            { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
-          struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-          struct iovec iovtab[2] = {iovheadpay, iovpay};
-  	  struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
-          len = sendmsg(fd[socktab[WFB_RAW]], (const struct msghdr *)&msg, MSG_DONTWAIT);
+      for (uint8_t k=kmin;k<kmax;k++) {
+        for (uint8_t d=0; d < WFB_NB; d++) {
+          if (lentab[d] > 0) {
+            struct iovec iovpay;
+//            if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN]; };
 #if BOARD
-	  vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1))) sequence++;
-        } // for k 
+            if (d == WFB_VID) {
+              if (k<FEC_K) lentab[WFB_VID]=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID]=ONLINE_MTU;
+              iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID];
+	    }
 #endif // BOARD
+       
+            wfb_utils_heads_pay_t headspay =
+              { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = lentab[d], .seq = sequence, .fec = k, .num = num++ };
+            struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+            struct iovec iovtab[2] = {iovheadpay, iovpay};
+  	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
+            len = sendmsg(fd[socktab[WFB_RAW]], (const struct msghdr *)&msg, MSG_DONTWAIT);
+	    lentab[d] = 0;
+#if BOARD
+            if ((d == WFB_VID)&&(vidcur == 0)&&(k == (FEC_N-1))) sequence++;
+#endif // BOARD
+	  }
+        }
       }
-
     } // poll
   }
 }
