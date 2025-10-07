@@ -17,7 +17,7 @@
 #include "zfex.h"
 
 //typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
-typedef enum { WFB_RAW, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_TIM, WFB_RAW, WFB_VID, WFB_NB } type_d;
 
 typedef struct {
   uint8_t droneid;
@@ -47,12 +47,12 @@ typedef struct {
 
 #define PORT_NORAW  3000
 #define PORT_VID  5600
-
+/*
 #define TUN_MTU 1400
 #define TUNIP_BOARD     "10.0.1.2"
 #define TUNIP_GROUND    "10.0.1.1"
 #define IPBROAD         "255.255.255.0"
-
+*/
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
 #define DRONEID_MAX 2
@@ -147,7 +147,7 @@ int main(void) {
   fec_new(FEC_K, FEC_N, &fec_p);
   uint8_t sequence=0;
   uint8_t num=0;
-//  uint64_t exptime;
+  uint64_t exptime;
 
   ssize_t len;
   ssize_t vidlen=0;
