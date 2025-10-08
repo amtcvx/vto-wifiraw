@@ -16,8 +16,7 @@
 
 #include "zfex.h"
 
-//typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
-typedef enum { WFB_TIM, WFB_RAW, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
 
 typedef struct {
   uint8_t droneid;
@@ -47,12 +46,12 @@ typedef struct {
 
 #define PORT_NORAW  3000
 #define PORT_VID  5600
-/*
+
 #define TUN_MTU 1400
 #define TUNIP_BOARD     "10.0.1.2"
 #define TUNIP_GROUND    "10.0.1.1"
 #define IPBROAD         "255.255.255.0"
-*/
+
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
 #define DRONEID_MAX 2
@@ -95,7 +94,7 @@ int main(void) {
   norawoutaddr.sin_port = htons(PORT_NORAW);
   norawoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
   readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-/*
+
   readtab[readnb] = WFB_TUN; socktab[WFB_TUN] = readnb;
   struct ifreq ifr; memset(&ifr, 0, sizeof(struct ifreq));
   struct sockaddr_in addr, dstaddr;
@@ -108,25 +107,26 @@ int main(void) {
   addr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
   dstaddr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
 #endif // BOARD
-  if (0 > (*fd = open("/dev/net/tun",O_RDWR))) exit(-1);
+  if (0 > (fd[readnb] = open("/dev/net/tun",O_RDWR))) exit(-1);
   ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-  if (ioctl(*fd, TUNSETIFF, &ifr ) < 0 ) exit(-1);
-  if (-1 == (fd[readnb] = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
+  if (ioctl(fd[readnb], TUNSETIFF, &ifr ) < 0 ) exit(-1);
+  uint16_t fd_tun_udp;
+  if (-1 == (fd_tun_udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
   addr.sin_family = AF_INET;
   memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
-  if (ioctl( fd[readnb], SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
+  if (ioctl( fd_tun_udp, SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
   addr.sin_addr.s_addr = inet_addr(IPBROAD);
   memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
-  if (ioctl( fd[readnb], SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
+  if (ioctl( fd_tun_udp, SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
   dstaddr.sin_family = AF_INET;
   memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
-  if (ioctl( fd[readnb], SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
+  if (ioctl( fd_tun_udp, SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
   ifr.ifr_mtu = TUN_MTU;
-  if (ioctl( fd[readnb], SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
+  if (ioctl( fd_tun_udp, SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
   ifr.ifr_flags = IFF_UP ;
-  if (ioctl( fd[readnb], SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
+  if (ioctl( fd_tun_udp, SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
   readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-*/
+
   readtab[readnb] = WFB_VID; socktab[WFB_VID] = readnb;
   if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
@@ -203,7 +203,7 @@ int main(void) {
             len = recvmsg(fd[socktab[WFB_RAW]], &msg, MSG_DONTWAIT);
 
             if (len > 0) {
-//              if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
+              if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
 #if BOARD
 #else
               if( headspay.msgcpt == WFB_VID) {
@@ -275,7 +275,7 @@ int main(void) {
 #endif // BOARD
             }
 	  } // readtab[cpt] == WFB_RAW
-/*
+
           if (readtab[cpt] == WFB_TUN) { 
             memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov;
@@ -284,7 +284,7 @@ int main(void) {
 	    lentab[WFB_TUN] = readv( fd[socktab[WFB_TUN]], &iov, 1);
 	    printf("tunlen(%ld)\n",lentab[WFB_TUN]);
 	  }
-*/
+
 #if BOARD
           if (readtab[cpt] == WFB_VID) { 
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
@@ -318,7 +318,7 @@ int main(void) {
         for (uint8_t d=0; d < WFB_NB; d++) {
           if (lentab[d] > 0) {
             struct iovec iovpay;
-//            if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN]; };
+            if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN]; };
 #if BOARD
             if (d == WFB_VID) {
               if (k<FEC_K) lentab[WFB_VID]=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID]=ONLINE_MTU;
