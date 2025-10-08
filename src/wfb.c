@@ -327,7 +327,7 @@ int main(void) {
 #endif // BOARD
        
             wfb_utils_heads_pay_t headspay =
-              { .droneid = DRONEID, .msgcpt = WFB_VID, .msglen = lentab[d], .seq = sequence, .fec = k, .num = num++ };
+              { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d], .seq = sequence, .fec = k, .num = num++ };
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
             struct iovec iovtab[2] = {iovheadpay, iovpay};
   	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
