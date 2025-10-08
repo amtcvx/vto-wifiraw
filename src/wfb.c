@@ -301,18 +301,20 @@ int main(void) {
 
       uint8_t kmin = 0, kmax = 1;
 #if BOARD
-      kmin=(vidcur-1);
-      if (vidcur == FEC_K) {
-        vidcur=0; kmax=FEC_N;
-        unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
-        uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)vidbuf[f];
-        uint8_t *fecblocks[FEC_N-FEC_K];
-        for (uint8_t f=0; f<(FEC_N - FEC_K); f++) fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
-        fec_encode(fec_p,
-                    (const gf*restrict const*restrict const)datablocks,
-                    (gf*restrict const*restrict const)fecblocks,
-                    (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
-      } else kmax=vidcur;
+      if (lentab[WFB_VID] > 0) {
+        kmin=(vidcur-1);
+        if (vidcur == FEC_K) {
+          vidcur=0; kmax=FEC_N;
+          unsigned blocknums[FEC_N-FEC_K]; for(uint8_t f=0; f<(FEC_N-FEC_K); f++) blocknums[f]=(f+FEC_K);
+          uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)vidbuf[f];
+          uint8_t *fecblocks[FEC_N-FEC_K];
+          for (uint8_t f=0; f<(FEC_N - FEC_K); f++) fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
+          fec_encode(fec_p,
+                      (const gf*restrict const*restrict const)datablocks,
+                      (gf*restrict const*restrict const)fecblocks,
+                      (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
+        } else kmax=vidcur;
+      }
 #endif // BOARD
       for (uint8_t k=kmin;k<kmax;k++) {
         for (uint8_t d=0; d < WFB_NB; d++) {
@@ -325,7 +327,6 @@ int main(void) {
               iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID];
 	    }
 #endif // BOARD
-       
             wfb_utils_heads_pay_t headspay =
               { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d], .seq = sequence, .fec = k, .num = num++ };
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
