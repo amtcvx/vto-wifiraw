@@ -368,6 +368,9 @@ int main(void) {
           if (lentab[d] > 0) {
             struct iovec iovpay;
             if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN]; };
+#if TELEM
+            if (d == WFB_TEL) { iovpay.iov_base = &telbuf; iovpay.iov_len = lentab[WFB_TEL]; };
+#endif // TELEM
 #if BOARD
             if (d == WFB_VID) {
               if (k<FEC_K) lentab[WFB_VID]=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID]=ONLINE_MTU;
