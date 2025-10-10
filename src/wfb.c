@@ -232,7 +232,7 @@ int main(void) {
 
           if (readtab[cpt] == WFB_TIM )  { len = read(fd[socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
             loglen += sprintf((char *)&logtxt + loglen, "Click\n");
-            sendto(logfd, logtxt, loglen, 0,  (const struct sockaddr *)&logaddr, sizeof(struct sockaddr));
+            sendto(logfd, logtxt, loglen, MSG_DONTWAIT,  (const struct sockaddr *)&logaddr, sizeof(struct sockaddr));
 	    loglen = 0;
 	  }
 
