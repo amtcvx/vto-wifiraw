@@ -82,7 +82,7 @@ void wfb_utils_init(wfb_utils_init_t *pu) {
 #if BOARD
   if (-1 == (pu->fd[pu->readnb] = open( UART, O_RDWR | O_NOCTTY | O_NONBLOCK))) exit(-1);
   struct termios tty;
-  if (0 != tcgetattr(fd[readnb], &tty)) exit(-1);
+  if (0 != tcgetattr(pu->fd[pu->readnb], &tty)) exit(-1);
   cfsetispeed(&tty,B115200);
   cfsetospeed(&tty,B115200);
   cfmakeraw(&tty);
