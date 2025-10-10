@@ -53,7 +53,7 @@ typedef struct {
 #define PORT_VID     5600
 #define PORT_TELUP   4245
 #define PORT_TELDOWN 4244
-#define PORT_LOG     5600
+#define PORT_LOG     5000
 
 #define PAY_MTU 1400
 
@@ -233,6 +233,7 @@ int main(void) {
           if (readtab[cpt] == WFB_TIM )  { len = read(fd[socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
             loglen += sprintf((char *)&logtxt + loglen, "Click\n");
             sendto(logfd, logtxt, loglen, 0,  (const struct sockaddr *)&logaddr, sizeof(struct sockaddr));
+	    loglen = 0;
 	  }
 
           if (readtab[cpt] == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU); 
