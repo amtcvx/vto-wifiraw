@@ -268,8 +268,10 @@ int main(void) {
             if (len > 0) {
               if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
 #if BOARD
+#if TELEM
+              if( headspay.msgcpt == WFB_TEL)  len = write(fd[socktab[WFB_TEL]], iovpay.iov_base, iovpay.iov_len);
+#endif // TELEM
 #else
-
 #if TELEM
               if( headspay.msgcpt == WFB_TEL) len = sendto(fd[socktab[WFB_TEL]], iovpay.iov_base, iovpay.iov_len, MSG_DONTWAIT, 
 	        (struct sockaddr *)&teloutaddr, sizeof(teloutaddr));
