@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
-#include <termios.h>
 
 #include "wfb_utils.h"
 
@@ -83,7 +82,7 @@ int main(void) {
 #if TELEM
           if (u.readtab[cpt] == WFB_TEL) { memset(&telbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &telbuf[0]; iov.iov_len = ONLINE_MTU;
-            lentab[WFB_TEL] = readv( u.fd[socktab[WFB_TEL]], &iov, 1);
+            lentab[WFB_TEL] = readv( u.fd[u.socktab[WFB_TEL]], &iov, 1);
           }
 #endif // TELEM
        
