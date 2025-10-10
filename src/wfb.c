@@ -1,27 +1,12 @@
 #include <stdbool.h>
 #include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <poll.h>
 #include <sys/uio.h>
-#include <sys/timerfd.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <fcntl.h>
-#include <linux/if_tun.h>
 #include <termios.h>
 
-#include "zfex.h"
+#include "wfb_utils.h"
 
-#if TELEM
-typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
-#else
-typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
-#endif // TELEM
 
 typedef struct {
   uint8_t droneid;
@@ -37,165 +22,20 @@ typedef struct {
   uint16_t feclen;
 } __attribute__((packed)) wfb_utils_fec_t;
 
-#define PAY_MTU 1400
-
-#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
-
-#define MAXNBRAWBUF 2*FEC_N
-
-#define MAXNBDEV 25 
-
-#define PERIOD_DELAY_S  1
-
-#define IP_LOCAL "127.0.0.1"
-
-#define PORT_NORAW   3000
-#define PORT_VID     5600
-#define PORT_TELUP   4245
-#define PORT_TELDOWN 4244
-#define PORT_LOG     5000
-
-#define PAY_MTU 1400
-
-#define TUN_MTU      1400
-#define TUNIP_BOARD  "10.0.1.2"
-#define TUNIP_GROUND "10.0.1.1"
-#define IPBROAD      "255.255.255.0"
-
-#define DRONEID_GRD 0
-#define DRONEID_MIN 1
-#define DRONEID_MAX 2
-
-#if BOARD
-#define DRONEID 1
-#else
-#define DRONEID DRONEID_GRD
-#endif // BOARD
-
-#define FEC_K   8
-#define FEC_N   12
 
 /*****************************************************************************/
 int main(void) {
 
-  struct pollfd readsets[MAXNBDEV];
-  uint8_t fd[MAXNBDEV];
-  uint8_t readtab[WFB_NB],socktab[WFB_NB];
-  ssize_t lentab[WFB_NB];
-  uint8_t readnb=0;
+  wfb_utils_init_t u;
+  wfb_utils_init(&u);
 
-  uint8_t logfd, logtxt[80]; size_t loglen=0;
-  if (-1 == (logfd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  struct sockaddr_in logaddr;
-  logaddr.sin_family = AF_INET;
-  logaddr.sin_port = htons(PORT_LOG);
-  logaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
-
-
-  readtab[readnb] = WFB_TIM; socktab[WFB_TIM] = readnb;
-  if (-1 == (fd[readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
-  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(fd[readnb], 0, &period, NULL);
-  readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-
-  readtab[readnb] = WFB_RAW; socktab[WFB_RAW] = readnb;
-  if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  if (-1 == setsockopt(fd[readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
-  struct sockaddr_in norawinaddr;
-  norawinaddr.sin_family = AF_INET;
-  norawinaddr.sin_port = htons(PORT_NORAW);
-  norawinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
-  if (-1 == bind( fd[readnb], (const struct sockaddr *)&norawinaddr, sizeof(norawinaddr))) exit(-1);
-  struct sockaddr_in norawoutaddr;
-  norawoutaddr.sin_family = AF_INET;
-  norawoutaddr.sin_port = htons(PORT_NORAW);
-  norawoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
-  readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-
-  readtab[readnb] = WFB_TUN; socktab[WFB_TUN] = readnb;
-  struct ifreq ifr; memset(&ifr, 0, sizeof(struct ifreq));
-  struct sockaddr_in addr, dstaddr;
-#if BOARD
-  strcpy(ifr.ifr_name,"airtun");
-  addr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
-  dstaddr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
-#else
-  strcpy(ifr.ifr_name, "grdtun");
-  addr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
-  dstaddr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
-#endif // BOARD
-  if (0 > (fd[readnb] = open("/dev/net/tun",O_RDWR))) exit(-1);
-  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-  if (ioctl(fd[readnb], TUNSETIFF, &ifr ) < 0 ) exit(-1);
-  uint16_t fd_tun_udp;
-  if (-1 == (fd_tun_udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
-  addr.sin_family = AF_INET;
-  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
-  if (ioctl( fd_tun_udp, SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
-  addr.sin_addr.s_addr = inet_addr(IPBROAD);
-  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
-  if (ioctl( fd_tun_udp, SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
-  dstaddr.sin_family = AF_INET;
-  memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
-  if (ioctl( fd_tun_udp, SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
-  ifr.ifr_mtu = TUN_MTU;
-  if (ioctl( fd_tun_udp, SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
-  ifr.ifr_flags = IFF_UP ;
-  if (ioctl( fd_tun_udp, SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
-  readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-
-  readtab[readnb] = WFB_VID; socktab[WFB_VID] = readnb;
-  if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-#if BOARD
-  if (-1 == setsockopt(fd[readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
-  struct sockaddr_in  vidinaddr;
-  vidinaddr.sin_family = AF_INET;
-  vidinaddr.sin_port = htons(PORT_VID);
-  vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
-  if (-1 == bind( fd[readnb], (const struct sockaddr *)&vidinaddr, sizeof( vidinaddr))) exit(-1);
-  readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-#else
-  struct sockaddr_in vidoutaddr;
-  vidoutaddr.sin_family = AF_INET;
-  vidoutaddr.sin_port = htons(PORT_VID);
-  vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
-#endif // BOARD
-
-#if TELEM
-  readtab[readnb] = WFB_TEL; socktab[WFB_TEL] = readnb;
-#if BOARD
-  if (-1 == (fd[readnb] = open( UART, O_RDWR | O_NOCTTY | O_NONBLOCK))) exit(-1);
-  struct termios tty;
-  if (0 != tcgetattr(fd[readnb], &tty)) exit(-1);
-  cfsetispeed(&tty,B115200);
-  cfsetospeed(&tty,B115200);
-  cfmakeraw(&tty);
-  if (0 != tcsetattr(fd[readnb], TCSANOW, &tty)) exit(-1);
-  tcflush(fd[readnb] ,TCIFLUSH);
-  tcdrain(fd[readnb]);
-#else
-  if (-1 == (fd[readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  if (-1 == setsockopt(fd[readnb] , SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1); 
-  struct sockaddr_in telinaddr;
-  telinaddr.sin_family = AF_INET;
-  telinaddr.sin_port = htons(PORT_TELUP);
-  telinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  if (-1 == bind( fd[readnb], (const struct sockaddr *)&telinaddr, sizeof(telinaddr))) exit(-1);
-  struct sockaddr_in teloutaddr;
-  teloutaddr.sin_family = AF_INET;
-  teloutaddr.sin_port = htons(PORT_TELDOWN);
-  teloutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
-#endif // BOARD
-  readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
-#endif // TELEM
-      
-  fec_t *fec_p;
-  fec_new(FEC_K, FEC_N, &fec_p);
   uint8_t sequence=0;
   uint8_t num=0;
   uint64_t exptime;
   ssize_t len;
   uint8_t rawcur=0;;
+
+  ssize_t lentab[WFB_NB];
 
   uint8_t tunbuf[ONLINE_MTU];
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
@@ -225,40 +65,40 @@ int main(void) {
 #endif // BOARD
 
   for(;;) {
-    if (0 != poll(readsets, readnb, -1)) {
+    if (0 != poll(u.readsets, u.readnb, -1)) {
 
-      for (uint8_t cpt=0; cpt<readnb; cpt++) {
-        if (readsets[cpt].revents == POLLIN) {
+      for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
+        if (u.readsets[cpt].revents == POLLIN) {
 
-          if (readtab[cpt] == WFB_TIM )  { len = read(fd[socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
-            loglen += sprintf((char *)&logtxt + loglen, "Click\n");
-            sendto(logfd, logtxt, loglen, MSG_DONTWAIT,  (const struct sockaddr *)&logaddr, sizeof(struct sockaddr));
-	    loglen = 0;
+          if (u.readtab[cpt] == WFB_TIM )  { len = read(u.fd[u.socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
+            u.log.len += sprintf((char *)&u.log.txt + u.log.len, "Click\n");
+            sendto(u.log.fd, u.log.txt, u.log.len, MSG_DONTWAIT,  (const struct sockaddr *)&u.log.addr, sizeof(struct sockaddr));
+	    u.log.len = 0;
 	  }
 
-          if (readtab[cpt] == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU); 
+          if (u.readtab[cpt] == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU); 
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
-	    lentab[WFB_TUN] = readv( fd[socktab[WFB_TUN]], &iov, 1);
+	    lentab[WFB_TUN] = readv( u.fd[u.socktab[WFB_TUN]], &iov, 1);
 	  }
 #if TELEM
-          if (readtab[cpt] == WFB_TEL) { memset(&telbuf[0],0,ONLINE_MTU);
+          if (u.readtab[cpt] == WFB_TEL) { memset(&telbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &telbuf[0]; iov.iov_len = ONLINE_MTU;
-            lentab[WFB_TEL] = readv( fd[socktab[WFB_TEL]], &iov, 1);
+            lentab[WFB_TEL] = readv( u.fd[socktab[WFB_TEL]], &iov, 1);
           }
 #endif // TELEM
        
 #if BOARD
-          if (readtab[cpt] == WFB_VID) { 
+          if (u.readtab[cpt] == WFB_VID) { 
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
             iov.iov_len = PAY_MTU;
-            lentab[WFB_VID] = readv( fd[socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fec_t);
+            lentab[WFB_VID] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fec_t);
             ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID];
       	    vidcur++;
 	  }
 #endif // BOARD
-          if (readtab[cpt] == WFB_RAW) {
+          if (u.readtab[cpt] == WFB_RAW) {
 					   
             wfb_utils_heads_pay_t headspay;
             memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
@@ -269,18 +109,18 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
 
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2 };
-            len = recvmsg(fd[socktab[WFB_RAW]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
+            len = recvmsg(u.fd[u.socktab[WFB_RAW]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
 
             if (len > 0) {
-              if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, len);
+              if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
 #if BOARD
 #if TELEM
-              if( headspay.msgcpt == WFB_TEL)  len = write(fd[socktab[WFB_TEL]], iovpay.iov_base, len);
+              if( headspay.msgcpt == WFB_TEL)  len = write(u.fd[u.socktab[WFB_TEL]], iovpay.iov_base, len);
 #endif // TELEM
 #else
 #if TELEM
-              if( headspay.msgcpt == WFB_TEL) len = sendto(fd[socktab[WFB_TEL]], iovpay.iov_base, len, MSG_DONTWAIT, 
-	        (struct sockaddr *)&teloutaddr, sizeof(teloutaddr));
+              if( headspay.msgcpt == WFB_TEL) len = sendto(u.fd[u.socktab[WFB_TEL]], iovpay.iov_base, len, MSG_DONTWAIT, 
+	        (struct sockaddr *)&u.teloutaddr, sizeof(u.teloutaddr));
 #endif // TELEM
               if( headspay.msgcpt == WFB_VID) {
                 if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
@@ -316,7 +156,7 @@ int main(void) {
                       if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                       else {
                         imin = outblockrecov[0];
-                        fec_decode(fec_p,
+                        fec_decode(u.fec_p,
                                    (const unsigned char **)inblocks,
                                    (unsigned char * const*)outblocks,
                                    (unsigned int *)index,
@@ -333,7 +173,7 @@ int main(void) {
                   if (ptr) {
                     ssize_t vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
                     ptr += sizeof(wfb_utils_fec_t);
-                    vidlen = sendto(fd[socktab[WFB_VID]], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+                    vidlen = sendto(u.fd[u.socktab[WFB_VID]], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&u.vidoutaddr, sizeof(u.vidoutaddr));
                   }
                 }
       
@@ -364,7 +204,7 @@ int main(void) {
           uint8_t *datablocks[FEC_K];for (uint8_t f=0; f<FEC_K; f++) datablocks[f] = (uint8_t *)vidbuf[f];
           uint8_t *fecblocks[FEC_N-FEC_K];
           for (uint8_t f=0; f<(FEC_N - FEC_K); f++) fecblocks[f] = (uint8_t *)&vidbuf[f + FEC_K];
-          fec_encode(fec_p,
+          fec_encode(u.fec_p,
                       (const gf*restrict const*restrict const)datablocks,
                       (gf*restrict const*restrict const)fecblocks,
                       (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
@@ -389,8 +229,8 @@ int main(void) {
               { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d], .seq = sequence, .fec = k, .num = num++ };
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
             struct iovec iovtab[2] = {iovheadpay, iovpay};
-  	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &norawoutaddr, .msg_namelen = sizeof(norawoutaddr) };
-            len = sendmsg(fd[socktab[WFB_RAW]], (const struct msghdr *)&msg, MSG_DONTWAIT);
+  	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
+            len = sendmsg(u.fd[u.socktab[WFB_RAW]], (const struct msghdr *)&msg, MSG_DONTWAIT);
 	    lentab[d] = 0;
 #if BOARD
             if ((d == WFB_VID)&&(vidcur == 0)&&(k == (FEC_N-1))) sequence++;

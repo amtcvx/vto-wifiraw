@@ -1,192 +1,34 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/timerfd.h>
-#include <netinet/in.h>
-
-#include <fcntl.h>
-#include <net/if.h>
-#include <linux/if_tun.h>
-#include <sys/ioctl.h>
-
 #include "wfb_utils.h"
-#include "wfb_net.h"
-#include "zfex.h"
-
-#define TUN_MTU 1400
 
 /*****************************************************************************/
-void printlog(wfb_utils_init_t *pinit) {
+void wfb_utils_init(wfb_utils_init_t *pu) {
 
-  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d) sent(%d)\n";
-  wfb_utils_log_t *plog = &pinit->log;
-  for (uint8_t i=0; i < pinit->nbraws; i++) {
-    wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
-    plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-                          i, pstat->freqnb, pinit->rawchan.mainraw, pinit->rawchan.backraw, pstat->incoming, 
-			  pstat->fails, pstat->sent);
-  }
-  if (pinit->nbraws == 0) plog->len += sprintf((char *)plog->txt + plog->len, "NO WIFI\n");
-  sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addrout, sizeof(struct sockaddr));
-  plog->len = 0;
+  if (-1 == (pu->log.fd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  pu->log.addr.sin_family = AF_INET;
+  pu->log.addr.sin_port = htons(PORT_LOG);
+  pu->log.addr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 
-}
+  pu->readtab[pu->readnb] = WFB_TIM; pu->socktab[WFB_TIM] = pu->readnb;
+  if (-1 == (pu->fd[pu->readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
+  timerfd_settime(pu->fd[pu->readnb], 0, &period, NULL);
+  pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
 
-/*****************************************************************************/
-void setmainbackup(wfb_utils_init_t *pinit) {
+  pu->readtab[pu->readnb] = WFB_RAW; pu->socktab[WFB_RAW] = pu->readnb;
+  if (-1 == (pu->fd[pu->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == setsockopt(pu->fd[pu->readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct sockaddr_in norawinaddr;
+  norawinaddr.sin_family = AF_INET;
+  norawinaddr.sin_port = htons(PORT_NORAW);
+  norawinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
+  if (-1 == bind( pu->fd[pu->readnb], (const struct sockaddr *)&norawinaddr, sizeof(norawinaddr))) exit(-1);
+  pu->norawoutaddr.sin_family = AF_INET;
+  pu->norawoutaddr.sin_port = htons(PORT_NORAW);
+  pu->norawoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
+  pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
 
-#if BOARD
-  for (uint8_t i=0; i < pinit->nbraws; i++) {
-    wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
-    if (pstat->fails != 0) {
-      pstat->fails = 0;
-      pstat->timecpt = 0;
-      pstat->freqfree = false;
-      if (i != pinit->rawchan.mainraw) {
-        uint8_t nextfreqnb = 1 + pinit->rawdevs[i]->stat.freqnb;
-        if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
-        pinit->rawdevs[i]->stat.freqnb = nextfreqnb;
-        wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
-      }
-    } else {
-      if (pstat->timecpt < 10) pstat->timecpt++;
-      else {
-        pstat->timecpt = 0;
-        pstat->freqfree = true;
-      }
-    }
-  }
-
-  if (pinit->nbraws == 1) {
-    if (pinit->rawchan.mainraw == -1) {
-      for (uint8_t i=0; i < pinit->nbraws; i++) {
-        if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
-      }
-    }
-  } else {
-	  
-    if (pinit->rawchan.mainraw != -1) {
-      if (!(pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqfree)) {
-        pinit->rawchan.mainraw = -1;
-        if (pinit->rawchan.backraw != -1) {
-          if (pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree) {
-            pinit->rawchan.mainraw = pinit->rawchan.backraw;
-	    pinit->rawchan.backraw = -1;
-	  }
-        } else {
-          for (uint8_t i=0; i < pinit->nbraws; i++) {
-            if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
-	  }
-        }
-      }
-    } else {
-      for (uint8_t i=0; i < pinit->nbraws; i++) {
-        if (pinit->rawdevs[i]->stat.freqfree) { pinit->rawchan.mainraw = i; break; }
-      }
-    }
-
-    if (pinit->rawchan.backraw != -1) {
-      if  (!(pinit->rawdevs[pinit->rawchan.backraw]->stat.freqfree)) pinit->rawchan.backraw = -1;
-    }
-    if ((pinit->rawchan.mainraw != -1) && (pinit->rawchan.backraw == -1)) {
-      for (uint8_t i=0; i < pinit->nbraws; i++) {
-        if ((i != pinit->rawchan.mainraw) && (pinit->rawdevs[i]->stat.freqfree)) { pinit->rawchan.backraw = i; break; }
-      }
-    }
-  }
-
-
-  if (pinit->rawchan.mainraw != -1) {
-    pinit->msgout.iov[WFB_PRO][pinit->rawchan.mainraw][0].iov_len = sizeof(wfb_utils_pro_t);
-    if (pinit->rawchan.backraw == -1) {
-       ((wfb_utils_pro_t *)pinit->msgout.iov[WFB_PRO][pinit->rawchan.mainraw][0].iov_base)->chan = -1;
-    } else { 
-      ((wfb_utils_pro_t *)pinit->msgout.iov[WFB_PRO][pinit->rawchan.mainraw][0].iov_base)->chan = pinit->rawdevs[pinit->rawchan.backraw]->stat.freqnb;
-      ((wfb_utils_pro_t *)pinit->msgout.iov[WFB_PRO][pinit->rawchan.backraw][0].iov_base)->chan = 100 + pinit->rawdevs[pinit->rawchan.mainraw]->stat.freqnb;
-      pinit->msgout.iov[WFB_PRO][pinit->rawchan.backraw][0].iov_len = sizeof(wfb_utils_pro_t);
-    }
-  } 
-
-#else
-  for (uint8_t i=0; i < pinit->nbraws; i++) {
-    wfb_net_status_t *pstat = &(pinit->rawdevs[i]->stat);
-    if (pstat->incoming > 0) { 
-      pstat->incoming = 0;
-      pstat->timecpt = 0;
-      pstat->freqfree = false;
-
-    } else {
-      if (pstat->timecpt < 3) pstat->timecpt++;
-      else {
-        pstat->timecpt = 0;
-        pstat->freqfree = true;
-
-	if (i == pinit->rawchan.mainraw) pinit->rawchan.mainraw = -1;
-	if (i == pinit->rawchan.backraw) pinit->rawchan.backraw = -1;
-     
-        uint8_t nextfreqnb = 1 + pstat->freqnb;
-        if (nextfreqnb > pinit->rawdevs[i]->nbfreqs) nextfreqnb = 0;
-        pstat->freqnb = nextfreqnb;
-        wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[i]->ifindex, pinit->rawdevs[i]->freqs[nextfreqnb]);
-      }
-    }
-  }
-  for (uint8_t i=0; i < pinit->nbraws; i++) {
-    if (!(pinit->rawdevs[i]->stat.freqfree)) {
-      if (pinit->rawdevs[i]->stat.chan == -1) { 
-        pinit->rawchan.mainraw = i; 
-	pinit->rawchan.backraw = -1; 
-        break; // for i
-      } else if (pinit->rawdevs[i]->stat.chan < 100) { 
-        pinit->rawchan.mainraw = i; 
-        for (uint8_t j=0; j < pinit->nbraws; j++) {
-          if (j != pinit->rawchan.mainraw) {
-            pinit->rawchan.backraw = j;
-	    if (pinit->rawdevs[j]->stat.freqnb !=  pinit->rawdevs[i]->stat.chan) {
-              pinit->rawdevs[j]->stat.freqnb = pinit->rawdevs[i]->stat.chan;
-              wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
-	      break; // for j
-	    }
-	  }
-	}
-	break; // for i
-      } else if (pinit->rawdevs[i]->stat.chan >= 100) { 
-        pinit->rawchan.backraw = i; 
-        for (uint8_t j=0; j < pinit->nbraws; j++) {
-          if (j != pinit->rawchan.backraw)  {
-            pinit->rawchan.mainraw = j;
-	    if (pinit->rawdevs[j]->stat.freqnb !=  (pinit->rawdevs[i]->stat.chan - 100)) {
-              pinit->rawdevs[j]->stat.freqnb = pinit->rawdevs[i]->stat.chan - 100;
-              wfb_net_setfreq(pinit->sockidnl, pinit->rawdevs[j]->ifindex, pinit->rawdevs[j]->freqs[ pinit->rawdevs[j]->stat.freqnb ]);
-	      break; // for j
-	    }
-	  }
-	}
-        break; // for i
-      }
-    }
-  }
-
-#endif // BOARD
-
-}
-
-/*****************************************************************************/
-void wfb_utils_periodic(wfb_utils_init_t *pinit) {
-#if RAW
-  printlog(pinit);
-  setmainbackup(pinit);
-#else  // RAW
-  pinit->rawchan.mainraw = 0;
-#endif  // RAW
-}
-
-/*****************************************************************************/
-void build_tun(uint8_t *fd) {
-  uint16_t fd_tun_udp;
-  struct ifreq ifr;
-
-  memset(&ifr, 0, sizeof(struct ifreq));
+  pu->readtab[pu->readnb] = WFB_TUN; pu->socktab[WFB_TUN] = pu->readnb;
+  struct ifreq ifr; memset(&ifr, 0, sizeof(struct ifreq));
   struct sockaddr_in addr, dstaddr;
 #if BOARD
   strcpy(ifr.ifr_name,"airtun");
@@ -197,9 +39,10 @@ void build_tun(uint8_t *fd) {
   addr.sin_addr.s_addr = inet_addr(TUNIP_GROUND);
   dstaddr.sin_addr.s_addr = inet_addr(TUNIP_BOARD);
 #endif // BOARD
-  if (0 > (*fd = open("/dev/net/tun",O_RDWR))) exit(-1);
+  if (0 > (pu->fd[pu->readnb] = open("/dev/net/tun",O_RDWR))) exit(-1);
   ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-  if (ioctl(*fd, TUNSETIFF, &ifr ) < 0 ) exit(-1);
+  if (ioctl(pu->fd[pu->readnb], TUNSETIFF, &ifr ) < 0 ) exit(-1);
+  uint16_t fd_tun_udp;
   if (-1 == (fd_tun_udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
   addr.sin_family = AF_INET;
   memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
@@ -214,141 +57,50 @@ void build_tun(uint8_t *fd) {
   if (ioctl( fd_tun_udp, SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
   ifr.ifr_flags = IFF_UP ;
   if (ioctl( fd_tun_udp, SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
-}
+  pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
 
-/*****************************************************************************/
-void wfb_utils_init(wfb_utils_init_t *putils) {
-
-  fec_new(FEC_K, FEC_N, &(putils->fec_p));
-
-  memset(&(putils->rawchan), -1, sizeof(wfb_utils_rawchan_t));
-
-  static wfb_utils_heads_rx_t heads_rx;
-  putils->raws.headsrx = &heads_rx;
-
-  putils->nbdev = MAXDEV;
-
-#if RAW
-  wfb_net_init_t net;
-  memset(&net,0,sizeof(wfb_net_init_t));
-  wfb_net_init(&net);
-  putils->raws.headstx = net.headstx;
-  putils->sockidnl = net.sockidnl;
-  putils->nbraws = net.nbraws;
-#else // RAW
-  static uint8_t llchd_tx[4];
-  static uint8_t ieeehd_tx[24];
-  static uint8_t radiotaphd_tx[13];
-  static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx),
-                                            ieeehd_tx, sizeof(ieeehd_tx),
-                                            llchd_tx, sizeof(llchd_tx) };
-  putils->raws.headstx = &headstx;
-  putils->nbraws = 1;
-#endif // RAW
-      
-/*****************************************************************************/  
-  putils->log.addrout.sin_family = AF_INET;
-  putils->log.addrout.sin_port = htons(PORT_LOG);
-  putils->log.addrout.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  putils->log.fd = socket(AF_INET, SOCK_DGRAM, 0);
-         
-/*****************************************************************************/  
-  putils->fd[0] = timerfd_create(CLOCK_MONOTONIC, 0);
-  putils->readsets[0].fd = putils->fd[0];
-  putils->readsets[0].events = POLLIN;
-  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(putils->fd[0], 0, &period, NULL);
-
-/*****************************************************************************/  
-  putils->readtabnb = 1;
-  for(uint8_t i=0;i<putils->nbraws;i++) {
-#if RAW
+  pu->readtab[pu->readnb] = WFB_VID; pu->socktab[WFB_VID] = pu->readnb;
+  if (-1 == (pu->fd[pu->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
-    net.rawdevs[i]->stat.freqfree = false;
+  if (-1 == setsockopt(pu->fd[pu->readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct sockaddr_in  vidinaddr;
+  vidinaddr.sin_family = AF_INET;
+  vidinaddr.sin_port = htons(PORT_VID);
+  vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
+  if (-1 == bind( pu->fd[pu->readnb], (const struct sockaddr *)&vidinaddr, sizeof( vidinaddr))) exit(-1);
+  pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
 #else
-    net.rawdevs[i]->stat.freqfree = true;
-#endif // BOARD
-    uint8_t nextfreqnb = i * (uint8_t) ((net.rawdevs[i]->nbfreqs) / putils->nbraws);
-    if (!(wfb_net_setfreq(putils->sockidnl, net.rawdevs[i]->ifindex, net.rawdevs[i]->freqs[nextfreqnb]))) continue;
-    net.rawdevs[i]->stat.freqnb = nextfreqnb;
-    putils->fd[putils->readtabnb]  = net.rawdevs[i]->sockfd;
-    putils->rawdevs[(putils->readtabnb) - 1] = net.rawdevs[i];
-#else // RAW
-    if (-1 == (putils->fd[putils->readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) continue;
-    if (-1 == setsockopt(putils->fd[putils->readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) continue;
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(PORT_NORAW);
-    addr.sin_addr.s_addr =inet_addr(IP_LOCAL_RAW);
-    if (-1 == bind( putils->fd[putils->readtabnb], (const struct sockaddr *)&addr, sizeof(addr))) continue;
-    putils->norawout.sin_family = AF_INET;
-    putils->norawout.sin_port = htons(PORT_NORAW);
-    putils->norawout.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
-#endif // RAW
-    putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
-    putils->readsets[putils->readtabnb].events = POLLIN;
-    (putils->readtabnb) += 1;
-  }
-  putils->nbraws = putils->readtabnb - 1;
-
-  build_tun(&putils->fd[putils->readtabnb]); // One bidirectional link
-  putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
-  putils->readsets[putils->readtabnb].events = POLLIN;
-  (putils->readtabnb) += 1;
-
-/*****************************************************************************/  
-  (putils->readtabnb) += 1;
-
-  if (-1 == (putils->fd[putils->readtabnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-#if BOARD
-  if (-1 == setsockopt( putils->fd[putils->readtabnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
-  struct sockaddr_in addr;
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(PORT_VID);
-  addr.sin_addr.s_addr =inet_addr(IP_LOCAL);
-  if (-1 == bind( putils->fd[putils->readtabnb], (const struct sockaddr *)&addr, sizeof(addr))) exit(-1);
-  putils->readsets[putils->readtabnb].fd = putils->fd[putils->readtabnb];
-  putils->readsets[putils->readtabnb].events = POLLIN;
-  (putils->readtabnb) += 1;
-#else
-  putils->vidout.sin_family = AF_INET;
-  putils->vidout.sin_port = htons(PORT_VID);
-  putils->vidout.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  pu->vidoutaddr.sin_family = AF_INET;
+  pu->vidoutaddr.sin_port = htons(PORT_VID);
+  pu->vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
 
-/*****************************************************************************/  
-  for (uint8_t i=0; i < putils->nbraws; i++) {
-    putils->msgin.eltin[i].curseq = 0;
-    putils->msgin.eltin[i].nxtseq = 0;
-    putils->msgin.eltin[i].nxtfec = 0;
-    putils->msgin.eltin[i].fails = false;
-    putils->msgin.eltin[i].iovsto = (struct iovec *)0;
-    putils->msgin.eltin[i].fecsto = 0;
+#if TELEM
+  pu->readtab[pu->readnb] = WFB_TEL; pu->socktab[WFB_TEL] = pu->readnb;
+#if BOARD
+  if (-1 == (pu->fd[pu->readnb] = open( UART, O_RDWR | O_NOCTTY | O_NONBLOCK))) exit(-1);
+  struct termios tty;
+  if (0 != tcgetattr(fd[readnb], &tty)) exit(-1);
+  cfsetispeed(&tty,B115200);
+  cfsetospeed(&tty,B115200);
+  cfmakeraw(&tty);
+  if (0 != tcsetattr(pu->fd[pu->readnb], TCSANOW, &tty)) exit(-1);
+  tcflush(pu->fd[pu->readnb] ,TCIFLUSH);
+  tcdrain(pu->fd[pu->readnb]);
+#else
+  if (-1 == (pu->fd[pu->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == setsockopt(pu->fd[pu->readnb] , SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct sockaddr_in telinaddr;
+  telinaddr.sin_family = AF_INET;
+  telinaddr.sin_port = htons(PORT_TELUP);
+  telinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  if (-1 == bind( pu->fd[pu->readnb], (const struct sockaddr *)&telinaddr, sizeof(telinaddr))) exit(-1);
+  pu->teloutaddr.sin_family = AF_INET;
+  pu->teloutaddr.sin_port = htons(PORT_TELDOWN);
+  pu->teloutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
+#endif // BOARD
+  pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
+#endif // TELEM
 
-    for (uint8_t k=0; k < MAXNBMTUIN; k++) {
-      struct iovec *piov = &putils->msgin.eltin[i].iovraw[k];
-      piov->iov_base = &putils->msgin.eltin[i].buf_raw[k][0];
-    }
-    for (uint8_t k=0; k < FEC_N; k++) {
-      putils->msgin.eltin[i].iovfec[k] = (struct iovec *)0;
-    }
-  }
-
-  for (uint8_t j=0;j<putils->nbraws; j++) {
-    putils->msgout.eltout[j].seq = 0;
-    putils->msgout.eltout[j].num = 0;
-  }
-  putils->msgout.currvid = 0;
-
-  for (uint8_t i=0;i<WFB_NB;i++) {
-    for (uint8_t j=0;j<putils->nbraws; j++) {
-      for (uint8_t k=0; k<FEC_N ; k++) {
-        struct iovec *piov = &putils->msgout.iov[i][j][k];
-	piov->iov_len = 0;
-	if (i==WFB_PRO) piov->iov_base = &putils->msgout.buf_pro[j][0];
-	if (i==WFB_TUN) piov->iov_base = &putils->msgout.buf_tun[0];
-	if (i==WFB_VID)  piov->iov_base = &putils->msgout.buf_vid[k][0];
-      }
-    }
-  }
+  fec_new(FEC_K, FEC_N, &pu->fec_p);
 }

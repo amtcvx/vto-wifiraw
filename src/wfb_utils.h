@@ -1,114 +1,85 @@
 #ifndef WFB_UTILS_H
 #define WFB_UTILS_H
 
-#include <stdint.h>
 #include <poll.h>
-#include <sys/uio.h>
-#include <sys/socket.h>
+#include <stdint.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
+#include <sys/timerfd.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
+
 
 #include "zfex.h"
-#include "wfb.h"
 
-typedef struct {
-  uint16_t feclen;
-} __attribute__((packed)) wfb_utils_fec_t;
+#if TELEM
+typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
+#else
+typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
+#endif // TELEM
+     
+#define PAY_MTU 1400
 
 #define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
-typedef struct {
-  int16_t chan;
-} __attribute__((packed)) wfb_utils_pro_t;
+#define MAXNBRAWBUF 2*FEC_N
 
-typedef struct {
-  uint8_t droneid;
-  uint8_t msgcpt;
-  uint16_t msglen;
-  uint8_t seq;
-  uint8_t fec;
-  uint8_t num;
-  uint8_t dum;
-} __attribute__((packed)) wfb_utils_heads_pay_t;
+#define MAXDEV 25 
 
-typedef struct {
-  uint8_t seq;
-  uint8_t num;
-} msg_eltout_t; 
+#define PERIOD_DELAY_S  1
 
-typedef struct {
-  uint8_t buf_pro[MAXRAWDEV][sizeof(wfb_utils_pro_t)];
-  uint8_t buf_tun[ONLINE_MTU];
-  uint8_t buf_tel[ONLINE_MTU];
-  uint8_t buf_vid[FEC_N][ONLINE_MTU];
-  struct iovec iov[WFB_NB][MAXRAWDEV][FEC_N];
-  uint8_t currvid;
-  msg_eltout_t eltout[MAXRAWDEV];
-} wfb_utils_msgout_t;
+#define IP_LOCAL "127.0.0.1"
 
-#define MAXNBMTUIN 2+2*FEC_N
+#define PORT_NORAW   3000
+#define PORT_VID     5600
+#define PORT_TELUP   4245
+#define PORT_TELDOWN 4244
+#define PORT_LOG     5000
 
-typedef struct {
-  uint8_t buf_raw[MAXNBMTUIN][ONLINE_MTU];
-  struct iovec iovraw[MAXNBMTUIN];
-  struct iovec *iovfec[FEC_N];
-  struct iovec *iovsto;
-  uint8_t fecsto;
-  uint8_t curr;
-  uint8_t curseq;
-  uint8_t nxtseq;
-  uint8_t nxtfec;
-  bool fails;
-} msg_eltin_t; 
+#define PAY_MTU 1400
 
-typedef struct {
-  msg_eltin_t eltin[MAXRAWDEV];
-} wfb_utils_msgin_t;
+#define TUN_MTU      1400
+#define TUNIP_BOARD  "10.0.1.2"
+#define TUNIP_GROUND "10.0.1.1"
+#define IPBROAD      "255.255.255.0"
 
-typedef struct {
-  uint8_t radiotaphd_rx[35];
-  uint8_t ieeehd_rx[24];
-  uint8_t llchd_rx[4];
-} wfb_utils_heads_rx_t;
+#define DRONEID_GRD 0
+#define DRONEID_MIN 1
+#define DRONEID_MAX 2
 
-typedef struct {
-  wfb_utils_heads_pay_t headspay;
-  wfb_net_heads_tx_t *headstx;
-  wfb_utils_heads_rx_t *headsrx;
-} wfb_utils_raw_t;
+#if BOARD
+#define DRONEID 1
+#else
+#define DRONEID DRONEID_GRD
+#endif // BOARD
+
+#define FEC_K   8
+#define FEC_N   12
 
 typedef struct {
   uint8_t fd;
-  struct sockaddr_in addrout;
+  struct sockaddr_in addr;
   uint8_t txt[1000];
   uint16_t len;
 } wfb_utils_log_t;
 
 typedef struct {
-  int8_t mainraw;
-  int8_t backraw;
-} wfb_utils_rawchan_t;
-
-
-typedef struct {
-  uint8_t readtabnb;
   struct pollfd readsets[MAXDEV];
-  uint8_t nbdev;
-  uint8_t nbraws;
   uint8_t fd[MAXDEV];
-  wfb_utils_log_t log;
-  wfb_utils_rawchan_t rawchan;
-  wfb_utils_raw_t raws;
-  wfb_net_socktidnl_t *sockidnl;
-  wfb_net_device_t *rawdevs[MAXRAWDEV];
-  wfb_utils_msgin_t msgin;
-  wfb_utils_msgout_t msgout;
-  struct sockaddr_in vidout;
-  struct sockaddr_in norawout;
+  uint8_t readtab[WFB_NB];
+  uint8_t socktab[WFB_NB];
+  uint8_t readnb;
+  struct sockaddr_in norawoutaddr;
+  struct sockaddr_in vidoutaddr;
+  struct sockaddr_in teloutaddr;
   fec_t *fec_p;
+  wfb_utils_log_t log;
 } wfb_utils_init_t;
 
 
-void wfb_utils_periodic(wfb_utils_init_t *putils);
 void wfb_utils_init(wfb_utils_init_t *putils);
 
 
