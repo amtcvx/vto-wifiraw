@@ -263,17 +263,17 @@ int main(void) {
             struct iovec iovtab[2] = {iovheadpay, iovpay};
 
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2 };
-            len = recvmsg(fd[socktab[WFB_RAW]], &msg, MSG_DONTWAIT);
+            len = recvmsg(fd[socktab[WFB_RAW]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
 
             if (len > 0) {
-              if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, iovpay.iov_len);
+              if( headspay.msgcpt == WFB_TUN) len = write(fd[socktab[WFB_TUN]], iovpay.iov_base, len);
 #if BOARD
 #if TELEM
-              if( headspay.msgcpt == WFB_TEL)  len = write(fd[socktab[WFB_TEL]], iovpay.iov_base, iovpay.iov_len);
+              if( headspay.msgcpt == WFB_TEL)  len = write(fd[socktab[WFB_TEL]], iovpay.iov_base, len);
 #endif // TELEM
 #else
 #if TELEM
-              if( headspay.msgcpt == WFB_TEL) len = sendto(fd[socktab[WFB_TEL]], iovpay.iov_base, iovpay.iov_len, MSG_DONTWAIT, 
+              if( headspay.msgcpt == WFB_TEL) len = sendto(fd[socktab[WFB_TEL]], iovpay.iov_base, len, MSG_DONTWAIT, 
 	        (struct sockaddr *)&teloutaddr, sizeof(teloutaddr));
 #endif // TELEM
               if( headspay.msgcpt == WFB_VID) {
