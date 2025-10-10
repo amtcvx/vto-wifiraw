@@ -171,11 +171,11 @@ int main(void) {
   telinaddr.sin_port = htons(PORT_TELUP);
   telinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
   if (-1 == bind( fd[readnb], (const struct sockaddr *)&telinaddr, sizeof(telinaddr))) exit(-1);
-#endif // BOARD
   struct sockaddr_in teloutaddr;
   teloutaddr.sin_family = AF_INET;
   teloutaddr.sin_port = htons(PORT_TELDOWN);
   teloutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
+#endif // BOARD
   readsets[readnb].fd = fd[readnb]; readsets[readnb].events = POLLIN; readnb++;
 #endif // TELEM
       
