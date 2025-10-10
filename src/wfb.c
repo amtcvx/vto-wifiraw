@@ -49,15 +49,18 @@ typedef struct {
 
 #define IP_LOCAL "127.0.0.1"
 
-#define PORT_NORAW  3000
-#define PORT_VID  5600
-#define PORT_TELUP 4245
+#define PORT_NORAW   3000
+#define PORT_VID     5600
+#define PORT_TELUP   4245
 #define PORT_TELDOWN 4244
+#define PORT_LOG     5600
 
-#define TUN_MTU 1400
-#define TUNIP_BOARD     "10.0.1.2"
-#define TUNIP_GROUND    "10.0.1.1"
-#define IPBROAD         "255.255.255.0"
+#define PAY_MTU 1400
+
+#define TUN_MTU      1400
+#define TUNIP_BOARD  "10.0.1.2"
+#define TUNIP_GROUND "10.0.1.1"
+#define IPBROAD      "255.255.255.0"
 
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
@@ -68,7 +71,6 @@ typedef struct {
 #else
 #define DRONEID DRONEID_GRD
 #endif // BOARD
-
 
 #define FEC_K   8
 #define FEC_N   12
@@ -81,6 +83,14 @@ int main(void) {
   uint8_t readtab[WFB_NB],socktab[WFB_NB];
   ssize_t lentab[WFB_NB];
   uint8_t readnb=0;
+
+  uint8_t logfd, logtxt[80]; size_t loglen=0;
+  if (-1 == (logfd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  struct sockaddr_in logaddr;
+  logaddr.sin_family = AF_INET;
+  logaddr.sin_port = htons(PORT_LOG);
+  logaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
+
 
   readtab[readnb] = WFB_TIM; socktab[WFB_TIM] = readnb;
   if (-1 == (fd[readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
@@ -184,14 +194,11 @@ int main(void) {
   uint8_t sequence=0;
   uint8_t num=0;
   uint64_t exptime;
-
   ssize_t len;
-
-  uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;;
 
   uint8_t tunbuf[ONLINE_MTU];
-
+  uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
 #if TELEM
   uint8_t telbuf[ONLINE_MTU];
 #endif // TELEM
@@ -200,27 +207,22 @@ int main(void) {
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
 #else
-  unsigned index[FEC_K];
-  uint8_t *inblocks[FEC_K+1];
-  uint8_t *outblocks[FEC_N-FEC_K];
   uint8_t outblockrecov[FEC_N-FEC_K];
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
 
+  uint8_t *outblocks[FEC_N-FEC_K];
+  unsigned index[FEC_K];
+  uint8_t *inblocks[FEC_K+1];
   uint8_t inblocksnb=0;
   uint8_t recovcpt=0;
-
   int8_t inblockstofec=-1;
-
   int8_t failfec=-1;
-
   uint8_t msginnxtfec=0;
-
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
-
   bool bypassflag = false;
   bool clearflag = false;
-#endif
+#endif // BOARD
 
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
@@ -228,7 +230,10 @@ int main(void) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
 
-          if (readtab[cpt] == WFB_TIM )  { len = read(fd[socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); printf("Click\n"); }
+          if (readtab[cpt] == WFB_TIM )  { len = read(fd[socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
+            loglen += sprintf((char *)&logtxt + loglen, "Click\n");
+            sendto(logfd, logtxt, loglen, 0,  (const struct sockaddr *)&logaddr, sizeof(struct sockaddr));
+	  }
 
           if (readtab[cpt] == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU); 
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
