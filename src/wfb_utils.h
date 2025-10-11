@@ -18,16 +18,22 @@
 #include "zfex.h"
 
 #if TELEM
-typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
+typedef enum { WFB_TIM, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
 #else
-typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_TIM, WFB_TUN, WFB_VID, WFB_NB } type_d;
 #endif // TELEM
      
 #define PAY_MTU 1400
 
 #define MAXNBRAWBUF 2*FEC_N
 
-#define MAXDEV 25 
+#if RAW
+#include "wfb_net.h"
+#define MAXDEV WFB_NB + MAXRAWDEV
+#else
+#define MAXDEV WFB_NB + 1
+#endif // RAW
+
 
 #define PERIOD_DELAY_S  1
 
@@ -96,8 +102,8 @@ typedef struct {
 typedef struct {
   struct pollfd readsets[MAXDEV];
   uint8_t fd[MAXDEV];
-  uint8_t readtab[WFB_NB];
-  uint8_t socktab[WFB_NB];
+  uint8_t readtab[MAXDEV];
+  uint8_t socktab[MAXDEV];
   uint8_t readnb;
   struct sockaddr_in norawoutaddr;
   wfb_utils_log_t log;
@@ -111,6 +117,12 @@ typedef struct {
 
 
 void wfb_utils_init(wfb_utils_init_t *pu);
+
+#if RAW
+#else
+void wfb_utils_noraw(wfb_utils_init_t *pu); 
+#endif // RAW
+
 #if BOARD
 #else
 void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base,  wfb_utils_fec_t *pu); 

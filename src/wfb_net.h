@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAXRAWDEV 20
+#define MAXRAWDEV 4
 
 #define NBFREQS 65
 
