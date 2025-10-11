@@ -89,6 +89,9 @@ int main(void) {
       	    vidcur++;
 	  }
 #endif // BOARD
+        
+	  printf("(%d)\n",cpt);
+
           for (uint8_t cptraw = minraw; cptraw < maxraw; cptraw++) {
 
             if (u.readtab[cpt] == cptraw) {
@@ -174,6 +177,9 @@ int main(void) {
 #endif // RAW
   	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
               len = sendmsg(u.fd[ c + minraw ], (const struct msghdr *)&msg, MSG_DONTWAIT);
+
+	      printf("(%d)(%ld)\n",d,len);
+
 	      lentab[d][c] = 0;
 #if BOARD
               if ((d == WFB_VID)&&(vidcur == 0)&&(k == (FEC_N-1))) sequence++;
