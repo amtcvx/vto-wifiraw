@@ -3,6 +3,8 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 
+#include <errno.h>
+
 #include "wfb_utils.h"
 #if RAW
 #include "wfb_net.h"
@@ -147,9 +149,10 @@ int main(void) {
 #endif // BOARD
       for (uint8_t k=kmin;k<kmax;k++) {
         for (uint8_t d=0; d < WFB_NB; d++) {
-          for (uint8_t c = minraw; c < maxraw; c++) {
+          for (uint8_t c = 0; c < (maxraw - minraw); c++) {
 
             if (lentab[d][c] > 0) {
+
               struct iovec iovpay;
               if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][0]; };
 #if TELEM
@@ -165,12 +168,12 @@ int main(void) {
                 { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
               struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
 #if RAW
-              struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay };
+              struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
 #else 
-              struct iovec iovtab[2] = { iovheadpay, iovpay };
+              struct iovec iovtab[2] = { iovheadpay, iovpay }; uint8_t msglen = 2;
 #endif // RAW
-  	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = sizeof(iovtab), .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
-              len = sendmsg(u.fd[u.socktab[c]], (const struct msghdr *)&msg, MSG_DONTWAIT);
+  	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
+              len = sendmsg(u.fd[ c + minraw ], (const struct msghdr *)&msg, MSG_DONTWAIT);
 	      lentab[d][c] = 0;
 #if BOARD
               if ((d == WFB_VID)&&(vidcur == 0)&&(k == (FEC_N-1))) sequence++;
