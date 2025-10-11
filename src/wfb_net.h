@@ -8,6 +8,15 @@
 
 #define NBFREQS 65
 
+extern struct iovec iov_radiotaphd_tx;
+extern struct iovec iov_ieeehd_tx;
+extern struct iovec iov_llchd_tx;
+extern struct iovec iov_radiotaphd_rx;
+extern struct iovec iov_ieeehd_rx;
+extern struct iovec iov_llchd_rx;
+
+
+
 typedef struct {
   bool freqfree;
   int16_t chan;

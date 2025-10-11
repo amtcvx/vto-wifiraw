@@ -4,7 +4,9 @@
 #include <sys/uio.h>
 
 #include "wfb_utils.h"
-
+#if RAW
+#include "wfb_net.h"
+#endif // RAW
 
 typedef struct {
   uint8_t droneid;
@@ -20,6 +22,12 @@ typedef struct {
 /*****************************************************************************/
 int main(void) {
 
+#if RAW
+  wfb_net_init_t n;
+  wfb_net_init(&n);
+#else
+
+#endif // RAW
   wfb_utils_init_t u;
   wfb_utils_init(&u);
 
@@ -84,9 +92,12 @@ int main(void) {
 
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
             struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
-            struct iovec iovtab[2] = {iovheadpay, iovpay};
-
-            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2 };
+#if RAW
+            struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
+#else 
+            struct iovec iovtab[2] = { iovheadpay, iovpay };
+#endif // RAW
+            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = sizeof(iovtab) };
             len = recvmsg(u.fd[u.socktab[WFB_RAW]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
 
             if (len > 0) {
@@ -144,8 +155,12 @@ int main(void) {
             wfb_utils_heads_pay_t headspay =
               { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d], .seq = sequence, .fec = k, .num = num++ };
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-            struct iovec iovtab[2] = {iovheadpay, iovpay};
-  	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 2, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
+#if RAW
+            struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay };
+#else 
+            struct iovec iovtab[2] = { iovheadpay, iovpay };
+#endif // RAW
+  	    struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = sizeof(iovtab), .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
             len = sendmsg(u.fd[u.socktab[WFB_RAW]], (const struct msghdr *)&msg, MSG_DONTWAIT);
 	    lentab[d] = 0;
 #if BOARD

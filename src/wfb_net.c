@@ -43,6 +43,37 @@
 #define MCS_INDEX  2
 
 /************************************************************************************************/
+
+static uint8_t radiotaphd_rx[35];
+static uint8_t ieeehd_rx[24];
+static uint8_t llchd_rx[4];
+
+static uint8_t radiotaphd_tx[] = {
+        0x00, 0x00, // <-- radiotap version
+        0x0d, 0x00, // <- radiotap header length
+        0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
+        0x08, 0x00,  // RADIOTAP_F_TX_NOACK
+        MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
+};
+static uint8_t ieeehd_tx[] = {
+        0x08, 0x01,                         // Frame Control : Data frame from STA to DS
+        0x00, 0x00,                         // Duration
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Receiver MAC
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Transmitter MAC
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
+        0x10, 0x86                          // Sequence control
+};
+static uint8_t llchd_tx[4] = {1,2,3,4};
+
+struct iovec iov_radiotaphd_rx = { .iov_base = radiotaphd_rx, .iov_len = sizeof(radiotaphd_rx)};
+struct iovec iov_ieeehd_rx =     { .iov_base = ieeehd_rx,     .iov_len = sizeof(ieeehd_rx)};
+struct iovec iov_llchd_rx =      { .iov_base = llchd_rx,      .iov_len = sizeof(llchd_rx)};
+
+struct iovec iov_radiotaphd_tx = { .iov_base = radiotaphd_tx, .iov_len = sizeof(radiotaphd_tx)};
+struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(ieeehd_tx)};
+struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(llchd_tx)};
+
+/************************************************************************************************/
 typedef struct {
   uint8_t nb;
   uint8_t curr;
@@ -307,6 +338,7 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
   memset(&elt, 0, sizeof(elt_t));
   elt.devs = wfb_net_all80211;
 
+
   uint8_t nb;
   if ((nb = setwifi(sockid, socknl, sockrt, &elt)) > 0) {
     if ((nb = setraw(&elt, pnet->rawdevs)) > 0) {
@@ -317,29 +349,6 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
       sockidnl.sockid = sockid;
       sockidnl.socknl = socknl;
       pnet->sockidnl = &sockidnl;
-
-      static uint8_t llchd_tx[4] = {1,2,3,4};
-
-      static uint8_t ieeehd_tx[] = {
-        0x08, 0x01,                         // Frame Control : Data frame from STA to DS
-        0x00, 0x00,                         // Duration
-        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Receiver MAC
-        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Transmitter MAC
-        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
-        0x10, 0x86                          // Sequence control
-      };
-      static uint8_t radiotaphd_tx[] = {
-        0x00, 0x00, // <-- radiotap version
-        0x0d, 0x00, // <- radiotap header length
-        0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
-        0x08, 0x00,  // RADIOTAP_F_TX_NOACK
-        MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
-      };
-      static wfb_net_heads_tx_t headstx = { radiotaphd_tx, sizeof(radiotaphd_tx), 
-	                                    ieeehd_tx, sizeof(ieeehd_tx),
-	                                    llchd_tx, sizeof(llchd_tx) };
-      pnet->headstx = &headstx;
-
       return(true); 
     }
   }
