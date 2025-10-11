@@ -1,6 +1,7 @@
 #ifndef WFB_UTILS_H
 #define WFB_UTILS_H
 
+#include <stdio.h>
 #include <stdbool.h>
 #include <poll.h>
 #include <stdint.h>

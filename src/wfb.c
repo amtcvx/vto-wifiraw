@@ -101,7 +101,8 @@ int main(void) {
 	        (struct sockaddr *)&u.teloutaddr, sizeof(u.teloutaddr));
 #endif // TELEM
               if( headspay.msgcpt == WFB_VID) {
-                if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, &iovpay.iov_base, &u.fec);
+                if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; 
+		wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base, &u.fec);
 	      } 
 #endif // BOARD
             }
