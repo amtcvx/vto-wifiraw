@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -16,10 +15,6 @@ typedef struct {
   uint8_t num;
   uint8_t dum;
 } __attribute__((packed)) wfb_utils_heads_pay_t;
-
-typedef struct {
-  uint16_t feclen;
-} __attribute__((packed)) wfb_utils_fec_t;
 
 
 /*****************************************************************************/
@@ -45,22 +40,6 @@ int main(void) {
 #if BOARD
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
-#else
-  uint8_t outblockrecov[FEC_N-FEC_K];
-  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
-
-  uint8_t *outblocks[FEC_N-FEC_K];
-  unsigned index[FEC_K];
-  uint8_t *inblocks[FEC_K+1];
-  uint8_t inblocksnb=0;
-  uint8_t recovcpt=0;
-  int8_t inblockstofec=-1;
-  int8_t failfec=-1;
-  uint8_t msginnxtfec=0;
-  int16_t msginnxtseq=-1;
-  int16_t msgincurseq=-1;
-  bool bypassflag = false;
-  bool clearflag = false;
 #endif // BOARD
 
   for(;;) {
@@ -90,10 +69,10 @@ int main(void) {
           if (u.readtab[cpt] == WFB_VID) { 
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	    struct iovec iov;
-            iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
+            iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fechd_t)];
             iov.iov_len = PAY_MTU;
-            lentab[WFB_VID] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fec_t);
-            ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID];
+            lentab[WFB_VID] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
+            ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID];
       	    vidcur++;
 	  }
 #endif // BOARD
@@ -122,70 +101,7 @@ int main(void) {
 	        (struct sockaddr *)&u.teloutaddr, sizeof(u.teloutaddr));
 #endif // TELEM
               if( headspay.msgcpt == WFB_VID) {
-                if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
-                if (headspay.fec < FEC_K) {
-                  if (msgincurseq < 0) msgincurseq = headspay.seq;
-                  if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
-                     && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
-                  if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
-		  else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
-                }
-
-                uint8_t imax=0, imin=0;
-                if (msgincurseq == headspay.seq) {
-                  if (headspay.fec < FEC_K) {
-                    if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); }
-                    inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
-                  } else {
-                    for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) {
-                      inblocks[k] = iovpay.iov_base; index[k] = headspay.fec;
-                      outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
-                      break;
-                    }
-                  }
-                } else {
-                  msgincurseq = headspay.seq;
-                  inblocks[FEC_K] = iovpay.iov_base;
-                  clearflag=true;
-                  imin = FEC_K; imax = (FEC_K+1);
-                  if (inblockstofec >= 0) {
-                    if ((failfec == 0) && (!(bypassflag))) { imin = 0; imax = 0; }
-                    if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
-                      imin = failfec;
-                      if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
-                      else {
-                        imin = outblockrecov[0];
-                        fec_decode(u.fec_p,
-                                   (const unsigned char **)inblocks,
-                                   (unsigned char * const*)outblocks,
-                                   (unsigned int *)index,
-                                   ONLINE_MTU);
-      
-                        for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = outblocks[k];
-                      }
-                    }
-                  }
-                }
-      
-                for (uint8_t i=imin;i<imax;i++) {
-                  uint8_t *ptr=inblocks[i];
-                  if (ptr) {
-                    ssize_t vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-                    ptr += sizeof(wfb_utils_fec_t);
-                    vidlen = sendto(u.fd[u.socktab[WFB_VID]], ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&u.vidoutaddr, sizeof(u.vidoutaddr));
-                  }
-                }
-      
-                if (clearflag) {
-                  clearflag=false;
-                  if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
-                  else failfec = -1;
-                  msginnxtseq = headspay.seq;
-                  inblocksnb=0; recovcpt=0;
-                  memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
-                  inblockstofec = headspay.fec;
-                  inblocks[inblockstofec] = inblocks[FEC_K];
-		}
+                if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, &iovpay.iov_base, &u.fec);
 	      } 
 #endif // BOARD
             }
@@ -220,7 +136,7 @@ int main(void) {
 #endif // TELEM
 #if BOARD
             if (d == WFB_VID) {
-              if (k<FEC_K) lentab[WFB_VID]=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID]=ONLINE_MTU;
+              if (k<FEC_K) lentab[WFB_VID]=((wfb_utils_fechd_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID]=ONLINE_MTU;
               iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID];
 	    }
 #endif // BOARD

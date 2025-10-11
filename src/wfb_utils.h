@@ -1,6 +1,7 @@
 #ifndef WFB_UTILS_H
 #define WFB_UTILS_H
 
+#include <stdbool.h>
 #include <poll.h>
 #include <stdint.h>
 #include <arpa/inet.h>
@@ -22,8 +23,6 @@ typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
 #endif // TELEM
      
 #define PAY_MTU 1400
-
-#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
 #define MAXNBRAWBUF 2*FEC_N
 
@@ -60,6 +59,33 @@ typedef enum { WFB_TIM, WFB_RAW, WFB_TUN, WFB_VID, WFB_NB } type_d;
 #define FEC_N   12
 
 typedef struct {
+  uint16_t feclen;
+} __attribute__((packed)) wfb_utils_fechd_t;
+
+#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fechd_t)
+
+#if BOARD
+#else
+typedef struct {
+  uint8_t outblockrecov[FEC_N-FEC_K];
+  uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
+  uint8_t *outblocks[FEC_N-FEC_K];
+  unsigned index[FEC_K];
+  uint8_t *inblocks[FEC_K+1];
+  uint8_t inblocksnb;
+  uint8_t recovcpt;
+  int8_t inblockstofec;
+  int8_t failfec;
+  uint8_t msginnxtfec;
+  int16_t msginnxtseq;
+  int16_t msgincurseq;
+  bool bypassflag;
+  struct sockaddr_in vidoutaddr;
+  uint8_t fdvid;
+} wfb_utils_fec_t;
+#endif // BOARD
+
+typedef struct {
   uint8_t fd;
   struct sockaddr_in addr;
   uint8_t txt[1000];
@@ -73,14 +99,21 @@ typedef struct {
   uint8_t socktab[WFB_NB];
   uint8_t readnb;
   struct sockaddr_in norawoutaddr;
-  struct sockaddr_in vidoutaddr;
-  struct sockaddr_in teloutaddr;
-  fec_t *fec_p;
   wfb_utils_log_t log;
+  fec_t *fec_p;
+#if BOARD
+#else
+  struct sockaddr_in teloutaddr;
+  wfb_utils_fec_t fec;
+#endif // BOARD
 } wfb_utils_init_t;
 
 
-void wfb_utils_init(wfb_utils_init_t *putils);
+void wfb_utils_init(wfb_utils_init_t *pu);
+#if BOARD
+#else
+void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base,  wfb_utils_fec_t *pu); 
+#endif // BOARD
 
 
 #endif // WFB_UTILS_H
