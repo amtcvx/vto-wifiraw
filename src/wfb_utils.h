@@ -119,6 +119,7 @@ typedef struct {
 void wfb_utils_init(wfb_utils_init_t *pu);
 
 #if RAW
+void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn);
 #else
 void wfb_utils_noraw(wfb_utils_init_t *pu); 
 #endif // RAW

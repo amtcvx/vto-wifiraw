@@ -32,7 +32,7 @@ int main(void) {
   ssize_t lentab[WFB_NB][MAXRAWDEV];
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
-  printf("(%d) WIFI\n",n.nbraws);
+  wfb_utils_addraw(&u,&n);
 #else
   ssize_t lentab[WFB_NB][1];
   wfb_utils_noraw(&u);
@@ -93,6 +93,8 @@ int main(void) {
         
           for (uint8_t cptraw = minraw; cptraw < maxraw; cptraw++) {
             if (cpt == cptraw) {
+
+	      printf("cpt(%d)\n",cpt);
 
               wfb_utils_heads_pay_t headspay;
               memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
@@ -170,10 +172,11 @@ int main(void) {
               struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
 #if RAW
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
+	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
 #else 
               struct iovec iovtab[2] = { iovheadpay, iovpay }; uint8_t msglen = 2;
-#endif // RAW
   	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
+#endif // RAW
               len = sendmsg(u.fd[ c + minraw ], (const struct msghdr *)&msg, MSG_DONTWAIT);
 	      lentab[d][c] = 0;
 #if BOARD

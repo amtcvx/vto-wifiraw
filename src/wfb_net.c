@@ -44,18 +44,18 @@
 
 /************************************************************************************************/
 
-static uint8_t radiotaphd_rx[35];
-static uint8_t ieeehd_rx[24];
-static uint8_t llchd_rx[4];
+uint8_t radiotaphd_rx[35];
+uint8_t ieeehd_rx[24];
+uint8_t llchd_rx[4];
 
-static uint8_t radiotaphd_tx[] = {
+uint8_t radiotaphd_tx[] = {
         0x00, 0x00, // <-- radiotap version
         0x0d, 0x00, // <- radiotap header length
         0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
         0x08, 0x00,  // RADIOTAP_F_TX_NOACK
         MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
 };
-static uint8_t ieeehd_tx[] = {
+uint8_t ieeehd_tx[] = {
         0x08, 0x01,                         // Frame Control : Data frame from STA to DS
         0x00, 0x00,                         // Duration
         0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Receiver MAC
@@ -63,7 +63,7 @@ static uint8_t ieeehd_tx[] = {
         0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
         0x10, 0x86                          // Sequence control
 };
-static uint8_t llchd_tx[4] = {1,2,3,4};
+uint8_t llchd_tx[4] = {1,2,3,4};
 
 struct iovec iov_radiotaphd_rx = { .iov_base = radiotaphd_rx, .iov_len = sizeof(radiotaphd_rx)};
 struct iovec iov_ieeehd_rx =     { .iov_base = ieeehd_rx,     .iov_len = sizeof(ieeehd_rx)};
@@ -81,14 +81,14 @@ typedef struct {
 } elt_t;
 
 /******************************************************************************/
-static int finish_callback(struct nl_msg *msg, void *arg) {
+int finish_callback(struct nl_msg *msg, void *arg) {
   bool* finished = arg;
   *finished = true;
   return NL_SKIP;
 }
 
 /******************************************************************************/
-static int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
+int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
 
   struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
   struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
@@ -111,7 +111,7 @@ static int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
 }
 
 /******************************************************************************/
-static int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
+int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
 
   struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
   struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
@@ -153,7 +153,7 @@ static int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
 }
 
 /******************************************************************************/
-static void unblock_rfkill(elt_t *elt) {
+void unblock_rfkill(elt_t *elt) {
   char *ptr,*netpath = "/sys/class/net";
   char path[1024],buf[1024];
   ssize_t lenlink;
@@ -185,7 +185,7 @@ static void unblock_rfkill(elt_t *elt) {
 }
 
 /******************************************************************************/
-static uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *sockrt, elt_t *elt) {
+uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *sockrt, elt_t *elt) {
 
   bool msg_received = false;
 
@@ -271,7 +271,7 @@ void wfb_net_drain(uint8_t fd) {
 }
 
 /******************************************************************************/
-static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
+uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
 
   uint8_t cpt = 0;
   uint16_t protocol = htons(ETH_P_ALL);
@@ -292,7 +292,7 @@ static uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
 
     wfb_net_drain(elt->devs[i].sockfd);
 
-    static const int32_t sock_qdisc_bypass = 1;
+    const int32_t sock_qdisc_bypass = 1;
     if (-1 == setsockopt(elt->devs[i].sockfd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) continue;
 
     arr[cpt] = &(elt->devs[i]);
@@ -318,35 +318,24 @@ bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq) {
 }
 
 /******************************************************************************/
-bool wfb_net_init(wfb_net_init_t *pnet) {
-  struct nl_sock *socknl = nl_socket_alloc();
-  if (!socknl) return(false);
-  nl_socket_set_buffer_size(socknl, 8192, 8192);
-  if (genl_connect(socknl)) return(false);
+bool wfb_net_init(wfb_net_init_t *p) {
 
-  static int8_t sockid;
-  sockid = genl_ctrl_resolve(socknl, "nl80211");
-  if (sockid < 0) return(false);
+  if  (!(p->socktidnl.socknl = nl_socket_alloc())) return(false);
+  nl_socket_set_buffer_size(p->socktidnl.socknl, 8192, 8192);
+  if (genl_connect(p->socktidnl.socknl)) return(false);
+  if ((p->socktidnl.sockid = genl_ctrl_resolve(p->socktidnl.socknl, "nl80211")) < 0) return(false);
 
-  static struct nl_sock *sockrt;
-  sockrt = nl_socket_alloc();
-  if (!sockrt) return(false);
+  struct nl_sock *sockrt;
+  if (!(sockrt = nl_socket_alloc())) return(false);
   if (nl_connect(sockrt, NETLINK_ROUTE)) return(false);
 
   static wfb_net_device_t wfb_net_all80211[MAXRAWDEV];
-  elt_t elt;
-  memset(&elt, 0, sizeof(elt_t));
-  elt.devs = wfb_net_all80211;
-
+  elt_t elt; memset(&elt, 0, sizeof(elt_t)); elt.devs = wfb_net_all80211;
 
   uint8_t nb;
-  if ((nb = setwifi(sockid, socknl, sockrt, &elt)) > 0) {
-    if ((nb = setraw(&elt, pnet->rawdevs)) > 0) {
-      pnet->nbraws = nb; 
-      static wfb_net_socktidnl_t sockidnl;
-      sockidnl.sockid = sockid;
-      sockidnl.socknl = socknl;
-      pnet->sockidnl = &sockidnl;
+  if ((nb = setwifi(p->socktidnl.sockid, p->socktidnl.socknl, sockrt, &elt)) > 0) {
+    if ((nb = setraw(&elt, p->rawdevs)) > 0) {
+      p->nbraws = nb; 
       return(true); 
     }
   }

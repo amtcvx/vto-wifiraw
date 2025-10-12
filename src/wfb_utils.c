@@ -79,6 +79,14 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
 
 /*****************************************************************************/
 #if RAW
+void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn) {
+
+  for (uint8_t i=0;i < pn->nbraws; i++) {
+    pu->readtab[pu->readnb] = WFB_NB; pu->socktab[WFB_NB] = pu->readnb;
+    pu->fd[pu->readnb] = pn->rawdevs[i]->sockfd;
+    pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
+  }
+}
 #else
 void wfb_utils_noraw(wfb_utils_init_t *pu) {
 
