@@ -58,7 +58,6 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
     uint8_t *ptr=pu->inblocks[i];
     if (ptr) {
       ssize_t vidlen = ((wfb_utils_fechd_t *)ptr)->feclen - sizeof(wfb_utils_fechd_t);
-      printf("len(%ld)\n",vidlen);
       ptr += sizeof(wfb_utils_fechd_t);
       vidlen = sendto(pu->fdvid, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&pu->vidoutaddr, sizeof(pu->vidoutaddr));
     }

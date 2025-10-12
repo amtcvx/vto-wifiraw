@@ -342,9 +342,7 @@ bool wfb_net_init(wfb_net_init_t *pnet) {
   uint8_t nb;
   if ((nb = setwifi(sockid, socknl, sockrt, &elt)) > 0) {
     if ((nb = setraw(&elt, pnet->rawdevs)) > 0) {
-
       pnet->nbraws = nb; 
-
       static wfb_net_socktidnl_t sockidnl;
       sockidnl.sockid = sockid;
       sockidnl.socknl = socknl;

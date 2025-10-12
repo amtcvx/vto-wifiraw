@@ -31,7 +31,8 @@ int main(void) {
 #if RAW
   ssize_t lentab[WFB_NB][MAXRAWDEV];
   wfb_net_init_t n;
-  wfb_net_init(&n);
+  if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
+  printf("(%d) WIFI\n",n.nbraws);
 #else
   ssize_t lentab[WFB_NB][1];
   wfb_utils_noraw(&u);
