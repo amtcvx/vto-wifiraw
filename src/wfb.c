@@ -33,6 +33,7 @@ int main(void) {
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
   wfb_utils_addraw(&u,&n);
+  wfb_net_setfreq(&n.socktidnl, n.rawdevs[0]->ifindex, n.rawdevs[0]->freqs[30]);
 #else
   ssize_t lentab[WFB_NB][1];
   wfb_utils_noraw(&u);
@@ -93,8 +94,6 @@ int main(void) {
         
           for (uint8_t cptraw = minraw; cptraw < maxraw; cptraw++) {
             if (cpt == cptraw) {
-
-	      printf("cpt(%d)\n",cpt);
 
               wfb_utils_heads_pay_t headspay;
               memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
