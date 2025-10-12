@@ -15,7 +15,10 @@ extern struct iovec iov_radiotaphd_rx;
 extern struct iovec iov_ieeehd_rx;
 extern struct iovec iov_llchd_rx;
 
-
+typedef struct {
+  int8_t mainraw;
+  int8_t backraw;
+} wfb_net_rawchan_t;
 
 typedef struct {
   bool freqfree;
@@ -42,17 +45,18 @@ typedef struct {
 typedef struct {
   uint8_t sockid;
   struct nl_sock *socknl;
-} wfb_net_socktidnl_t;
+} wfb_net_sockidnl_t;
 
 typedef struct {
   uint8_t nbraws;
-  wfb_net_socktidnl_t socktidnl;
+  wfb_net_rawchan_t rawchan;
+  wfb_net_sockidnl_t sockidnl;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
 } wfb_net_init_t;
 
 
 bool wfb_net_init(wfb_net_init_t *);
 void wfb_net_drain(uint8_t fd);
-bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq); 
+bool wfb_net_setfreq(wfb_net_sockidnl_t *psock, int ifindex, uint32_t freq); 
 
 #endif // WFB_NET_H

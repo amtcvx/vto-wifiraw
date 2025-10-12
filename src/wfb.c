@@ -32,8 +32,15 @@ int main(void) {
   ssize_t lentab[WFB_NB][MAXRAWDEV];
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
+  for(uint8_t i=0;i<n.nbraws;i++) {
+#if BOARD
+    n.rawdevs[i]->stat.freqfree = false;
+#else
+    n.rawdevs[i]->stat.freqfree = true;
+#endif // BOARD
+  }
+
   wfb_utils_addraw(&u,&n);
-  wfb_net_setfreq(&n.socktidnl, n.rawdevs[0]->ifindex, n.rawdevs[0]->freqs[30]);
 #else
   ssize_t lentab[WFB_NB][1];
   wfb_utils_noraw(&u);
@@ -63,10 +70,11 @@ int main(void) {
       for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
         if (u.readsets[cpt].revents == POLLIN) {
 
-          if (u.readtab[cpt] == WFB_TIM )  { len = read(u.fd[u.socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
-            u.log.len += sprintf((char *)&u.log.txt + u.log.len, "Clock\n");
-            sendto(u.log.fd, u.log.txt, u.log.len, MSG_DONTWAIT,  (const struct sockaddr *)&u.log.addr, sizeof(struct sockaddr));
-	    u.log.len = 0;
+          if (u.readtab[cpt] == WFB_TIM )  { 
+	    len = read(u.fd[u.socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
+#if RAW
+            wfb_utils_periodic(&u,&n);
+#endif // RAW
 	  }
 
           if (u.readtab[cpt] == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU); 
@@ -109,8 +117,24 @@ int main(void) {
 #endif // RAW
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
               len = recvmsg(u.fd[u.socktab[cptraw]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
-
+#if RAW
+              if (!((len > 0) &&
+#if BOARD
+                (headspay.droneid == DRONEID_GRD)
+#else // BOARD
+                (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEID_MAX)
+#endif // BOARD
+                && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
+                && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
+		  n.rawdevs[cpt-1]->stat.fails++;
+                } else {
+                if( headspay.msgcpt == WFB_PRO) {
+                  n.rawdevs[cpt-1]->stat.incoming++;
+                  n.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)&iovpay.iov_base)->chan;
+                }
+#else // RAW
               if (len > 0) {
+#endif // RAW
                 if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
 #if BOARD
 #if TELEM

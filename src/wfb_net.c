@@ -302,7 +302,7 @@ uint8_t setraw(elt_t *elt, wfb_net_device_t *arr[]) {
 }
 
 /*****************************************************************************/
-bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq) {
+bool wfb_net_setfreq(wfb_net_sockidnl_t *psock, int ifindex, uint32_t freq) {
 
   bool ret=true;
   struct nl_msg *msg=nlmsg_alloc();
@@ -320,10 +320,10 @@ bool wfb_net_setfreq(wfb_net_socktidnl_t *psock, int ifindex, uint32_t freq) {
 /******************************************************************************/
 bool wfb_net_init(wfb_net_init_t *p) {
 
-  if  (!(p->socktidnl.socknl = nl_socket_alloc())) return(false);
-  nl_socket_set_buffer_size(p->socktidnl.socknl, 8192, 8192);
-  if (genl_connect(p->socktidnl.socknl)) return(false);
-  if ((p->socktidnl.sockid = genl_ctrl_resolve(p->socktidnl.socknl, "nl80211")) < 0) return(false);
+  if  (!(p->sockidnl.socknl = nl_socket_alloc())) return(false);
+  nl_socket_set_buffer_size(p->sockidnl.socknl, 8192, 8192);
+  if (genl_connect(p->sockidnl.socknl)) return(false);
+  if ((p->sockidnl.sockid = genl_ctrl_resolve(p->sockidnl.socknl, "nl80211")) < 0) return(false);
 
   struct nl_sock *sockrt;
   if (!(sockrt = nl_socket_alloc())) return(false);
@@ -333,9 +333,9 @@ bool wfb_net_init(wfb_net_init_t *p) {
   elt_t elt; memset(&elt, 0, sizeof(elt_t)); elt.devs = wfb_net_all80211;
 
   uint8_t nb;
-  if ((nb = setwifi(p->socktidnl.sockid, p->socktidnl.socknl, sockrt, &elt)) > 0) {
+  if ((nb = setwifi(p->sockidnl.sockid, p->sockidnl.socknl, sockrt, &elt)) > 0) {
     if ((nb = setraw(&elt, p->rawdevs)) > 0) {
-      p->nbraws = nb; 
+      p->nbraws = nb; p->rawchan.mainraw = -1; p->rawchan.backraw = -1;
       return(true); 
     }
   }

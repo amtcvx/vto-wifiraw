@@ -79,6 +79,166 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
 
 /*****************************************************************************/
 #if RAW
+
+void setmainbackup(wfb_net_init_t *p) {
+#if BOARD
+  for (uint8_t i=0; i < p->nbraws; i++) {
+    wfb_net_status_t *pst = &(p->rawdevs[i]->stat);
+    if (pst->fails != 0) {
+      pst->fails = 0;
+      pst->timecpt = 0;
+      pst->freqfree = false;
+      if (i != p->rawchan.mainraw) {
+        uint8_t nextfreqnb = 1 + p->rawdevs[i]->stat.freqnb;
+        if (nextfreqnb > p->rawdevs[i]->nbfreqs) nextfreqnb = 0;
+        p->rawdevs[i]->stat.freqnb = nextfreqnb;
+        wfb_net_setfreq(&p->sockidnl, p->rawdevs[i]->ifindex, p->rawdevs[i]->freqs[nextfreqnb]);
+      }
+    } else {
+      if (pst->timecpt < 10) pst->timecpt++;
+      else {
+        pst->timecpt = 0;
+        pst->freqfree = true;
+      }
+    }
+  }
+
+  if (p->nbraws == 1) {
+    if (p->rawchan.mainraw == -1) {
+      for (uint8_t i=0; i < p->nbraws; i++) {
+        if (p->rawdevs[i]->stat.freqfree) { p->rawchan.mainraw = i; break; }
+      }
+    }
+  } else {
+
+    if (p->rawchan.mainraw != -1) {
+      if (!(p->rawdevs[p->rawchan.mainraw]->stat.freqfree)) {
+        p->rawchan.mainraw = -1;
+        if (p->rawchan.backraw != -1) {
+          if (p->rawdevs[p->rawchan.backraw]->stat.freqfree) {
+            p->rawchan.mainraw = p->rawchan.backraw;
+            p->rawchan.backraw = -1;
+          }
+        } else {
+          for (uint8_t i=0; i < p->nbraws; i++) {
+            if (p->rawdevs[i]->stat.freqfree) { p->rawchan.mainraw = i; break; }
+          }
+        }
+      }
+    } else {
+      for (uint8_t i=0; i < p->nbraws; i++) {
+        if (p->rawdevs[i]->stat.freqfree) { p->rawchan.mainraw = i; break; }
+      }
+    }
+
+    if (p->rawchan.backraw != -1) {
+      if  (!(p->rawdevs[p->rawchan.backraw]->stat.freqfree)) p->rawchan.backraw = -1;
+    }
+    if ((p->rawchan.mainraw != -1) && (p->rawchan.backraw == -1)) {
+      for (uint8_t i=0; i < p->nbraws; i++) {
+        if ((i != p->rawchan.mainraw) && (p->rawdevs[i]->stat.freqfree)) { p->rawchan.backraw = i; break; }
+      }
+    }
+  }
+/*
+  if (p->rawchan.mainraw != -1) {
+    p->msgout.iov[WFB_PRO][p->rawchan.mainraw][0].iov_len = sizeof(wfb_utils_pro_t);
+    if (p->rawchan.backraw == -1) {
+       ((wfb_utils_pro_t *)p->msgout.iov[WFB_PRO][p->rawchan.mainraw][0].iov_base)->chan = -1;
+    } else {
+      ((wfb_utils_pro_t *)p->msgout.iov[WFB_PRO][p->rawchan.mainraw][0].iov_base)->chan = p->rawdevs[p->rawchan.backraw]->stat.freqnb;
+      ((wfb_utils_pro_t *)p->msgout.iov[WFB_PRO][p->rawchan.backraw][0].iov_base)->chan = 100 + p->rawdevs[p->rawchan.mainraw]->stat.freqnb;
+      p->msgout.iov[WFB_PRO][p->rawchan.backraw][0].iov_len = sizeof(wfb_utils_pro_t);
+    }
+  }
+*/
+#else
+  for (uint8_t i=0; i < p->nbraws; i++) {
+    wfb_net_status_t *pst = &(p->rawdevs[i]->stat);
+    if (pst->incoming > 0) {
+      pst->incoming = 0;
+      pst->timecpt = 0;
+      pst->freqfree = false;
+
+    } else {
+      if (pst->timecpt < 3) pst->timecpt++;
+      else {
+        pst->timecpt = 0;
+        pst->freqfree = true;
+
+        if (i == p->rawchan.mainraw) p->rawchan.mainraw = -1;
+        if (i == p->rawchan.backraw) p->rawchan.backraw = -1;
+
+        uint8_t nextfreqnb = 1 + pst->freqnb;
+        if (nextfreqnb > p->rawdevs[i]->nbfreqs) nextfreqnb = 0;
+        pst->freqnb = nextfreqnb;
+        wfb_net_setfreq(&p->sockidnl, p->rawdevs[i]->ifindex, p->rawdevs[i]->freqs[nextfreqnb]);
+      }
+    }
+  }
+  for (uint8_t i=0; i < p->nbraws; i++) {
+    if (!(p->rawdevs[i]->stat.freqfree)) {
+      if (p->rawdevs[i]->stat.chan == -1) {
+        p->rawchan.mainraw = i;
+        p->rawchan.backraw = -1;
+        break; // for i
+      } else if (p->rawdevs[i]->stat.chan < 100) {
+        p->rawchan.mainraw = i;
+        for (uint8_t j=0; j < p->nbraws; j++) {
+          if (j != p->rawchan.mainraw) {
+            p->rawchan.backraw = j;
+            if (p->rawdevs[j]->stat.freqnb !=  p->rawdevs[i]->stat.chan) {
+              p->rawdevs[j]->stat.freqnb = p->rawdevs[i]->stat.chan;
+              wfb_net_setfreq(&p->sockidnl, p->rawdevs[j]->ifindex, p->rawdevs[j]->freqs[ p->rawdevs[j]->stat.freqnb ]);
+              break; // for j
+            }
+          }
+        }
+        break; // for i
+      } else if (p->rawdevs[i]->stat.chan >= 100) {
+        p->rawchan.backraw = i;
+        for (uint8_t j=0; j < p->nbraws; j++) {
+          if (j != p->rawchan.backraw)  {
+            p->rawchan.mainraw = j;
+            if (p->rawdevs[j]->stat.freqnb !=  (p->rawdevs[i]->stat.chan - 100)) {
+              p->rawdevs[j]->stat.freqnb = p->rawdevs[i]->stat.chan - 100;
+              wfb_net_setfreq(&p->sockidnl, p->rawdevs[j]->ifindex, p->rawdevs[j]->freqs[ p->rawdevs[j]->stat.freqnb ]);
+              break; // for j
+            }
+          }
+        }
+        break; // for i
+      }
+    }
+  }
+#endif // BOARD
+}
+
+/*****************************************************************************/
+void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
+
+  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d) sent(%d)\n";
+  wfb_utils_log_t *plog = &u->log;
+  for (uint8_t i=0; i < n->nbraws; i++) {
+    wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
+    plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
+                          i, pst->freqnb, n->rawchan.mainraw, n->rawchan.backraw, pst->incoming,
+                          pst->fails, pst->sent);
+  }
+  sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
+  plog->len = 0;
+}
+
+
+/*****************************************************************************/
+void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n) {
+#if RAW
+  setmainbackup(n);
+  printlog(u,n);
+#endif  // RAW
+}
+
+/*****************************************************************************/
 void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn) {
 
   for (uint8_t i=0;i < pn->nbraws; i++) {
