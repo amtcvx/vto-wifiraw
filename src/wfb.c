@@ -62,7 +62,7 @@ int main(void) {
         if (u.readsets[cpt].revents == POLLIN) {
 
           if (u.readtab[cpt] == WFB_TIM )  { len = read(u.fd[u.socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
-            u.log.len += sprintf((char *)&u.log.txt + u.log.len, "Click\n");
+            u.log.len += sprintf((char *)&u.log.txt + u.log.len, "Clock\n");
             sendto(u.log.fd, u.log.txt, u.log.len, MSG_DONTWAIT,  (const struct sockaddr *)&u.log.addr, sizeof(struct sockaddr));
 	    u.log.len = 0;
 	  }
@@ -79,7 +79,7 @@ int main(void) {
 #endif // TELEM
        
 #if BOARD
-          if (u.readtab[cpt] == WFB_VID) { 
+          if (u.readtab[cpt] == WFB_VID) {
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fechd_t)];
@@ -91,7 +91,7 @@ int main(void) {
 #endif // BOARD
         
           for (uint8_t cptraw = minraw; cptraw < maxraw; cptraw++) {
-            if (u.readtab[cpt] == cptraw) {
+            if (cpt == cptraw) {
 
               wfb_utils_heads_pay_t headspay;
               memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
