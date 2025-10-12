@@ -18,9 +18,9 @@
 #include "zfex.h"
 
 #if TELEM
-typedef enum { WFB_TIM, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
+typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
 #else
-typedef enum { WFB_TIM, WFB_TUN, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_NB } type_d;
 #endif // TELEM
      
 #define PAY_MTU 1400
@@ -123,7 +123,7 @@ typedef struct {
 void wfb_utils_init(wfb_utils_init_t *pu);
 
 #if RAW
-void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n);
+void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*probuf)[MAXRAWDEV]); 
 void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn);
 #else
 void wfb_utils_noraw(wfb_utils_init_t *pu); 

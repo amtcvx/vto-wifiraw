@@ -79,8 +79,7 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
 
 /*****************************************************************************/
 #if RAW
-
-void setmainbackup(wfb_net_init_t *p) {
+void setmainbackup(wfb_net_init_t *p, ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*probuf)[MAXRAWDEV])  {
 #if BOARD
   for (uint8_t i=0; i < p->nbraws; i++) {
     wfb_net_status_t *pst = &(p->rawdevs[i]->stat);
@@ -140,18 +139,18 @@ void setmainbackup(wfb_net_init_t *p) {
       }
     }
   }
-/*
+
   if (p->rawchan.mainraw != -1) {
-    p->msgout.iov[WFB_PRO][p->rawchan.mainraw][0].iov_len = sizeof(wfb_utils_pro_t);
+    lentab[WFB_PRO][p->rawchan.mainraw] = sizeof(wfb_utils_pro_t);
     if (p->rawchan.backraw == -1) {
-       ((wfb_utils_pro_t *)p->msgout.iov[WFB_PRO][p->rawchan.mainraw][0].iov_base)->chan = -1;
+      ((wfb_utils_pro_t *)probuf[p->rawchan.mainraw])->chan = -1;
     } else {
-      ((wfb_utils_pro_t *)p->msgout.iov[WFB_PRO][p->rawchan.mainraw][0].iov_base)->chan = p->rawdevs[p->rawchan.backraw]->stat.freqnb;
-      ((wfb_utils_pro_t *)p->msgout.iov[WFB_PRO][p->rawchan.backraw][0].iov_base)->chan = 100 + p->rawdevs[p->rawchan.mainraw]->stat.freqnb;
-      p->msgout.iov[WFB_PRO][p->rawchan.backraw][0].iov_len = sizeof(wfb_utils_pro_t);
+      ((wfb_utils_pro_t *)probuf[p->rawchan.mainraw])->chan = p->rawdevs[p->rawchan.backraw]->stat.freqnb;
+      ((wfb_utils_pro_t *)probuf[p->rawchan.backraw])->chan = 100 + p->rawdevs[p->rawchan.mainraw]->stat.freqnb;
+      lentab[WFB_PRO][p->rawchan.backraw] = sizeof(wfb_utils_pro_t);
     }
   }
-*/
+
 #else
   for (uint8_t i=0; i < p->nbraws; i++) {
     wfb_net_status_t *pst = &(p->rawdevs[i]->stat);
@@ -231,9 +230,9 @@ void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
 
 /*****************************************************************************/
-void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n) {
+void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*probuf)[MAXRAWDEV])  {
 #if RAW
-  setmainbackup(n);
+  setmainbackup(n,lentab,probuf);
   printlog(u,n);
 #endif  // RAW
 }
@@ -273,7 +272,7 @@ void wfb_utils_init(wfb_utils_init_t *pu) {
   pu->log.addr.sin_port = htons(PORT_LOG);
   pu->log.addr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 
-  pu->readtab[pu->readnb] = WFB_TIM; pu->socktab[WFB_TIM] = pu->readnb;
+  pu->readtab[pu->readnb] = WFB_PRO; pu->socktab[WFB_PRO] = pu->readnb;
   if (-1 == (pu->fd[pu->readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(pu->fd[pu->readnb], 0, &period, NULL);

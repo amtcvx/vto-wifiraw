@@ -29,6 +29,7 @@ int main(void) {
 
   uint8_t minraw = u.readnb;
 #if RAW
+  uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)];
   ssize_t lentab[WFB_NB][MAXRAWDEV];
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
@@ -70,10 +71,10 @@ int main(void) {
       for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
         if (u.readsets[cpt].revents == POLLIN) {
 
-          if (u.readtab[cpt] == WFB_TIM )  { 
-	    len = read(u.fd[u.socktab[WFB_TIM]], &exptime, sizeof(uint64_t)); 
+          if (u.readtab[cpt] == WFB_PRO )  { 
+	    len = read(u.fd[u.socktab[WFB_PRO]], &exptime, sizeof(uint64_t)); 
 #if RAW
-            wfb_utils_periodic(&u,&n);
+            wfb_utils_periodic(&u,&n,lentab,probuf);
 #endif // RAW
 	  }
 
@@ -180,6 +181,7 @@ int main(void) {
             if (lentab[d][c] > 0) {
 
               struct iovec iovpay;
+              if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
               if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][0]; };
 #if TELEM
               if (d == WFB_TEL) { iovpay.iov_base = &telbuf; iovpay.iov_len = lentab[WFB_TEL][0]; };
