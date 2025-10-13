@@ -123,7 +123,7 @@ typedef struct {
 void wfb_utils_init(wfb_utils_init_t *pu);
 
 #if RAW
-void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*probuf)[MAXRAWDEV]); 
+void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)]); 
 void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn);
 #else
 void wfb_utils_noraw(wfb_utils_init_t *pu); 

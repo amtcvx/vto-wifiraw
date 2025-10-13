@@ -127,11 +127,11 @@ int main(void) {
 #endif // BOARD
                 && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
                 && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
-		  n.rawdevs[cpt-1]->stat.fails++;
+		  n.rawdevs[cpt-minraw]->stat.fails++;
                 } else {
                 if( headspay.msgcpt == WFB_PRO) {
-                  n.rawdevs[cpt-1]->stat.incoming++;
-                  n.rawdevs[cpt-1]->stat.chan = ((wfb_utils_pro_t *)&iovpay.iov_base)->chan;
+                  n.rawdevs[cpt-minraw]->stat.incoming++;
+                  n.rawdevs[cpt-minraw]->stat.chan = ((wfb_utils_pro_t *)&iovpay.iov_base)->chan;
                 }
 #else // RAW
               if (len > 0) {
@@ -181,7 +181,11 @@ int main(void) {
             if (lentab[d][c] > 0) {
 
               struct iovec iovpay;
+#if BOARD
+#if RAW
               if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
+#endif // RAW
+#endif // BOARD
               if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][0]; };
 #if TELEM
               if (d == WFB_TEL) { iovpay.iov_base = &telbuf; iovpay.iov_len = lentab[WFB_TEL][0]; };
@@ -203,6 +207,7 @@ int main(void) {
   	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
 #endif // RAW
               len = sendmsg(u.fd[ c + minraw ], (const struct msghdr *)&msg, MSG_DONTWAIT);
+	      n.rawdevs[c]->stat.sent++;
 	      lentab[d][c] = 0;
 #if BOARD
               if ((d == WFB_VID)&&(vidcur == 0)&&(k == (FEC_N-1))) sequence++;

@@ -5,6 +5,21 @@
 #include "wfb_utils.h"
 
 /*****************************************************************************/
+void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
+
+  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d) sent(%d)\n";
+  wfb_utils_log_t *plog = &u->log;
+  for (uint8_t i=0; i < n->nbraws; i++) {
+    wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
+    plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
+                          i, pst->freqnb, n->rawchan.mainraw, n->rawchan.backraw, pst->incoming,
+                          pst->fails, pst->sent);
+  }
+  sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
+  plog->len = 0;
+}
+
+/*****************************************************************************/
 #if BOARD
 #else
 void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base,  wfb_utils_fec_t *pu) {
@@ -79,7 +94,7 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
 
 /*****************************************************************************/
 #if RAW
-void setmainbackup(wfb_net_init_t *p, ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*probuf)[MAXRAWDEV])  {
+void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)]) {
 #if BOARD
   for (uint8_t i=0; i < p->nbraws; i++) {
     wfb_net_status_t *pst = &(p->rawdevs[i]->stat);
@@ -141,6 +156,7 @@ void setmainbackup(wfb_net_init_t *p, ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*pr
   }
 
   if (p->rawchan.mainraw != -1) {
+
     lentab[WFB_PRO][p->rawchan.mainraw] = sizeof(wfb_utils_pro_t);
     if (p->rawchan.backraw == -1) {
       ((wfb_utils_pro_t *)probuf[p->rawchan.mainraw])->chan = -1;
@@ -214,23 +230,7 @@ void setmainbackup(wfb_net_init_t *p, ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*pr
 }
 
 /*****************************************************************************/
-void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
-
-  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d) sent(%d)\n";
-  wfb_utils_log_t *plog = &u->log;
-  for (uint8_t i=0; i < n->nbraws; i++) {
-    wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
-    plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-                          i, pst->freqnb, n->rawchan.mainraw, n->rawchan.backraw, pst->incoming,
-                          pst->fails, pst->sent);
-  }
-  sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
-  plog->len = 0;
-}
-
-
-/*****************************************************************************/
-void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t (*lentab)[MAXRAWDEV] ,uint8_t (*probuf)[MAXRAWDEV])  {
+void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)]) {
 #if RAW
   setmainbackup(n,lentab,probuf);
   printlog(u,n);
