@@ -4,6 +4,7 @@
 
 #include "wfb_utils.h"
 
+#if RAW
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
@@ -18,7 +19,8 @@ void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
   plog->len = 0;
 }
-
+#endif // RAW
+     
 /*****************************************************************************/
 #if BOARD
 #else

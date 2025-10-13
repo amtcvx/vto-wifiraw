@@ -28,6 +28,7 @@ int main(void) {
   wfb_utils_init(&u);
 
   uint8_t minraw = u.readnb;
+
 #if RAW
   uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)];
   ssize_t lentab[WFB_NB][MAXRAWDEV];
@@ -40,14 +41,14 @@ int main(void) {
     n.rawdevs[i]->stat.freqfree = true;
 #endif // BOARD
   }
-
   wfb_utils_addraw(&u,&n);
 #else
   ssize_t lentab[WFB_NB][1];
   wfb_utils_noraw(&u);
 #endif // RAW
+       
   uint8_t maxraw = u.readnb; 
-
+  int8_t mainraw = 0, backraw = -1; 
   uint8_t sequence=0;
   uint8_t num=0;
   uint64_t exptime;
@@ -75,17 +76,18 @@ int main(void) {
 	    len = read(u.fd[u.socktab[WFB_PRO]], &exptime, sizeof(uint64_t)); 
 #if RAW
             wfb_utils_periodic(&u,&n,lentab,probuf);
+	    mainraw = n.rawchan.mainraw; backraw = n.rawchan.backraw;
 #endif // RAW
 	  }
 
           if (u.readtab[cpt] == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU); 
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
-	    lentab[WFB_TUN][0] = readv( u.fd[u.socktab[WFB_TUN]], &iov, 1);
+	    lentab[WFB_TUN][mainraw] = readv( u.fd[u.socktab[WFB_TUN]], &iov, 1);
 	  }
 #if TELEM
           if (u.readtab[cpt] == WFB_TEL) { memset(&telbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &telbuf[0]; iov.iov_len = ONLINE_MTU;
-            lentab[WFB_TEL][0] = readv( u.fd[u.socktab[WFB_TEL]], &iov, 1);
+            lentab[WFB_TEL][mainraw] = readv( u.fd[u.socktab[WFB_TEL]], &iov, 1);
           }
 #endif // TELEM
        
@@ -95,8 +97,8 @@ int main(void) {
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fechd_t)];
             iov.iov_len = PAY_MTU;
-            lentab[WFB_VID][0] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
-            ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][0];
+            lentab[WFB_VID][mainraw] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
+            ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][mainraw];
       	    vidcur++;
 	  }
 #endif // BOARD
@@ -131,7 +133,8 @@ int main(void) {
                 } else {
                 if( headspay.msgcpt == WFB_PRO) {
                   n.rawdevs[cpt-minraw]->stat.incoming++;
-                  n.rawdevs[cpt-minraw]->stat.chan = ((wfb_utils_pro_t *)&iovpay.iov_base)->chan;
+                  n.rawdevs[cpt-minraw]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+		  printf("(%d)\n",n.rawdevs[cpt-minraw]->stat.chan);
                 }
 #else // RAW
               if (len > 0) {
@@ -159,7 +162,7 @@ int main(void) {
 
       uint8_t kmin = 0, kmax = 1;
 #if BOARD
-      if (lentab[WFB_VID][0] > 0) {
+      if (lentab[WFB_VID][mainraw] > 0) {
         kmin=(vidcur-1);
         if (vidcur == FEC_K) {
           vidcur=0; kmax=FEC_N;
@@ -186,14 +189,14 @@ int main(void) {
               if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
 #endif // RAW
 #endif // BOARD
-              if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][0]; };
+              if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; };
 #if TELEM
-              if (d == WFB_TEL) { iovpay.iov_base = &telbuf; iovpay.iov_len = lentab[WFB_TEL][0]; };
+              if (d == WFB_TEL) { iovpay.iov_base = &telbuf; iovpay.iov_len = lentab[WFB_TEL][mainraw]; };
 #endif // TELEM
 #if BOARD
               if (d == WFB_VID) {
-                if (k<FEC_K) lentab[WFB_VID][0]=((wfb_utils_fechd_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID][0]=ONLINE_MTU;
-                iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID][0];
+                if (k<FEC_K) lentab[WFB_VID][mainraw]=((wfb_utils_fechd_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID][mainraw]=ONLINE_MTU;
+                iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID][mainraw];
 	      }
 #endif // BOARD
               wfb_utils_heads_pay_t headspay =
@@ -207,7 +210,9 @@ int main(void) {
   	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen, .msg_name = &u.norawoutaddr, .msg_namelen = sizeof(u.norawoutaddr) };
 #endif // RAW
               len = sendmsg(u.fd[ c + minraw ], (const struct msghdr *)&msg, MSG_DONTWAIT);
+#if RAW
 	      n.rawdevs[c]->stat.sent++;
+#endif // RAW
 	      lentab[d][c] = 0;
 #if BOARD
               if ((d == WFB_VID)&&(vidcur == 0)&&(k == (FEC_N-1))) sequence++;
