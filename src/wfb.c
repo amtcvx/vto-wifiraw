@@ -134,7 +134,6 @@ int main(void) {
                 if( headspay.msgcpt == WFB_PRO) {
                   n.rawdevs[cpt-minraw]->stat.incoming++;
                   n.rawdevs[cpt-minraw]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
-		  printf("(%d)\n",n.rawdevs[cpt-minraw]->stat.chan);
                 }
 #else // RAW
               if (len > 0) {
