@@ -11,12 +11,12 @@ sudo iw dev wlxfc349725a317 set channel 18
 
 sudo ./fectestservraw wlxfc349725a317
 
-gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! avdec_h265 !  videoconvert ! autovideosink sync=false
+gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
 
 
 sudo ./fectestcliraw wlxfc349725a317
 
-gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
+gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! avdec_h265 !  videoconvert ! autovideosink sync=false
 
 
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools
@@ -35,7 +35,6 @@ apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreame
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <linux/if_packet.h>
-
 #include <linux/filter.h>
 
 #include "../src/zfex.h"
@@ -213,8 +212,9 @@ i*/
             { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
             struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
-            struct iovec iovtab[2] = {iovheadpay, iovpay};
-            struct msghdr msg={ .msg_iov = iovtab, .msg_iovlen = 2 };
+
+            struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
+            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
 
 	    rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
