@@ -3,18 +3,19 @@ gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEO
 
 gcc fectestcliraw.o ../obj/zfex.o -g -o fectestcliraw
 
-sudo ip link set wlxfc349725a317 down
-sudo iw dev wlxfc349725a317 set type monitor
-sudo ip link set wlxfc349725a317 up
-sudo iw dev wlxfc349725a317 set channel 18
+export DEVICE=wlx3c7c3fa9bfbb
+sudo ip link set $DEVICE down
+sudo iw dev $DEVICE set type monitor
+sudo ip link set $DEVICE up
+sudo iw dev $DEVICE set channel 18
 
 
-sudo ./fectestservraw wlxfc349725a317
+sudo ./fectestservraw $DEVICE
 
 gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
 
 
-sudo ./fectestcliraw wlxfc349725a317
+sudo ./fectestcliraw $DEVICE
 
 gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! avdec_h265 !  videoconvert ! autovideosink sync=false
 
