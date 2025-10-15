@@ -1,5 +1,6 @@
 /*
 gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DBOARD=0 -c fectestcliraw.c -o fectestcliraw.o
+gcc -g -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DBOARD=0 -c fectestcliraw.c -o fectestcliraw.o
 
 gcc fectestcliraw.o ../obj/zfex.o -g -o fectestcliraw
 
@@ -266,6 +267,8 @@ int main(int argc, char **argv) {
                 if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
                  
   		  imin = failfec;
+
+		  printf("Fails\n");
    
                   if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                   else {
@@ -283,14 +286,14 @@ int main(int argc, char **argv) {
                   
                     for (uint8_t k=0;k<recovcpt;k++) {
                         inblocks[ outblockrecov[k] ] = outblocks[k];
-/*  
+  
                         uint8_t *ptr=inblocks[ outblockrecov[k] ];
                         vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
  		        ptr += sizeof(wfb_utils_fec_t);
                         printf("recover len(%ld)  ", vidlen);
                         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-*/
+
   		    }
     		  }
   		}
