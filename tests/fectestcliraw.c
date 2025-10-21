@@ -4,7 +4,7 @@ gcc -g -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -D
 
 gcc fectestcliraw.o ../obj/zfex.o -g -o fectestcliraw
 
-export DEVICE=wlx3c7c3fa9bfbb
+export DEVICE=wlx3c7c3fa9bdc6
 sudo ip link set $DEVICE down
 sudo iw dev $DEVICE set type monitor
 sudo ip link set $DEVICE up
@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
 
         struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
         memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
-  
+ 
         struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
         rawlen = recvmsg(sockfd, &msg, MSG_DONTWAIT);
   
@@ -268,8 +268,6 @@ int main(int argc, char **argv) {
                  
   		  imin = failfec;
 
-		  printf("Fails\n");
-   
                   if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                   else {
     
@@ -285,14 +283,18 @@ int main(int argc, char **argv) {
                                ONLINE_MTU);
                   
                     for (uint8_t k=0;k<recovcpt;k++) {
-                        inblocks[ outblockrecov[k] ] = outblocks[k];
+                      inblocks[ outblockrecov[k] ] = outblocks[k];
   
-                        uint8_t *ptr=inblocks[ outblockrecov[k] ];
-                        vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+                      uint8_t *ptr=inblocks[ outblockrecov[k] ];
+                      vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+		      if (vidlen <= PAY_MTU) {
  		        ptr += sizeof(wfb_utils_fec_t);
                         printf("recover len(%ld)  ", vidlen);
                         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
+		      } else {
+                        printf("missed recovered (%d)(%d)\n",headspay.seq,failfec); // TODO
+		      }
 
   		    }
     		  }
@@ -320,9 +322,7 @@ int main(int argc, char **argv) {
 	      if ((failfec == 0)&&(!(bypassflag))) bypassflag = true; 
 	      else failfec = -1;
 	      msginnxtseq = headspay.seq;
-	      
 	      inblocksnb=0; recovcpt=0;
-	     
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
               inblockstofec = headspay.fec;
               inblocks[inblockstofec] = inblocks[FEC_K];
