@@ -209,7 +209,8 @@ int main(int argc, char **argv) {
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;
 
-  unsigned index[FEC_K];
+  //unsigned index[FEC_K];
+  int8_t index[FEC_K] = {-1};
   uint8_t *inblocks[FEC_K+1];
   uint8_t *outblocks[FEC_N-FEC_K];
   uint8_t outblockrecov[FEC_N-FEC_K];
@@ -286,6 +287,8 @@ int main(int argc, char **argv) {
 
             } else {
 
+              printf("(%d)\n",headspay.fec);
+
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
               clearflag=true;
@@ -359,10 +362,17 @@ int main(int argc, char **argv) {
 
               clearflag=false;
               msginnxtseq = headspay.seq;
-              inblocksnb=0; recovcpt=0;
+
+	      recovcpt=0;
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
+
               inblockstofec = headspay.fec;
-              inblocks[inblockstofec] = inblocks[FEC_K];
+
+              inblocks[headspay.fec] = inblocks[FEC_K];
+              inblocksnb=1;
+
+	      memset(index, -1, sizeof(index));
+	      index[headspay.fec] = headspay.fec;
             }
           }
         }
