@@ -225,9 +225,8 @@ int main(int argc, char **argv) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-//              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
-              if ((inblockstofec >= 0) && (msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)
-              && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
+              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
+	        && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
               else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
