@@ -1,4 +1,39 @@
 /*
+TODO:
+
+8 1 8 3 4 5 6 7
+DECODE (1)
+recover len(1400)  80 60 c2 ee ba  ... 38 46 ec 3c f3
+8 1 2 8 4 5 6 7
+DECODE (1)
+missed recovered (155)(3)
+miss send
+8 1 2 3 4 5 8 7
+DECODE (1)
+recover len(1400)  80 60 ce e9 ba  ... 2e 37 47 bc 55
+8 1 2 3 4 5 8 7
+DECODE (1)
+missed recovered (52)(6)
+miss send
+8 1 2 3 4 5 8 7
+DECODE (1)
+recover len(1400)  80 60 db 51 ba  ... dd 3f b3 57 c2
+8 1 2 3 4 8 6 7
+DECODE (1)
+recover len(1400)  80 60 e6 93 ba  ... b6 f9 e5 71 d5
+...
+8 1 2 3 8 5 6 7 
+DECODE (1)
+recover len(1400)  80 60 38 ff bb  ... f8 37 15 55 f3 
+8 8 2 3 4 5 6 7 
+DECODE (1)
+recover len(1400)  80 60 3f f bb  ... 48 14 7f 85 98 
+8 8 2 3 4 5 6 9 
+DECODE (2)
+fectestcliraw: src/zfex.c:577: _invert_mat: Assertion `c != 0' failed. 
+
+*/
+/*
 gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DBOARD=0 -c fectestcliraw.c -o fectestcliraw.o
 gcc -g -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DBOARD=0 -c fectestcliraw.c -o fectestcliraw.o
 
