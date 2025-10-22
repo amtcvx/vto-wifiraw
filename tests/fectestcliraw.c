@@ -4,7 +4,7 @@ gcc -g -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -D
 
 gcc fectestcliraw.o ../obj/zfex.o -g -o fectestcliraw
 
-export DEVICE=wlx3c7c3fa9bdc6
+export DEVICE=wlx54c9ff02e7ae
 sudo ip link set $DEVICE down
 sudo iw dev $DEVICE set type monitor
 sudo ip link set $DEVICE up
@@ -129,7 +129,6 @@ int main(int argc, char **argv) {
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
-  
 
   uint8_t sockfd;
   ssize_t rawlen;
@@ -174,14 +173,14 @@ int main(int argc, char **argv) {
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;
- 
+
   unsigned index[FEC_K];
   uint8_t *inblocks[FEC_K+1];
   uint8_t *outblocks[FEC_N-FEC_K];
   uint8_t outblockrecov[FEC_N-FEC_K];
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
 
-  uint8_t inblocksnb=0; 
+  uint8_t inblocksnb=0;
   uint8_t recovcpt=0;
 
   int8_t inblockstofec=-1;
@@ -196,7 +195,6 @@ int main(int argc, char **argv) {
 
   bool bypassflag = false;
   bool clearflag = false;
-
 
   ssize_t vidlen=0;
 
@@ -214,45 +212,45 @@ int main(int argc, char **argv) {
 
         struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
         memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
- 
+
         struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
         rawlen = recvmsg(sockfd, &msg, MSG_DONTWAIT);
-  
+
         if (rawlen > 0) {
           if(headspay.msgcpt == WFB_VID) {
- 
+
             if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
-            if (headspay.fec < FEC_K) { 
+            if (headspay.fec < FEC_K) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec)) 
-	        && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
+//              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
+              if ((inblockstofec >= 0) && (msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)
+              && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
 
-              if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1; else { 
-	        msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
-	    }
+              if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
+              else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
+            }
 
-	    uint8_t imax=0, imin=0;
-            if (msgincurseq == headspay.seq) { 
+            uint8_t imax=0, imin=0;
+            if (msgincurseq == headspay.seq) {
 
-	      if (headspay.fec < FEC_K) {
+              if (headspay.fec < FEC_K) {
 
-	        if ((failfec < 0) || (failfec > 0) && (headspay.fec < failfec)) { imin = headspay.fec; imax = (imin+1); } 
-	        inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
+                if ((failfec < 0) || (failfec > 0) && (headspay.fec < failfec)) { imin = headspay.fec; imax = (imin+1); }
+                inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
 
-	      } else {
+              } else {
 
-                for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) { 
-		  inblocks[k] = iovpay.iov_base; index[k] = headspay.fec;
-  		  outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
+                for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) {
+                  inblocks[k] = iovpay.iov_base; index[k] = headspay.fec;
+                  outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
                   break;
+                }
+              }
 
-		}
-	      }
-
-	    } else {
+            } else {
 
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
@@ -260,75 +258,80 @@ int main(int argc, char **argv) {
 
               imin = FEC_K; imax = (FEC_K+1);
 
-  	      if (inblockstofec >= 0) {
+              if (inblockstofec >= 0) {
 
                 if ((failfec == 0) && (!(bypassflag))) { imin = 0; imax = 0; }
 
                 if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
-                 
-  		  imin = failfec;
+
+                  imin = failfec;
 
                   if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                   else {
-    
+
                     imin = outblockrecov[0];
-/* 
+
                     for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-                    printf("\nENCODE (%d)\n",recovcpt);
-*/     
+                    printf("\nDECODE (%d)\n",recovcpt);
+
                     fec_decode(fec_p,
                                (const unsigned char **)inblocks,
                                (unsigned char * const*)outblocks,
                                (unsigned int *)index,
                                ONLINE_MTU);
-                  
+
                     for (uint8_t k=0;k<recovcpt;k++) {
                       inblocks[ outblockrecov[k] ] = outblocks[k];
-  
+
                       uint8_t *ptr=inblocks[ outblockrecov[k] ];
                       vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-		      if (vidlen <= PAY_MTU) {
- 		        ptr += sizeof(wfb_utils_fec_t);
+                      if (vidlen <= PAY_MTU) {
+                        ptr += sizeof(wfb_utils_fec_t);
                         printf("recover len(%ld)  ", vidlen);
                         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
                         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-		      } else {
-                        printf("missed recovered (%d)(%d)\n",headspay.seq,failfec); // TODO
-		      }
-
-  		    }
-    		  }
-  		}
-  	      }
-	    }
+                      } else {
+                        printf("missed recovered (%d)(%d)\n",headspay.seq,failfec);
+                      }
+                    }
+                  }
+                }
+              }
+            }
 
             for (uint8_t i=imin;i<imax;i++) {
               uint8_t *ptr=inblocks[i];
-    	      if (ptr) {
+              if (ptr) {
                 vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-    	        ptr += sizeof(wfb_utils_fec_t);
+                if (vidlen <= PAY_MTU) {
+                  ptr += sizeof(wfb_utils_fec_t);
 /*
-		printf("len(%ld) ",vidlen);
-                for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
-                for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
-		printf("\n");
+                  printf("len(%ld) ",vidlen);
+                  for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
+                  for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
+                  printf("\n");
 */
-                vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
-    	      }
-    	    }
+                  vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+                } else {
+                  printf("miss send\n");
+                }
+              }
+            }
 
             if (clearflag) {
-              clearflag=false; 
-	      if ((failfec == 0)&&(!(bypassflag))) bypassflag = true; 
-	      else failfec = -1;
-	      msginnxtseq = headspay.seq;
-	      inblocksnb=0; recovcpt=0;
+
+              if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
+              else failfec = -1;
+
+              clearflag=false;
+              msginnxtseq = headspay.seq;
+              inblocksnb=0; recovcpt=0;
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
               inblockstofec = headspay.fec;
               inblocks[inblockstofec] = inblocks[FEC_K];
-	    }
-  	  }
-	}
+            }
+          }
+        }
       }
     }
   }
