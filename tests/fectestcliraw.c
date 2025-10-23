@@ -1,36 +1,9 @@
 /*
 TODO:
-
-8 1 8 3 4 5 6 7
-DECODE (1)
-recover len(1400)  80 60 c2 ee ba  ... 38 46 ec 3c f3
-8 1 2 8 4 5 6 7
-DECODE (1)
-missed recovered (155)(3)
-miss send
-8 1 2 3 4 5 8 7
-DECODE (1)
-recover len(1400)  80 60 ce e9 ba  ... 2e 37 47 bc 55
-8 1 2 3 4 5 8 7
-DECODE (1)
-missed recovered (52)(6)
-miss send
-8 1 2 3 4 5 8 7
-DECODE (1)
-recover len(1400)  80 60 db 51 ba  ... dd 3f b3 57 c2
-8 1 2 3 4 8 6 7
-DECODE (1)
-recover len(1400)  80 60 e6 93 ba  ... b6 f9 e5 71 d5
-...
-8 1 2 3 8 5 6 7 
-DECODE (1)
-recover len(1400)  80 60 38 ff bb  ... f8 37 15 55 f3 
-8 8 2 3 4 5 6 7 
-DECODE (1)
-recover len(1400)  80 60 3f f bb  ... 48 14 7f 85 98 
-8 8 2 3 4 5 6 9 
-DECODE (2)
-fectestcliraw: src/zfex.c:577: _invert_mat: Assertion `c != 0' failed. 
+[101] (2)
+8 1 8 3 9 5 6 10 
+DECODE (3)
+fectestcliraw: src/zfex.c:577: _invert_mat: Assertion `c != 0' failed.
 
 */
 /*
@@ -259,15 +232,15 @@ int main(int argc, char **argv) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-	      int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+	            int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
 
               if ((inblockstofec >= 0) && (failfec < 0) &&
                    (((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
-		    ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))   {
+		               ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))   {
 
-	        failfec = msginnxtfec; 
-	        if (failfec == 0) bypassflag = false; 
-	      }
+	              failfec = msginnxtfec;
+	              if (failfec == 0) bypassflag = false;
+	            }
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
               else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -312,10 +285,10 @@ int main(int argc, char **argv) {
                   else {
 
                     imin = outblockrecov[0];
-/*
+
                     for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                     printf("\nDECODE (%d)\n",recovcpt);
-*/
+
                     fec_decode(fec_p,
                                (const unsigned char **)inblocks,
                                (unsigned char * const*)outblocks,
@@ -347,12 +320,12 @@ int main(int argc, char **argv) {
                 vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
                 if (vidlen <= PAY_MTU) {
                   ptr += sizeof(wfb_utils_fec_t);
-/*
+
                   printf("len(%ld) ",vidlen);
                   for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
                   for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
                   printf("\n");
-*/
+
                   vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
                 } else {
                   printf("miss send\n");
@@ -362,12 +335,12 @@ int main(int argc, char **argv) {
 
             if (clearflag) {
 
-	      if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
-	      else failfec = -1;
+	            if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
+	            else failfec = -1;
 
               clearflag=false;
-	      msginnxtseq = headspay.seq;
-	      inblocksnb=0; recovcpt=0;
+	            msginnxtseq = headspay.seq;
+	            inblocksnb=0; recovcpt=0;
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
               inblockstofec = headspay.fec;
               inblocks[inblockstofec] = inblocks[FEC_K];
