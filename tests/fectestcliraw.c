@@ -209,8 +209,7 @@ int main(int argc, char **argv) {
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;
 
-  //unsigned index[FEC_K];
-  int8_t index[FEC_K] = {-1};
+  unsigned index[FEC_K];
   uint8_t *inblocks[FEC_K+1];
   uint8_t *outblocks[FEC_N-FEC_K];
   uint8_t outblockrecov[FEC_N-FEC_K];
@@ -225,7 +224,6 @@ int main(int argc, char **argv) {
 
   uint8_t msginnxtfec=0;
 
-  int16_t inblockstoseq=-1;
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
 
@@ -261,8 +259,15 @@ int main(int argc, char **argv) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
-	        && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
+	      int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+
+              if ((inblockstofec >= 0) && (failfec < 0) &&
+                   (((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
+		    ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))   {
+
+	        failfec = msginnxtfec; 
+	        if (failfec == 0) bypassflag = false; 
+	      }
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
               else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -287,7 +292,7 @@ int main(int argc, char **argv) {
 
             } else {
 
-              printf("(%d)\n",headspay.fec);
+              printf("[%d] (%d)\n",headspay.seq,failfec);
 
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
@@ -307,10 +312,10 @@ int main(int argc, char **argv) {
                   else {
 
                     imin = outblockrecov[0];
-
+/*
                     for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                     printf("\nDECODE (%d)\n",recovcpt);
-
+*/
                     fec_decode(fec_p,
                                (const unsigned char **)inblocks,
                                (unsigned char * const*)outblocks,
@@ -357,22 +362,15 @@ int main(int argc, char **argv) {
 
             if (clearflag) {
 
-              if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
-              else failfec = -1;
+	      if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
+	      else failfec = -1;
 
               clearflag=false;
-              msginnxtseq = headspay.seq;
-
-	      recovcpt=0;
+	      msginnxtseq = headspay.seq;
+	      inblocksnb=0; recovcpt=0;
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
-
               inblockstofec = headspay.fec;
-
-              inblocks[headspay.fec] = inblocks[FEC_K];
-              inblocksnb=1;
-
-	      memset(index, -1, sizeof(index));
-	      index[headspay.fec] = headspay.fec;
+              inblocks[inblockstofec] = inblocks[FEC_K];
             }
           }
         }

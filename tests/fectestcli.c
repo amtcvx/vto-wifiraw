@@ -98,7 +98,7 @@ int main(void) {
   uint8_t outblockrecov[FEC_N-FEC_K];
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
 
-  uint8_t inblocksnb=0; 
+  uint8_t inblocksnb=0;
   uint8_t recovcpt=0;
 
   int8_t inblockstofec=-1;
@@ -107,7 +107,6 @@ int main(void) {
 
   uint8_t msginnxtfec=0;
 
-  int16_t inblockstoseq=-1;
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
 
@@ -142,8 +141,15 @@ int main(void) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-              if ((inblockstofec >= 0) && ((msginnxtseq != headspay.seq) || (msginnxtfec != headspay.fec))
-	        && (failfec < 0)) { failfec = msginnxtfec; if (failfec == 0) bypassflag = false; }
+	      int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+
+              if ((inblockstofec >= 0) && (failfec < 0) &&
+                   (((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
+		    ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))   {
+
+	        failfec = msginnxtfec; 
+	        if (failfec == 0) bypassflag = false; 
+	      }
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
 	      else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -168,6 +174,8 @@ int main(void) {
 
 	    } else {
 
+              printf("[%d] (%d)\n",headspay.seq,failfec);
+
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
               clearflag=true;
@@ -179,17 +187,17 @@ int main(void) {
                 if ((failfec == 0) && (!(bypassflag))) { imin = 0; imax = 0; }
 
                 if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
-                 
+      
   		  imin = failfec;
    
                   if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                   else {
     
                     imin = outblockrecov[0];
-
+/*
                     for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
                     printf("\nDECODE (%d)\n",recovcpt);
-     
+*/     
                     fec_decode(fec_p,
                                (const unsigned char **)inblocks,
                                (unsigned char * const*)outblocks,
@@ -221,12 +229,12 @@ int main(void) {
                 vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
 		if (vidlen <= PAY_MTU) {
     	          ptr += sizeof(wfb_utils_fec_t);
-/*
+
 		  printf("len(%ld) ",vidlen);
                   for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
                   for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
 		  printf("\n");
-*/
+
                   vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
 		} else {
                   printf("miss send\n");
