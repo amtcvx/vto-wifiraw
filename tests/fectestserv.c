@@ -139,6 +139,7 @@ i*/
 
 	  uint8_t dum=0;
 
+//            if (((sequence == 2) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)||(k == 4)||(k == 5)||(k == 6)))) dum=1;
 //            if (((sequence == 2) && ((k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)||(k == 4)||(k == 5)||(k == 6)))) dum=1;
 //            if (((sequence == 2) && ((k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)))) dum=1;
 
@@ -147,21 +148,21 @@ i*/
 //            if ((sequence == 3) && ((k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 
 //            if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//            if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10))) dum=1;
+//           if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10))) dum=1;
 
 //            if ((sequence == 3) && ((k == 7)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 //            if ((sequence == 3) && ((k == 5)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//
+
 
 //            if ((sequence == 3) && ((k == 0)||(k == 9)||(k == 10)||(k == 11))) dum=1;
 
 //            if ((sequence == 2) && (k == 7)) dum=1;
+//            if ((sequence == 2) && (k == 6)) dum=1;
 //            if ((sequence == 2) && (k == 2)) dum=1;
             
 //            if ((sequence == 2) && (k == 0)) dum=1;
 
-//            else 
-
+            else 
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
 	  if (k<FEC_K) {
@@ -173,7 +174,7 @@ i*/
 	  }
 
 	  vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; } //printf("\n"); }
+          if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; printf("\n"); }
 	}
       }
     }
