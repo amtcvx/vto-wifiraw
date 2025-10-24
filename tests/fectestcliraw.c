@@ -229,16 +229,14 @@ int main(int argc, char **argv) {
 
         if (rawlen > 0) {
 
-          uint32_t crc32 = 0xFFFFFFFFu;
-          for (ssize_t cpt=0;cpt<rawlen;cpt++) { crc32 ^= rawbuf[rawcur][cpt]; crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff]; }
-          crc32 ^= 0xFFFFFFFFu;
-
-	  printf("rawlen(%ld) crc32(%d)(%d)\n",rawlen,crc32,headspay.crc);
-
-	  if (crc32 == headspay.crc) {
-
-            if(headspay.msgcpt == WFB_VID) {
+          if(headspay.msgcpt == WFB_VID) {
   
+            uint32_t crc32 = 0xFFFFFFFFu;
+            for (ssize_t cpt=0;cpt<headspay.msglen;cpt++) { crc32 ^= rawbuf[rawcur][cpt]; crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff]; }
+            crc32 ^= 0xFFFFFFFFu;
+
+	    if (crc32 == headspay.crc) {
+
               if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
   
               if (headspay.fec < FEC_K) {
