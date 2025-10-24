@@ -227,7 +227,6 @@ int main(int argc, char **argv) {
             for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
 	        }
 */
-	        printf("rawlen(%ld) vidlen(%ld) crc32(%d)\n",rawlen,vidlen,crc32);
 	        vidlen = 0;
           if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; printf("\n"); }
 
