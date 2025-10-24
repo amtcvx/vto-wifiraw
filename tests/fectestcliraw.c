@@ -233,6 +233,8 @@ int main(int argc, char **argv) {
           for (ssize_t cpt=0;cpt<rawlen;cpt++) { crc32 ^= rawbuf[rawcur][cpt]; crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff]; }
           crc32 ^= 0xFFFFFFFFu;
 
+	  printf("rawlen(%ld) crc32(%d)(%d)\n",rawlen,crc32,headspay.crc);
+
 	  if (crc32 == headspay.crc) {
 
             if(headspay.msgcpt == WFB_VID) {
@@ -243,7 +245,7 @@ int main(int argc, char **argv) {
   
                 if (msgincurseq < 0) msgincurseq = headspay.seq;
   
-  	      int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+  	        int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
   
                 if ((inblockstofec >= 0) && (failfec < 0) &&
                      (((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
