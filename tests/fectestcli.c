@@ -175,7 +175,7 @@ int main(void) {
 
 	    } else {
 
-              printf("[%d] (%d)\n",headspay.seq,failfec);
+              printf("[%d] (%d) (%d)(%d)\n",headspay.seq,failfec,recovcpt,inblocksnb);
 
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
@@ -191,7 +191,7 @@ int main(void) {
       
   		  imin = failfec;
    
-                  if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
+                  if ((recovcpt + inblocksnb) != FEC_K)  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                   else {
    
                     alldata = true;

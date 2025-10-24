@@ -225,15 +225,15 @@ int main(int argc, char **argv) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-	            int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+	      int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
 
               if ((inblockstofec >= 0) && (failfec < 0) &&
                 (((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
-	              ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1))))) {
+	        ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1))))) {
 
-	              failfec = msginnxtfec;
-	              if (failfec == 0) bypassflag = false;
-	            }
+	        failfec = msginnxtfec;
+	        if (failfec == 0) bypassflag = false;
+	      }
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
               else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
 
                   imin = failfec;
 
-                  if ((recovcpt + inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
+                  if ((recovcpt + inblocksnb) != FEC_K)  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
                   else {
 
                     imin = outblockrecov[0];
@@ -326,7 +326,7 @@ int main(int argc, char **argv) {
 */
                   vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
                 } else {
-//                  printf("miss send\n");
+//                printf("miss send\n");
                 }
               }
             }
