@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
 
-  bool alldata = true;
+  bool alldata = false;
   bool bypassflag = false;
   bool clearflag = false;
 
@@ -281,7 +281,6 @@ int main(int argc, char **argv) {
 
                     alldata = true;
                     for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) { printf("unset (%d)\n",k); alldata = false; break; }
-
                     if (alldata) {
 
                       for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
