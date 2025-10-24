@@ -52,6 +52,7 @@ typedef struct {
   uint8_t fec;
   uint8_t num;
   uint8_t dum;
+  uint32_t crc;
 } __attribute__((packed)) wfb_utils_heads_pay_t;
 
 typedef struct {
@@ -116,7 +117,19 @@ struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(
 struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(llchd_tx)};
 
 /*****************************************************************************/
+static uint32_t CRCTable[256];
+static void CRC32_init(void) {
+  uint32_t crc32 = 1;
+  for (unsigned int i = 128; i; i >>= 1) {
+    crc32 = (crc32 >> 1) ^ (crc32 & 1 ? 0xedb88320 : 0);
+    for (unsigned int j = 0; j < 256; j += 2*i) CRCTable[i + j] = crc32 ^ CRCTable[j];
+  }
+}
+
+/*****************************************************************************/
 int main(int argc, char **argv) {
+
+  CRC32_init();
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
@@ -124,7 +137,7 @@ int main(int argc, char **argv) {
   uint8_t num=0;
 
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
-  uint8_t vidcur=0;;
+  uint8_t vidcur=0;
   ssize_t vidlen=0;
 
   uint8_t sockfd;
@@ -207,16 +220,21 @@ i*/
         for (uint8_t k=kmin;k<kmax;k++) {
 
 	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
- 
+
+	  uint32_t crc32 = 0xFFFFFFFFu;
+          for (ssize_t cpt=0;cpt<vidlen;cpt++) { crc32 ^= vidbuf[k][cpt]; crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff]; }
+	  crc32 ^= 0xFFFFFFFFu;
+
 	  wfb_utils_heads_pay_t headspay =
-            { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
-            struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-            struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
+            { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++, .crc = crc32 };
 
-            struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
-            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
+          struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+          struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
 
-	    rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+          struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
+          struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
+
+	  rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
 	  if (k<FEC_K) {
 	    uint8_t *ptr = vidbuf[k]; ssize_t tmp;
