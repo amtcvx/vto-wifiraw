@@ -52,7 +52,6 @@ typedef struct {
   uint8_t fec;
   uint8_t num;
   uint8_t dum;
-  uint32_t crc;
 } __attribute__((packed)) wfb_utils_heads_pay_t;
 
 typedef struct {
@@ -117,19 +116,7 @@ struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(
 struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(llchd_tx)};
 
 /*****************************************************************************/
-static uint32_t CRCTable[256];
-static void CRC32_init(void) {
-  uint32_t crc32 = 1;
-  for (unsigned int i = 128; i; i >>= 1) {
-    crc32 = (crc32 >> 1) ^ (crc32 & 1 ? 0xedb88320 : 0);
-    for (unsigned int j = 0; j < 256; j += 2*i) CRCTable[i + j] = crc32 ^ CRCTable[j];
-  }
-}
-
-/*****************************************************************************/
 int main(int argc, char **argv) {
-
-  CRC32_init();
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
@@ -187,18 +174,18 @@ int main(int argc, char **argv) {
       if (readsets.revents == POLLIN) {
         memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
         struct iovec iov;
-	iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
-	iov.iov_len = PAY_MTU;
-	vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
-	((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
-	vidcur++;
+	      iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
+	      iov.iov_len = PAY_MTU;
+	      vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
+	      ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
+	      vidcur++;
 /*
-	uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-	ptr += sizeof(wfb_utils_fec_t);
+	      uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+	      ptr += sizeof(wfb_utils_fec_t);
         printf("len(%ld) ",tmp);
         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
         for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
-i*/
+*/
       }
 
       if (vidcur == FEC_K) {
@@ -219,14 +206,10 @@ i*/
 
         for (uint8_t k=kmin;k<kmax;k++) {
 
-	  if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
+	        if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
 
-	  uint32_t crc32 = 0xFFFFFFFFu;
-          for (ssize_t cpt=0;cpt<vidlen;cpt++) { crc32 ^= vidbuf[k][cpt]; crc32 = (crc32 >> 8) ^ CRCTable[crc32 & 0xff]; }
-	  crc32 ^= 0xFFFFFFFFu;
-
-	  wfb_utils_heads_pay_t headspay =
-            { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++, .crc = crc32 };
+	        wfb_utils_heads_pay_t headspay =
+            { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
 
           struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
           struct iovec iovpay = { .iov_base = &vidbuf[k][0], .iov_len = vidlen };
@@ -234,20 +217,21 @@ i*/
           struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
           struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
 
-	  rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+	        rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
-	  if (k<FEC_K) {
-	    uint8_t *ptr = vidbuf[k]; ssize_t tmp;
-	    if (k<FEC_K) tmp = ((wfb_utils_fec_t *)ptr)->feclen; else tmp = ONLINE_MTU;
+	        if (k<FEC_K) {
+	          uint8_t *ptr = vidbuf[k]; ssize_t tmp;
+	          if (k<FEC_K) tmp = ((wfb_utils_fec_t *)ptr)->feclen; else tmp = ONLINE_MTU;
             printf("(%d] len(%ld) ",k,tmp);
             for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
             for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
-	  }
+	        }
 */
-	  printf("rawlen(%ld) vidlen(%ld) crc32(%d)\n",rawlen,vidlen,crc32);
-	  vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; } //printf("\n"); }
-	}
+	        printf("rawlen(%ld) vidlen(%ld) crc32(%d)\n",rawlen,vidlen,crc32);
+	        vidlen = 0;
+          if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; printf("\n"); }
+
+	      }
       }
     }
   }
