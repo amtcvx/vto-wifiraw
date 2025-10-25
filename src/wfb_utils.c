@@ -28,37 +28,63 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
   bool clearflag = false;
 
   if (hdfec < FEC_K) {
+
     if (pu->msgincurseq < 0) pu->msgincurseq = hdseq;
-    if ((pu->inblockstofec >= 0) && ((pu->msginnxtseq != hdseq) || (pu->msginnxtfec != hdfec))
-       && (pu->failfec < 0)) { pu->failfec = pu->msginnxtfec; if (pu->failfec == 0) pu->bypassflag = false; }
+
+    int16_t nextseqtmp = pu->msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+
+    if ((pu->inblockstofec >= 0) && (pu->failfec < 0) && (
+        ((pu->msginnxtseq != hdseq) && (pu->msginnxtfec != hdfec)) ||
+        ((pu->msginnxtseq == hdseq) && (pu->msginnxtfec != hdfec)) ||
+        ((nextseqtmp  == hdseq) && (pu->msginnxtfec == (FEC_K - 1)))))  {
+
+      pu->failfec = pu->msginnxtfec;
+      if (pu->failfec == 0) pu->bypassflag = false;
+    }
+
     if (hdfec < (FEC_K-1)) pu->msginnxtfec = hdfec+1;
     else { pu->msginnxtfec = 0; if (hdseq < 255) pu->msginnxtseq = hdseq+1; else pu->msginnxtseq = 0; }
   }
 
   uint8_t imax=0, imin=0;
   if (pu->msgincurseq == hdseq) {
+
     if (hdfec < FEC_K) {
+      
       if ((pu->failfec < 0) || ((pu->failfec > 0) && (hdfec < pu->failfec))) { imin = hdfec; imax = (imin+1); }
-      pu->inblocks[hdfec] = base; pu->index[hdfec] = hdfec; pu->inblocksnb++;
+      pu->inblocks[hdfec] = base; pu->index[hdfec] = hdfec; pu->alldata |= (1 << hdfec); 
+      pu->inblocksnb++;
+
     } else {
+
       for (uint8_t k=0;k<FEC_K;k++) if (!(pu->inblocks[k])) {
-        pu->inblocks[k] = base; pu->index[k] = hdfec;
+        pu->inblocks[k] = base; pu->index[k] = hdfec; pu->alldata |= (1 << k);
         pu->outblocks[pu->recovcpt]=&pu->outblocksbuf[pu->recovcpt][0]; pu->outblockrecov[pu->recovcpt] = k; pu->recovcpt++;
         break;
       }
     }
+
   } else {
+
     pu->msgincurseq = hdseq;
     pu->inblocks[FEC_K] = base;
     clearflag=true;
+
     imin = FEC_K; imax = (FEC_K+1);
+
     if (pu->inblockstofec >= 0) {
+
       if ((pu->failfec == 0) && (!(pu->bypassflag))) { imin = 0; imax = 0; }
+
       if ((pu->failfec > 0) || ((pu->failfec == 0) && (pu->bypassflag))) {
+
         imin = pu->failfec;
-        if ((pu->recovcpt + pu->inblocksnb) != (FEC_K-1))  { for (uint8_t k=0;k<pu->recovcpt;k++) pu->inblocks[ pu->outblockrecov[k] ] = 0; }
-        else {
+
+        if (!(pu->recovcpt > 0) && ((pu->recovcpt + pu->inblocksnb) == FEC_K) && (pu->alldata == 255)) {
+          for (uint8_t k=0;k<pu->recovcpt;k++) pu->inblocks[ pu->outblockrecov[k] ] = 0;
+        } else {
           imin = pu->outblockrecov[0];
+
           fec_decode(fec_p,
                      (const unsigned char **)pu->inblocks,
                      (unsigned char * const*)pu->outblocks,
@@ -68,29 +94,37 @@ void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base, 
           for (uint8_t k=0;k<pu->recovcpt;k++) pu->inblocks[ pu->outblockrecov[k] ] = pu->outblocks[k];
         }
       }
-    }
+    } 
   }
 
   for (uint8_t i=imin;i<imax;i++) {
     uint8_t *ptr=pu->inblocks[i];
     if (ptr) {
       ssize_t vidlen = ((wfb_utils_fechd_t *)ptr)->feclen - sizeof(wfb_utils_fechd_t);
-      ptr += sizeof(wfb_utils_fechd_t);
-      vidlen = sendto(pu->fdvid, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&pu->vidoutaddr, sizeof(pu->vidoutaddr));
+      if (vidlen <= PAY_MTU) {
+        ptr += sizeof(wfb_utils_fechd_t);
+        vidlen = sendto(pu->fdvid, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&pu->vidoutaddr, sizeof(pu->vidoutaddr));
+      }
     }
   }
 
   if (clearflag) {
-    clearflag=false;
+
     if ((pu->failfec == 0)&&(!(pu->bypassflag))) pu->bypassflag = true;
     else pu->failfec = -1;
-    pu->msginnxtseq = hdseq;
-    pu->inblocksnb=0; pu->recovcpt=0;
-    memset(pu->inblocks, 0, (FEC_K * sizeof(uint8_t *)));
-    pu->inblockstofec = hdfec;
-    pu->inblocks[pu->inblockstofec] = pu->inblocks[FEC_K];
-  }
 
+    clearflag=false;
+    pu->msginnxtseq = hdseq;
+    pu->inblockstofec = hdfec;
+
+    memset(pu->inblocks, 0, (FEC_K * sizeof(uint8_t *)));
+
+    pu->inblocksnb=0; pu->recovcpt=0;
+    if (hdfec < FEC_K) { pu->inblocks[hdfec] = pu->inblocks[FEC_K];
+      pu->index[hdfec] = hdfec; pu->alldata |= (1 << hdfec);
+      pu->inblocksnb=1;
+    }
+  }
 }
 #endif // BOARD
 

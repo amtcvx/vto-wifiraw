@@ -83,6 +83,7 @@ typedef struct {
   uint8_t *outblocks[FEC_N-FEC_K];
   unsigned index[FEC_K];
   uint8_t *inblocks[FEC_K+1];
+  uint8_t alldata;
   uint8_t inblocksnb;
   uint8_t recovcpt;
   int8_t inblockstofec;
