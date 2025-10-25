@@ -139,31 +139,38 @@ i*/
 
 	  uint8_t dum=0;
 
-//TODO if (((sequence == 2) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)||(k == 4)||(k == 5)||(k == 6)))) dum=1;
-//TODO if (((sequence == 2) && ((k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)||(k == 4)||(k == 5)||(k == 6)))) dum=1;
- if (((sequence == 2) && ((k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)))) dum=1;
-
-//            if ((sequence == 3) && ((k == 5)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//            if ((sequence == 3) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//            if ((sequence == 3) && ((k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-
-//            if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//            if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10))) dum=1;
-
-//            if ((sequence == 3) && ((k == 7)||(k == 9)||(k == 10)||(k == 11))) dum=1;
-//            if ((sequence == 3) && ((k == 5)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if (((sequence == 2) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)||(k == 4)||(k == 5)||(k == 6)))) dum=1;
+// if (((sequence == 2) && ((k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)||(k == 4)||(k == 5)||(k == 6)))) dum=1;
 
 
-//            if ((sequence == 3) && ((k == 0)||(k == 1)||(k == 2)||(k == 3))) dum=1;
-//            if ((sequence == 3) && ((k == 0)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if (((sequence == 2) && ((k == 8)||(k == 9)||(k == 10)||(k == 11))) || (sequence == 3) || (sequence == 4) || ((sequence == 5) && ((k == 0)||(k == 1)||(k == 2)||(k == 3)))) dum=1;
 
-//            if ((sequence == 2) && (k == 7)) dum=1;
-//            if ((sequence == 2) && (k == 6)) dum=1;
-//            if ((sequence == 2) && (k == 2)) dum=1;
+// if ((sequence == 3) && ((k == 5)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if ((sequence == 3) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if ((sequence == 3) && ((k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+
+// if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if ((sequence == 3) && ((k == 2)||(k == 7)||(k == 8)||(k == 9)||(k == 10))) dum=1;
+
+// if ((sequence == 3) && ((k == 7)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if ((sequence == 3) && ((k == 4)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if ((sequence == 3) && ((k == 0)||(k == 8)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+
+// if ((sequence == 3) && ((k == 7)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+// if ((sequence == 3) && ((k == 5)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+
+// if ((sequence == 3) && ((k == 0)||(k == 1)||(k == 2)||(k == 3))) dum=1;
+// if ((sequence == 3) && ((k == 0)||(k == 9)||(k == 10)||(k == 11))) dum=1;
+
+// if ((sequence == 3) && ((k == 2)||(k == 4)||(k == 6))) dum=1;
+
+// if ((sequence == 2) && (k == 7)) dum=1;
+// if ((sequence == 2) && (k == 6)) dum=1;
+// if ((sequence == 2) && (k == 2)) dum=1;
             
-//            if ((sequence == 2) && (k == 0)) dum=1;
+// if ((sequence == 2) && (k == 0)) dum=1;
 
-            else 
+//            else 
 	    rawlen = sendmsg(rawfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 
 	  if (k<FEC_K) {
