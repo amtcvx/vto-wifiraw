@@ -66,8 +66,8 @@ int main(void) {
         iov.iov_len = PAY_MTU;
         vidlen = readv(vidfd, &iov, 1) + sizeof(wfb_utils_fec_t);
         ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
-  	vidcur++;
-	   
+        vidcur++;
+
         printf("(%d)len(%ld)  ",vidcur-1,vidlen);
         for (uint8_t i=0;i<5;i++) printf("%x ",vidbuf[vidcur-1][i]);printf(" ... ");
         for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",vidbuf[vidcur-1][i]);printf("\n");
@@ -89,10 +89,10 @@ int main(void) {
                     (const unsigned*restrict const)blocknums, (FEC_N-FEC_K), ONLINE_MTU);
 
 
-	uint8_t *inblocks[FEC_N];
+        uint8_t *inblocks[FEC_N];
         for (uint8_t k=0;k<FEC_N;k++) if(k<FEC_K) inblocks[k]=&vidbuf[k][0]; else inblocks[k]=fecblocks[k-FEC_K];
 
-	uint8_t misnb=3; printf("MISSING (%d)\n",misnb);inblocks[misnb]=(int8_t *)0;
+        uint8_t misnb=3; printf("MISSING (%d)\n",misnb);inblocks[misnb]=(int8_t *)0;
 
 
         unsigned index[FEC_K];
@@ -112,9 +112,9 @@ int main(void) {
                 outblocksidx++;
                 break;
               }
-	    }
-	  }
-	}
+            }
+          }
+        }
 
         for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
         printf("\nDECODE (%d)\n",outblocksidx);
@@ -126,16 +126,16 @@ int main(void) {
 
         printf("RESTORING\n");
         for (uint8_t k=0;k<outblocksidx;k++) {
-	  inblocks[recov[k]] = outblocks[k];
+          inblocks[recov[k]] = outblocks[k];
 
           uint8_t *ptr=inblocks[recov[k]];
-          vidlen = ((wfb_utils_fec_t *)ptr)->feclen; 
+          vidlen = ((wfb_utils_fec_t *)ptr)->feclen;
 
-	  printf("(%d)len(%ld)  ",recov[k],vidlen);
+          printf("(%d)len(%ld)  ",recov[k],vidlen);
           for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
           for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-	}
-	printf("\n");
+        }
+        printf("\n");
       }
     }
   }

@@ -174,14 +174,14 @@ int main(int argc, char **argv) {
       if (readsets.revents == POLLIN) {
         memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
         struct iovec iov;
-	      iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
-	      iov.iov_len = PAY_MTU;
-	      vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
-	      ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
-	      vidcur++;
+        iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
+        iov.iov_len = PAY_MTU;
+        vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
+        ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
+        vidcur++;
 /*
-	      uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-	      ptr += sizeof(wfb_utils_fec_t);
+        uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+        ptr += sizeof(wfb_utils_fec_t);
         printf("len(%ld) ",tmp);
         for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
         for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
@@ -206,9 +206,9 @@ int main(int argc, char **argv) {
 
         for (uint8_t k=kmin;k<kmax;k++) {
 
-	        if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
+          if (k<FEC_K) vidlen=((wfb_utils_fec_t *)&vidbuf[k][0])->feclen; else vidlen=ONLINE_MTU;
 
-	        wfb_utils_heads_pay_t headspay =
+          wfb_utils_heads_pay_t headspay =
             { .droneid = 1, .msgcpt = WFB_VID, .msglen = vidlen, .seq = sequence, .fec = k, .num = num++ };
 
           struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
@@ -217,20 +217,20 @@ int main(int argc, char **argv) {
           struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
           struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
 
-	        rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+          rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
 /*
-	        if (k<FEC_K) {
-	          uint8_t *ptr = vidbuf[k]; ssize_t tmp;
-	          if (k<FEC_K) tmp = ((wfb_utils_fec_t *)ptr)->feclen; else tmp = ONLINE_MTU;
+          if (k<FEC_K) {
+            uint8_t *ptr = vidbuf[k]; ssize_t tmp;
+            if (k<FEC_K) tmp = ((wfb_utils_fec_t *)ptr)->feclen; else tmp = ONLINE_MTU;
             printf("(%d] len(%ld) ",k,tmp);
             for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
             for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
-	        }
+          }
 */
-	        vidlen = 0;
+          vidlen = 0;
           if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; printf("\n"); }
 
-	      }
+        }
       }
     }
   }
