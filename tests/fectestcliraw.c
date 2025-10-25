@@ -179,6 +179,7 @@ int main(int argc, char **argv) {
   uint8_t outblockrecov[FEC_N-FEC_K];
   uint8_t outblocksbuf[FEC_N-FEC_K][ONLINE_MTU];
 
+  uint8_t alldata=0;
   uint8_t inblocksnb=0;
   uint8_t recovcpt=0;
 
@@ -191,7 +192,6 @@ int main(int argc, char **argv) {
   int16_t msginnxtseq=-1;
   int16_t msgincurseq=-1;
 
-  bool alldata = false;
   bool bypassflag = false;
   bool clearflag = false;
 
@@ -225,15 +225,16 @@ int main(int argc, char **argv) {
 
               if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-	      int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+              int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
 
-              if ((inblockstofec >= 0) && (failfec < 0) &&
-                (((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
-	        ((nextseqtmp == headspay.seq) && (msginnxtfec == (FEC_K - 1))))) {
+              if ((inblockstofec >= 0) && (failfec < 0) && (
+                   ((msginnxtseq != headspay.seq) && (msginnxtfec != headspay.fec)) ||
+                   ((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
+                   ((nextseqtmp  == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))  {
 
-	        failfec = msginnxtfec;
-	        if (failfec == 0) bypassflag = false;
-	      }
+                failfec = msginnxtfec;
+                if (failfec == 0) bypassflag = false;
+              }
 
               if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
               else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
@@ -245,20 +246,19 @@ int main(int argc, char **argv) {
               if (headspay.fec < FEC_K) {
 
                 if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); }
-                inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; inblocksnb++;
+                inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; alldata |= (1 << headspay.fec);
+                inblocksnb++;
 
               } else {
 
                 for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) {
-                  inblocks[k] = iovpay.iov_base; index[k] = headspay.fec;
+                  inblocks[k] = iovpay.iov_base; index[k] = headspay.fec; alldata |= (1 << k);
                   outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
                   break;
                 }
               }
 
             } else {
-
-//              printf("[%d] (%d)\n",headspay.seq,failfec);
 
               msgincurseq = headspay.seq;
               inblocks[FEC_K] = iovpay.iov_base;
@@ -274,37 +274,32 @@ int main(int argc, char **argv) {
 
                   imin = failfec;
 
-                  if ((recovcpt + inblocksnb) != FEC_K)  { for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0; }
-                  else {
-
+                  if (!((recovcpt > 0) && ((recovcpt + inblocksnb) == FEC_K) && (alldata == 255))) {
+                    for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0;
+                  } else {
                     imin = outblockrecov[0];
 
-                    alldata = true;
-                    for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) { printf("unset (%d)\n",k); alldata = false; break; }
-                    if (alldata) {
+                    for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
+                    printf("\nDECODE (%d)\n",recovcpt);
 
-                      for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-                      printf("\nDECODE (%d)\n",recovcpt);
+                    fec_decode(fec_p,
+                               (const unsigned char **)inblocks,
+                               (unsigned char * const*)outblocks,
+                               (unsigned int *)index,
+                               ONLINE_MTU);
 
-                      fec_decode(fec_p,
-                                 (const unsigned char **)inblocks,
-                                 (unsigned char * const*)outblocks,
-                                 (unsigned int *)index,
-                                 ONLINE_MTU);
+                    for (uint8_t k=0;k<recovcpt;k++) {
+                      inblocks[ outblockrecov[k] ] = outblocks[k];
 
-                      for (uint8_t k=0;k<recovcpt;k++) {
-                        inblocks[ outblockrecov[k] ] = outblocks[k];
-
-                        uint8_t *ptr=inblocks[ outblockrecov[k] ];
-                        vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-                        if (vidlen <= PAY_MTU) {
-                          ptr += sizeof(wfb_utils_fec_t);
-//                        printf("recover len(%ld)  ", vidlen);
-                          for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
-                          for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-                        } else {
-//                        printf("missed recovered (%d)(%d)\n",headspay.seq,failfec);
-                        }
+                      uint8_t *ptr=inblocks[ outblockrecov[k] ];
+                      vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+                      if (vidlen <= PAY_MTU) {
+                        ptr += sizeof(wfb_utils_fec_t);
+//                      printf("recover len(%ld)  ", vidlen);
+                        for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
+                        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
+                      } else {
+//                      printf("missed recovered (%d)(%d)\n",headspay.seq,failfec);
                       }
                     }
                   }
@@ -342,9 +337,11 @@ int main(int argc, char **argv) {
 
               memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
 
-              recovcpt=0;
-              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = inblocks[FEC_K]; inblocksnb=1; index[headspay.fec] = headspay.fec; }
-              else inblocksnb=0;
+              recovcpt=0; inblocksnb=0;
+              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = inblocks[FEC_K];
+                index[headspay.fec] = headspay.fec; alldata |= (1 << headspay.fec);
+                inblocksnb = 1;
+              } 
             }
           }
         }
