@@ -17,11 +17,7 @@
 
 #include "zfex.h"
 
-#if TELEM
-typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_TEL, WFB_NB } type_d;
-#else
-typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_NB } type_d;
-#endif // TELEM
+typedef enum { WFB_PRO, WFB_VID, WFB_NB } type_d;
      
 #define PAY_MTU 1400
 
@@ -41,16 +37,9 @@ typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_NB } type_d;
 
 #define PORT_NORAW   3000
 #define PORT_VID     5600
-#define PORT_TELUP   4245
-#define PORT_TELDOWN 4244
 #define PORT_LOG     5000
 
 #define PAY_MTU 1400
-
-#define TUN_MTU      1400
-#define TUNIP_BOARD  "10.0.1.2"
-#define TUNIP_GROUND "10.0.1.1"
-#define IPBROAD      "255.255.255.0"
 
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
@@ -126,8 +115,6 @@ void wfb_utils_init(wfb_utils_init_t *pu);
 #if RAW
 void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)]); 
 void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn);
-#else
-void wfb_utils_noraw(wfb_utils_init_t *pu); 
 #endif // RAW
 
 #if BOARD
