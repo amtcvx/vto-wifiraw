@@ -269,7 +269,7 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,uint8_t
 /*****************************************************************************/
 void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)]) {
 #if RAW
-//  setmainbackup(n,lentab,probuf);
+  setmainbackup(n,lentab,probuf);
   printlog(u,n);
 #endif  // RAW
 }
