@@ -43,7 +43,13 @@ int main(void) {
   }
   wfb_utils_addraw(&u,&n);
 #endif // RAW
-       
+      
+
+
+  wfb_net_setfreq(&n.sockidnl, n.rawdevs[0]->ifindex, n.rawdevs[0]->freqs[ 18 ]);
+
+
+
   uint8_t maxraw = u.readnb; 
   int8_t mainraw = 0, backraw = -1; 
   uint8_t sequence=0;
