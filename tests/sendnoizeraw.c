@@ -1,13 +1,18 @@
 /*
+
+https://www-inf.telecom-sudparis.eu/COURS/CSC5004/libnl/route.html
+      
 gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DCONFIG_LIBNL30 -I/usr/include/libnl3 -c sendnoizeraw.c -o sendnoizeraw.o
 
 cc sendnoizeraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o sendnoizeraw
 
-sudo ./sendnoizeraw wlx3c7c3fa9bdc6 2412
-sudo ./sendnoizeraw wlx3c7c3fa9bdc6 2427
-sudo ./sendnoizeraw wlx3c7c3fa9bdc6 5090
+export DEVICE=wlx3c7c3fa9c1e4
+sudo ./sendnoizeraw $DEVICE 2412
+sudo ./sendnoizeraw $DEVICE 2427
+sudo ./sendnoizeraw $DEVICE 5090
 
 */
+#include<unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,6 +38,7 @@ sudo ./sendnoizeraw wlx3c7c3fa9bdc6 5090
 #include <netlink/route/link.h>
 #include <net/if.h>
 
+#include <errno.h>
 
 /************************************************************************************************/
 #define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
@@ -92,26 +98,20 @@ int main(int argc, char **argv) {
   sll.sll_ifindex  = ifr.ifr_ifindex;
   sll.sll_protocol = protocol;
   if (-1 == bind(sockfd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
-
+/*
   struct nl_sock *sockrt;
   if (!(sockrt = nl_socket_alloc())) exit(-1);
   if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
+  
 
   struct nl_cache *cache1;
   struct rtnl_link *link1, *change1;
   if (rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache1) < 0) exit(-1);
   if (!(link1 = rtnl_link_get(cache1,ifr.ifr_ifindex))) exit(-1);
-  change1 = rtnl_link_alloc ();
-  rtnl_link_set_flags (change1, IFF_DOWN);
+  if (!(change1 = rtnl_link_alloc ())) exit(-1);
+  rtnl_link_unset_flags (change1, IFF_UP);
   rtnl_link_change(sockrt, link1, change1, 0);
   
-/*
-  if (!(rtnl_link_get_flags (link) & IFF_UP)) {
-    change = rtnl_link_alloc ();
-    rtnl_link_set_flags (change, IFF_UP);
-    rtnl_link_change(sockrt, link, change, 0);
-  }
-*/
   uint8_t sockid;
   struct nl_sock *socknl;
   if  (!(socknl = nl_socket_alloc())) exit(-1);
@@ -125,8 +125,9 @@ int main(int argc, char **argv) {
   nla_put_u32(msg1, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
   if (nl_send_auto(socknl, msg1) < 0) exit(-1);
   nlmsg_free(msg1);
-
+*/
   uint32_t freq = atoi(argv[2]);
+/*
   struct nl_msg *msg3=nlmsg_alloc();
   genlmsg_put(msg3,0,0,sockid,0,0,NL80211_CMD_SET_CHANNEL,0);
   NLA_PUT_U32(msg3,NL80211_ATTR_IFINDEX,ifr.ifr_ifindex);
@@ -136,12 +137,40 @@ int main(int argc, char **argv) {
 
   struct nl_cache *cache;
   struct rtnl_link *link, *change;
+
   if (rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache) < 0) exit(-1);
   if (!(link = rtnl_link_get(cache,ifr.ifr_ifindex))) exit(-1);
-  change = rtnl_link_alloc (); 
+  if (!(change = rtnl_link_alloc ())) exit(-1);
   rtnl_link_set_flags (change, IFF_UP);
   rtnl_link_change(sockrt, link, change, 0);
 
+  if ((rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache)) < 0) exit(-1);
+  if (!(link = rtnl_link_get_by_name(cache, argv[1]))) exit(-1);
+  rtnl_link_get_flags(link);
+  uint8_t buf1[255];
+  rtnl_link_flags2str (rtnl_link_get_flags (link), (char *)buf1, sizeof (buf1));
+  printf("(%s)\n",buf1);
+
+  rtnl_link_get_flags(link);
+  uint8_t buf2[255];
+  rtnl_link_operstate2str (rtnl_link_get_operstate (link), (char *)buf2, sizeof (buf2));
+  printf("(%s)\n",buf2);
+*/
+
+  memset(&ifr, 0, sizeof(ifr));
+  strcpy(ifr.ifr_name, argv[1]);
+  ifr.ifr_flags |= IFF_UP;
+  ioctl(sockfd, SIOCSIFFLAGS, &ifr);
+
+  memset(&ifr, 0, sizeof(ifr));
+  strcpy(ifr.ifr_name, argv[1]);
+  bool flag = true;
+  while(flag) {
+    sleep(1);
+    if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) >=0) {
+      if (!!(ifr.ifr_flags & IFF_UP)) flag = false;;
+    }
+  }
 
   uint8_t dumbuf[1400] = {-1};
   struct iovec iovdum = { .iov_base = dumbuf, .iov_len = sizeof(dumbuf) };
@@ -149,8 +178,8 @@ int main(int argc, char **argv) {
   struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 4 };
 
   ssize_t rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-  printf("(%ld)\n",rawlen);
-//  printf("(%ld)(%d)\n",rawlen,freq);
+  printf("%s\n", strerror(errno));
+  printf("(%ld)(%d)\n",rawlen,freq);
 
   nla_put_failure:
     exit(-1);
