@@ -7,6 +7,12 @@ cc scanraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o scanraw
 export DEVICE=wlx3c7c3fa9c1e4
 sudo ./scanraw $DEVICE
 
+export DEVICE=wlx3c7c3fa9c1e4
+sudo ip link set $DEVICE down
+sudo iw dev $DEVICE set type monitor
+sudo ip link set $DEVICE up
+sudo iw dev $DEVICE set channel 3
+
 */
 
 #include<unistd.h>
@@ -39,7 +45,7 @@ sudo ./scanraw $DEVICE
 
 #include <errno.h>
 
-#define PERIOD_DELAY_S  1
+#define PERIOD_DELAY_S  10
 
 /************************************************************************************************/
 
@@ -151,6 +157,13 @@ int main(int argc, char **argv) {
   sll.sll_protocol = protocol;
   if (-1 == bind(fd[1], (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
 
+  struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
+  struct sock_fprog full_program = { 1, &full_bytecode};
+  setsockopt(fd[1], SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program));
+
+  const int32_t sock_qdisc_bypass = 1;
+  if (-1 == setsockopt(fd[1], SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) exit(-1);
+
   struct nl_sock *sockrt;
   if (!(sockrt = nl_socket_alloc())) exit(-1);
   if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
@@ -216,13 +229,18 @@ int main(int argc, char **argv) {
       for (uint8_t cpt=0; cpt<2; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == 0) { 
+
             len = read(fd[0], &exptime, sizeof(uint64_t));
-	    printf("(%d)(%ld)\n",rawdev.freqs[rawdev.cptfreqs], rawlen); rawlen = 0;
 	    if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs=0;
-	    setfreq(ifr.ifr_ifindex, &rawdev, sockid, socknl);
+	    bool ret = setfreq(ifr.ifr_ifindex, &rawdev, sockid, socknl);
+	    printf("(%d)(%d)(%d)(%ld)\n",true,ret,rawdev.freqs[rawdev.cptfreqs], rawlen);
+
+	    rawlen = 0;
+
 	  } else {
-            struct iovec iovtab[4] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovdum };
-            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 4 };
+
+            struct iovec iovtab[3] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx };
+            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 3 };
             rawlen += recvmsg(fd[1], &msg, MSG_DONTWAIT);
 	  }
 	}
