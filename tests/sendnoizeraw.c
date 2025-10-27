@@ -3,7 +3,10 @@ gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing
 
 cc sendnoizeraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o sendnoizeraw
 
+sudo ./sendnoizeraw wlx3c7c3fa9bdc6 2412
 sudo ./sendnoizeraw wlx3c7c3fa9bdc6 2427
+sudo ./sendnoizeraw wlx3c7c3fa9bdc6 5090
+
 */
 #include <string.h>
 #include <stdlib.h>
@@ -77,23 +80,44 @@ struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(
 int main(int argc, char **argv) {
 
   uint8_t sockfd;
-  ssize_t rawlen;
   uint16_t protocol = htons(ETH_P_ALL);
   if (-1 == (sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(struct ifreq));
   strncpy( ifr.ifr_name, argv[1], sizeof( ifr.ifr_name ) - 1 );
   if (ioctl( sockfd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
+  struct sockaddr_ll sll;
+  memset( &sll, 0, sizeof( sll ) );
+  sll.sll_family   = AF_PACKET;
+  sll.sll_ifindex  = ifr.ifr_ifindex;
+  sll.sll_protocol = protocol;
+  if (-1 == bind(sockfd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
 
+  struct nl_sock *sockrt;
+  if (!(sockrt = nl_socket_alloc())) exit(-1);
+  if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
+
+  struct nl_cache *cache1;
+  struct rtnl_link *link1, *change1;
+  if (rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache1) < 0) exit(-1);
+  if (!(link1 = rtnl_link_get(cache1,ifr.ifr_ifindex))) exit(-1);
+  change1 = rtnl_link_alloc ();
+  rtnl_link_set_flags (change1, IFF_DOWN);
+  rtnl_link_change(sockrt, link1, change1, 0);
+  
+/*
+  if (!(rtnl_link_get_flags (link) & IFF_UP)) {
+    change = rtnl_link_alloc ();
+    rtnl_link_set_flags (change, IFF_UP);
+    rtnl_link_change(sockrt, link, change, 0);
+  }
+*/
   uint8_t sockid;
   struct nl_sock *socknl;
   if  (!(socknl = nl_socket_alloc())) exit(-1);
   nl_socket_set_buffer_size(socknl, 8192, 8192);
   if (genl_connect(socknl)) exit(-1);
   if ((sockid = genl_ctrl_resolve(socknl, "nl80211")) < 0) exit(-1);
-  struct nl_sock *sockrt;
-  if (!(sockrt = nl_socket_alloc())) exit(-1);
-  if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
 
   struct nl_msg *msg1 = nlmsg_alloc();
   genlmsg_put(msg1,0,0,sockid,0,0,NL80211_CMD_SET_INTERFACE,0);
@@ -101,12 +125,6 @@ int main(int argc, char **argv) {
   nla_put_u32(msg1, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
   if (nl_send_auto(socknl, msg1) < 0) exit(-1);
   nlmsg_free(msg1);
-
-  struct nl_msg *msg2 = nlmsg_alloc();
-  genlmsg_put(msg2,0,0,sockid,0,0,NL80211_CMD_SET_INTERFACE,1);
-  nla_put_u32(msg2, NL80211_ATTR_IFINDEX, ifr.ifr_ifindex);
-  if (nl_send_auto(socknl, msg2) < 0) exit(-1);
-  nlmsg_free(msg2);
 
   uint32_t freq = atoi(argv[2]);
   struct nl_msg *msg3=nlmsg_alloc();
@@ -116,14 +134,23 @@ int main(int argc, char **argv) {
   if (nl_send_auto(socknl, msg3) < 0) exit(-1);
   nlmsg_free(msg3);
 
+  struct nl_cache *cache;
+  struct rtnl_link *link, *change;
+  if (rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache) < 0) exit(-1);
+  if (!(link = rtnl_link_get(cache,ifr.ifr_ifindex))) exit(-1);
+  change = rtnl_link_alloc (); 
+  rtnl_link_set_flags (change, IFF_UP);
+  rtnl_link_change(sockrt, link, change, 0);
+
 
   uint8_t dumbuf[1400] = {-1};
   struct iovec iovdum = { .iov_base = dumbuf, .iov_len = sizeof(dumbuf) };
   struct iovec iovtab[4] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovdum };
   struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 4 };
 
-  rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-  printf("(%ld)(%d)\n",rawlen,freq);
+  ssize_t rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+  printf("(%ld)\n",rawlen);
+//  printf("(%ld)(%d)\n",rawlen,freq);
 
   nla_put_failure:
     exit(-1);
