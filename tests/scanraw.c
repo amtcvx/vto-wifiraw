@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
   readsets[0].fd = fd[0]; readsets[0].events = POLLIN;
 
 
-  uint16_t protocol = 0;
+  uint16_t protocol = htons(ETH_P_ALL); // 0
   if (-1 == (fd[1] = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
   readsets[1].fd = fd[1]; readsets[1].events = POLLIN;
 
