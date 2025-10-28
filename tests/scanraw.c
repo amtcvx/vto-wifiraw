@@ -127,6 +127,14 @@ int main(int argc, char **argv) {
 
   uint8_t fd[2];
 
+  uint64_t exptime;
+  if (-1 == (fd[0] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
+  timerfd_settime(fd[0], 0, &period, NULL);
+
+  uint16_t protocol = htons(ETH_P_ALL);
+  if (-1 == (fd[1] = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
+
   struct nl_sock *socknl;
   uint8_t sockid;
 
@@ -139,16 +147,11 @@ int main(int argc, char **argv) {
   if (!(sockrt = nl_socket_alloc())) exit(-1);
   if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
 
-  bool msg_received = false;
-
-  uint16_t protocol = htons(ETH_P_ALL);
-  if (-1 == (fd[1] = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
-
   struct ifreq ifr;
-
   memset(&ifr, 0, sizeof(struct ifreq));
   strncpy( ifr.ifr_name, argv[1], sizeof( ifr.ifr_name ) - 1 );
   if (ioctl( fd[1], SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
+
   struct nl_msg *nlmsg;
 
   if (!(nlmsg  = nlmsg_alloc())) exit(-1);;
@@ -159,21 +162,18 @@ int main(int argc, char **argv) {
   if (nl_send_auto(socknl, nlmsg) >= 0)  nl_recvmsgs_default(socknl);
   nlmsg_free(nlmsg);
 
-  int8_t err = 0;
   struct nl_cache *cache;
   struct rtnl_link *link, *change;
-  if ((err = rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache)) >= 0) {
-    if ((link = rtnl_link_get(cache,ifr.ifr_ifindex))) {
-      if (!(rtnl_link_get_flags (link) & IFF_UP)) {
-        change = rtnl_link_alloc ();
-        rtnl_link_set_flags (change, IFF_UP);
-        rtnl_link_change(sockrt, link, change, 0);
-      }
-    }
+  if ((rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache)) < 0) exit(-1);
+  if (!(link = rtnl_link_get(cache,ifr.ifr_ifindex))) exit(-1);
+  if (!(rtnl_link_get_flags (link) & IFF_UP)) {
+    change = rtnl_link_alloc ();
+    rtnl_link_set_flags (change, IFF_UP);
+    rtnl_link_change(sockrt, link, change, 0);
   }
 
   static rawdev_t rawdev; memset(&rawdev, 0, sizeof(rawdev));
-
+  bool msg_received = false;
   struct nl_cb *cb;
   if (!(cb = nl_cb_alloc(NL_CB_DEFAULT))) exit(-1);
   nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_callback, &msg_received);
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
   sll.sll_family   = AF_PACKET;
   sll.sll_ifindex  = ifr.ifr_ifindex;
   sll.sll_protocol = protocol;
-  if (-1 == bind(fd[1], (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
+  if (-1 == bind(fd[1], (struct sockaddr *)&sll, sizeof(sll))) exit(-1); // BIND must be AFTER wifi setting
 
   const int32_t sock_qdisc_bypass = 1;
   if (-1 == setsockopt(fd[1], SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) exit(-1);
@@ -207,11 +207,6 @@ int main(int argc, char **argv) {
 
   rawdev.cptfreqs = 0; 
   setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
-
-  uint64_t exptime;
-  if (-1 == (fd[0] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
-  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(fd[0], 0, &period, NULL);
 
   struct pollfd readsets[2] = { { .fd = fd[0], .events = POLLIN }, { .fd = fd[1], .events = POLLIN }};
 
