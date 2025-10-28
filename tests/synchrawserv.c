@@ -5,7 +5,7 @@ gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing
 cc synchrawserv.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o synchrawserv
 
 export DEVICE1=wlx3c7c3fa9c1e4
-export DEVICE1=wlx3c7c3fa9c1e4
+export DEVICE2=wlxfc349725a317
 
 sudo ./synchrawserv $DEVICE1
 sudo ./synchrawserv $DEVICE1 $DEVICE2
@@ -44,10 +44,16 @@ sudo ./synchrawserv $DEVICE1 $DEVICE2
 /*****************************************************************************/
 #define NBFREQS 65
 #define PERIOD_DELAY_S  1
+#define FREESECS  10
 #define MAXRAWNB 4
+#define MAXDEVNB 1 + MAXRAWNB
 
 /*****************************************************************************/
 typedef struct {
+  bool    freefreq;
+  uint8_t syncelapse;
+  uint8_t synccum;
+  uint8_t synccpt;
   uint8_t ifindex;
   uint8_t fd;
   uint8_t cptfreqs;
@@ -122,7 +128,7 @@ bool setfreq(uint8_t sockid, struct nl_sock *socknl, int ifindex, uint32_t freq)
 }
 
 /*****************************************************************************/
-int setraw(uint8_t sockid, struct nl_sock *socknl, int argc, char **argv, rawdev_t rawdev[MAXRAWNB]) {
+void setraw(uint8_t sockid, struct nl_sock *socknl, int argc, char **argv, rawdev_t rawdev[MAXRAWNB]) {
 
   struct nl_sock *sockrt;
   if (!(sockrt = nl_socket_alloc())) exit(-1);
@@ -130,12 +136,12 @@ int setraw(uint8_t sockid, struct nl_sock *socknl, int argc, char **argv, rawdev
 
   uint16_t protocol = htons(ETH_P_ALL);
   
-  for (uint8_t cpt=0; cpt < argc; cpt++) { 
+  for (uint8_t cpt=0; cpt < (argc-1); cpt++) { 
 
     if (-1 == (rawdev[cpt].fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(struct ifreq));
-    strncpy( ifr.ifr_name, argv[cpt], sizeof( ifr.ifr_name ) - 1 );
+    strncpy( ifr.ifr_name, argv[cpt+1], sizeof( ifr.ifr_name ) - 1 );
     if (ioctl( rawdev[cpt].fd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
     rawdev[cpt].ifindex = ifr.ifr_ifindex;
   
@@ -190,12 +196,17 @@ int setraw(uint8_t sockid, struct nl_sock *socknl, int argc, char **argv, rawdev
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
-  uint8_t fd[2];
+  if (!((argc >= 1) && (argc <= 3))) exit(-1);
+  printf("START [%d]\n",argc);
+	
+  struct pollfd readsets[MAXDEVNB];
+  uint8_t nbfd = 0;
 
   uint64_t exptime;
-  if (-1 == (fd[0] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  if (-1 == (readsets[nbfd].fd = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(fd[0], 0, &period, NULL);
+  timerfd_settime(readsets[nbfd].fd, 0, &period, NULL);
+  nbfd++;
 
   uint8_t sockid; struct nl_sock *socknl;
   if  (!(socknl = nl_socket_alloc()))  exit(-1);
@@ -203,8 +214,23 @@ int main(int argc, char **argv) {
   if (genl_connect(socknl)) exit(-1);
   if ((sockid = genl_ctrl_resolve(socknl, "nl80211")) < 0) exit(-1);
 
-  rawdev_t rawdev[MAXRAWNB];
+  rawdev_t rawdev[MAXRAWNB]; memset(&rawdev,0,sizeof(rawdev));
   setraw(sockid, socknl, argc, argv, rawdev);
+
+  rawdev[0].cptfreqs = 0; 
+  setfreq(sockid, socknl, rawdev[0].ifindex, rawdev[0].freqs[rawdev[0].cptfreqs]);
+  readsets[nbfd].fd = rawdev[0].fd;
+  uint8_t rawnb = 1;
+  nbfd++;
+
+  if (argc == 3) { 
+    rawdev[1].cptfreqs =  rawdev[1].nbfreqs / 2;  
+    setfreq(sockid, socknl, rawdev[1].ifindex, rawdev[1].freqs[rawdev[1].cptfreqs]);
+    readsets[nbfd].fd = rawdev[1].fd;
+    rawnb++;
+    nbfd++;
+  }
+  for (uint8_t cpt=0;cpt < nbfd; cpt++) readsets[cpt].events = POLLIN;
 
   uint8_t dumbuf[1500];
   struct iovec iov_dum = { .iov_base = dumbuf, .iov_len = sizeof(dumbuf)};
@@ -212,30 +238,47 @@ int main(int argc, char **argv) {
   struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 1 };
 
   ssize_t rawlen = 0, len = 0;
-  uint8_t rawnb = 0;
 
-  rawdev[0].cptfreqs = 0; 
-  setfreq(sockid, socknl, rawdev[0].ifindex, rawdev[0].freqs[rawdev[0].cptfreqs]);
-  if (argc == 2) { rawdev[1].cptfreqs =  rawdev[1].nbfreqs / 2;  
-    setfreq(sockid, socknl, rawdev[1].ifindex, rawdev[1].freqs[rawdev[1].cptfreqs]);
-  }
-
-
-  struct pollfd readsets[2] = { { .fd = fd[0], .events = POLLIN }, { .fd = fd[1], .events = POLLIN }};
-
+  int8_t mainraw = -1, backraw = -1, tmpraw = -1;
   for(;;) {
-    if (0 != poll(readsets, 2, -1)) {
-      for (uint8_t cpt=0; cpt<2; cpt++) {
+    if (0 != poll(readsets, nbfd, -1)) {
+      for (uint8_t cpt=0; cpt<nbfd; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == 0) {
-            len = read(fd[0], &exptime, sizeof(uint64_t));
-	    printf("[%d] (%d)\n",rawdev.freqs[rawdev.cptfreqs],rawnb);
-	    rawnb=0;
-	    if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs = 0;
-	    setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
+            len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
+//	    printf("cpt (%d)(%d) (%d)(%d)\n",rawdev[0].synccpt,rawdev[0].syncelapse, rawdev[1].synccpt,rawdev[1].syncelapse);
+
+	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
+	      if (rawdev[rawcpt].synccum != rawdev[rawcpt].synccpt) rawdev[rawcpt].freefreq = false;
+	      else if (rawdev[rawcpt].syncelapse < FREESECS) rawdev[rawcpt].syncelapse++; else rawdev[rawcpt].freefreq = true;
+	    }
+
+	    printf("(%d) (%d) (%d)\n",false,rawdev[0].freefreq, rawdev[1].freefreq);
+/*
+	    if ((mainraw >= 0) && (!(rawdev[mainraw].freefreq))) {
+              if ((backraw >= 0) && (rawdev[backraw].freefreq)) { tmpraw = backraw; mainraw = backraw; backraw = -1; }
+	    }
+*/
+	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
+              if (rawdev[rawcpt].freefreq) {
+/*
+                if (mainraw < 0) mainraw = rawcpt;
+		else if ((mainraw != rawcpt) && (backraw < 0)) backraw = rawcpt;
+*/
+	      } else {
+                rawdev[rawcpt].syncelapse = 0; rawdev[rawcpt].synccpt = 0; rawdev[rawcpt].synccum = 0;
+	        if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
+                setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
+
+		printf("set(%d) freq(%d)\n", rawcpt, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
+	      }
+	    }
+
+//	    printf("freq %d) (%d)    mainraw(%d) backraw(%d)\n",rawdev[0].cptfreqs,rawdev[1].cptfreqs, mainraw,backraw);
+
 	  } else {
-            rawlen = recvmsg(fd[1], &msg, MSG_DONTWAIT);
-	    rawnb++;
+            rawlen = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
+	    rawdev[cpt-1].synccpt++;
 	  }
 	}
       }
