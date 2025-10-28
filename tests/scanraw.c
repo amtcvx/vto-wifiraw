@@ -45,19 +45,11 @@ sudo iw dev $DEVICE set channel 3
 
 #include <errno.h>
 
-#define PERIOD_DELAY_S  10
-
-/************************************************************************************************/
-
-uint8_t radiotaphd_rx[35];
-uint8_t ieeehd_rx[24];
-uint8_t llchd_rx[4];
-
-struct iovec iov_radiotaphd_rx = { .iov_base = radiotaphd_rx, .iov_len = sizeof(radiotaphd_rx)};
-struct iovec iov_ieeehd_rx =     { .iov_base = ieeehd_rx,     .iov_len = sizeof(ieeehd_rx)};
-struct iovec iov_llchd_rx =      { .iov_base = llchd_rx,      .iov_len = sizeof(llchd_rx)};
-
+/*****************************************************************************/
 #define NBFREQS 65
+#define PERIOD_DELAY_S  1
+
+/*****************************************************************************/
 typedef struct {
   uint8_t cptfreqs;
   uint8_t nbfreqs;
@@ -66,30 +58,16 @@ typedef struct {
 } rawdev_t;
 
 /******************************************************************************/
-bool setfreq(uint16_t ifindex, rawdev_t *rawdev, uint8_t sockid, struct nl_sock *socknl) {
-  bool ret = true;
-  struct nl_msg *nlmsg = nlmsg_alloc();
-  genlmsg_put(nlmsg,0,0,sockid,0,0,NL80211_CMD_SET_CHANNEL,0);
-  NLA_PUT_U32(nlmsg,NL80211_ATTR_IFINDEX,ifindex);
-  NLA_PUT_U32(nlmsg,NL80211_ATTR_WIPHY_FREQ,  rawdev->freqs[rawdev->cptfreqs]);
-  if (nl_send_auto(socknl, nlmsg) < 0) ret= false;
-  nlmsg_free(nlmsg);
-  return(ret);
-  nla_put_failure:
-    nlmsg_free(nlmsg);
-    return(false);
-}
-
-/******************************************************************************/
-int finish_callback(struct nl_msg *msg, void *arg) {
+int finish_callback(struct nl_msg *nlmsg, void *arg) {
   bool* finished = arg;
   *finished = true;
   return NL_SKIP;
 }
 
-int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
+/******************************************************************************/
+int getsinglewifi_callback(struct nl_msg *nlmsg, void *arg) {
 
-  struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+  struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(nlmsg));
   struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
   nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), NULL);
 
@@ -101,7 +79,7 @@ int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
     int rem_band, rem_freq;
     int last_band = -1;
 
-    rawdev_t *ptr = (rawdev_t *)arg;
+    rawdev_t *ptr = ((rawdev_t *)arg);
 
     nla_for_each_nested(nl_band, tb_msg[NL80211_ATTR_WIPHY_BANDS], rem_band) {
       if (last_band != nl_band->nla_type) last_band = nl_band->nla_type;
@@ -124,31 +102,90 @@ int getsinglewifi_callback(struct nl_msg *msg, void *arg) {
       }
     }
   }
-
   return NL_SKIP;
+}
+
+/*****************************************************************************/
+bool setfreq(uint8_t sockid, struct nl_sock *socknl, int ifindex, uint32_t freq) {
+
+  bool ret=true;
+  struct nl_msg *nlmsg;
+  if (!(nlmsg  = nlmsg_alloc())) exit(-1);;
+  genlmsg_put(nlmsg,0,0,sockid,0,0,NL80211_CMD_SET_CHANNEL,0);
+  NLA_PUT_U32(nlmsg,NL80211_ATTR_IFINDEX,ifindex);
+  NLA_PUT_U32(nlmsg,NL80211_ATTR_WIPHY_FREQ,freq);
+  if (nl_send_auto(socknl, nlmsg) < 0) ret=false;
+  nlmsg_free(nlmsg);
+  return(ret);
+  nla_put_failure:
+    nlmsg_free(nlmsg);
+    return(false);
 }
 
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
-  struct pollfd readsets[2];
   uint8_t fd[2];
 
-  if (-1 == (fd[0] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
-  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(fd[0], 0, &period, NULL);
-  readsets[0].fd = fd[0]; readsets[0].events = POLLIN;
+  struct nl_sock *socknl;
+  uint8_t sockid;
 
+  if  (!(socknl = nl_socket_alloc()))  exit(-1);
+  nl_socket_set_buffer_size(socknl, 8192, 8192);
+  if (genl_connect(socknl)) exit(-1);
+  if ((sockid = genl_ctrl_resolve(socknl, "nl80211")) < 0) exit(-1);
 
-  uint16_t protocol = htons(ETH_P_ALL); // 0
+  struct nl_sock *sockrt;
+  if (!(sockrt = nl_socket_alloc())) exit(-1);
+  if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
+
+  bool msg_received = false;
+
+  uint16_t protocol = htons(ETH_P_ALL);
   if (-1 == (fd[1] = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
-  readsets[1].fd = fd[1]; readsets[1].events = POLLIN;
 
   struct ifreq ifr;
 
   memset(&ifr, 0, sizeof(struct ifreq));
   strncpy( ifr.ifr_name, argv[1], sizeof( ifr.ifr_name ) - 1 );
   if (ioctl( fd[1], SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
+  struct nl_msg *nlmsg;
+
+  if (!(nlmsg  = nlmsg_alloc())) exit(-1);;
+  genlmsg_put(nlmsg,0,0,sockid,0,0,NL80211_CMD_SET_INTERFACE,0);  //  DOWN interfaces
+  nla_put_u32(nlmsg, NL80211_ATTR_IFINDEX, ifr.ifr_ifindex);
+  nla_put_u32(nlmsg, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
+  nl_send_auto(socknl, nlmsg);
+  if (nl_send_auto(socknl, nlmsg) >= 0)  nl_recvmsgs_default(socknl);
+  nlmsg_free(nlmsg);
+
+  int8_t err = 0;
+  struct nl_cache *cache;
+  struct rtnl_link *link, *change;
+  if ((err = rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache)) >= 0) {
+    if ((link = rtnl_link_get(cache,ifr.ifr_ifindex))) {
+      if (!(rtnl_link_get_flags (link) & IFF_UP)) {
+        change = rtnl_link_alloc ();
+        rtnl_link_set_flags (change, IFF_UP);
+        rtnl_link_change(sockrt, link, change, 0);
+      }
+    }
+  }
+
+  static rawdev_t rawdev; memset(&rawdev, 0, sizeof(rawdev));
+
+  struct nl_cb *cb;
+  if (!(cb = nl_cb_alloc(NL_CB_DEFAULT))) exit(-1);
+  nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_callback, &msg_received);
+  nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, getsinglewifi_callback, &rawdev);
+
+  if (!(nlmsg  = nlmsg_alloc())) exit(-1);
+  genlmsg_put(nlmsg, NL_AUTO_PORT, NL_AUTO_SEQ, sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
+  nla_put_u32(nlmsg, NL80211_ATTR_IFINDEX, ifr.ifr_ifindex);
+  nl_send_auto(socknl, nlmsg);
+  msg_received = false;
+  while (!msg_received) nl_recvmsgs(socknl, cb);
+  nlmsg_free(nlmsg);
 
   struct sockaddr_ll sll;
   memset( &sll, 0, sizeof( sll ) );
@@ -157,91 +194,40 @@ int main(int argc, char **argv) {
   sll.sll_protocol = protocol;
   if (-1 == bind(fd[1], (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
 
-  struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
-  struct sock_fprog full_program = { 1, &full_bytecode};
-  setsockopt(fd[1], SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program));
-
   const int32_t sock_qdisc_bypass = 1;
   if (-1 == setsockopt(fd[1], SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) exit(-1);
 
-  struct nl_sock *sockrt;
-  if (!(sockrt = nl_socket_alloc())) exit(-1);
-  if (nl_connect(sockrt, NETLINK_ROUTE)) exit(-1);
-  
-  struct nl_cache *cache;
-  struct rtnl_link *link, *change;
+  uint8_t dumbuf[1500];
+  struct iovec iov_dum = { .iov_base = dumbuf, .iov_len = sizeof(dumbuf)};
+  struct iovec iovtab[1] = { iov_dum };
+  struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 1 };
 
-  if (rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache) < 0) exit(-1);
-  if (!(link = rtnl_link_get(cache,ifr.ifr_ifindex))) exit(-1);
-  if (!(change = rtnl_link_alloc ())) exit(-1);
-  rtnl_link_unset_flags (change, IFF_UP);
-  rtnl_link_change(sockrt, link, change, 0);
- 
-  uint8_t sockid;
-  struct nl_sock *socknl;
-  if  (!(socknl = nl_socket_alloc())) exit(-1);
-  nl_socket_set_buffer_size(socknl, 8192, 8192);
-  if (genl_connect(socknl)) exit(-1);
-  if ((sockid = genl_ctrl_resolve(socknl, "nl80211")) < 0) exit(-1);
+  ssize_t rawlen = 0, len = 0;
+  uint8_t rawnb = 0;
 
-  struct nl_msg *nlmsg;
+  rawdev.cptfreqs = 0; 
+  setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
 
-  nlmsg = nlmsg_alloc();
-  genlmsg_put(nlmsg,0,0,sockid,0,0,NL80211_CMD_SET_INTERFACE,0);
-  nla_put_u32(nlmsg, NL80211_ATTR_IFINDEX, ifr.ifr_ifindex);
-  nla_put_u32(nlmsg, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
-  if (nl_send_auto(socknl, nlmsg) < 0) exit(-1);
-  nlmsg_free(nlmsg);
-
-  if (rtnl_link_alloc_cache(sockrt, AF_UNSPEC, &cache) < 0) exit(-1);
-  if (!(link = rtnl_link_get(cache,ifr.ifr_ifindex))) exit(-1);
-  if (!(change = rtnl_link_alloc ())) exit(-1);
-  rtnl_link_set_flags (change, IFF_UP);
-  rtnl_link_change(sockrt, link, change, 0);
-
-
-  rawdev_t rawdev; rawdev.nbfreqs = 0;
-  bool msg_received = true;
-  struct nl_cb *cb = nl_cb_alloc(NL_CB_DEFAULT);
-  if (!cb) return(0);
-  nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, getsinglewifi_callback, (void *)&rawdev);
-  nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_callback, &msg_received);
-
-  if (!(nlmsg = nlmsg_alloc())) exit(-1);
-  genlmsg_put(nlmsg, NL_AUTO_PORT, NL_AUTO_SEQ, sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
-  nla_put_u32(nlmsg, NL80211_ATTR_IFINDEX, ifr.ifr_ifindex);
-  nl_send_auto(socknl, nlmsg);
-  msg_received = false;
-  while (!msg_received) nl_recvmsgs(socknl, cb);
-  nlmsg_free(nlmsg);
-
-  rawdev.cptfreqs = 0;
-  setfreq(ifr.ifr_ifindex, &rawdev, sockid, socknl);
-
-  ssize_t len,rawlen=0;
   uint64_t exptime;
-  uint8_t dumbuf[1400] = {-1};
-  struct iovec iovdum = { .iov_base = dumbuf, .iov_len = sizeof(dumbuf) };
+  if (-1 == (fd[0] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
+  timerfd_settime(fd[0], 0, &period, NULL);
 
-  printf("START\n");
+  struct pollfd readsets[2] = { { .fd = fd[0], .events = POLLIN }, { .fd = fd[1], .events = POLLIN }};
+
   for(;;) {
     if (0 != poll(readsets, 2, -1)) {
       for (uint8_t cpt=0; cpt<2; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
-          if (cpt == 0) { 
-
+          if (cpt == 0) {
             len = read(fd[0], &exptime, sizeof(uint64_t));
-	    if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs=0;
-	    bool ret = setfreq(ifr.ifr_ifindex, &rawdev, sockid, socknl);
-	    printf("(%d)(%d)(%d)(%ld)\n",true,ret,rawdev.freqs[rawdev.cptfreqs], rawlen);
-
-	    rawlen = 0;
-
+	    printf("[%d] (%d)\n",rawdev.freqs[rawdev.cptfreqs],rawnb);
+	    rawnb=0;
+	    if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs = 0;
+	    setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
 	  } else {
-
-            struct iovec iovtab[3] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx };
-            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 3 };
-            rawlen += recvmsg(fd[1], &msg, MSG_DONTWAIT);
+            rawlen = recvmsg(fd[1], &msg, MSG_DONTWAIT);
+	    rawnb++;
 	  }
 	}
       }
