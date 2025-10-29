@@ -4,7 +4,7 @@ gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing
 
 cc synchrawcli.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o synchrawcli
 
-export DEVICE1=wlx3c7c3fa9c1e4
+export DEVICE1=wlx3c7c3fa9bfb6
 export DEVICE2=wlxfc349725a317
 
 sudo ./synchrawcli $DEVICE1
@@ -51,6 +51,9 @@ sudo ./synchrawcli $DEVICE1 $DEVICE2
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
 #define DRONEID_MAX 2
+
+#define FEC_N   12
+#define MAXNBRAWBUF 2*FEC_N
 
 /*****************************************************************************/
 #define NBFREQS 65
@@ -241,6 +244,9 @@ int main(int argc, char **argv) {
   ssize_t lentab[WFB_NB][MAXRAWNB];
   memset(lentab, 0, sizeof(lentab));
 
+  uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
+  uint8_t rawcur=0;
+
   struct pollfd readsets[MAXDEVNB];
   uint8_t nbfd = 0;
 
@@ -291,57 +297,52 @@ int main(int argc, char **argv) {
     if (0 != poll(readsets, nbfd, -1)) {
       for (uint8_t cpt=0; cpt<nbfd; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
-          if (cpt == 0) {
-            len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
 
-	    printf("\n(%d)(%d)  (%d)(%d)\n",rawdev[0].freqs[rawdev[0].cptfreqs], rawdev[0].synccum, rawdev[1].freqs[rawdev[1].cptfreqs], rawdev[1].synccum);
+          if (rawlen > 0) {
 
+            if (cpt == 0) {
+              len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
+	      printf("TIC\n");
+/*
+	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
+                if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
+                   ((!(rawdev[rawcpt].freefreq) && (rawdev[rawcpt].syncelapse == 0)))) {
 
-	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
-	      if (rawdev[rawcpt].synccum != 0) { rawdev[rawcpt].freefreq = false; rawdev[rawcpt].syncelapse = 0; }
-	      else if (rawdev[rawcpt].syncelapse < FREESECS) rawdev[rawcpt].syncelapse++; else { rawdev[rawcpt].freefreq = true; rawdev[rawcpt].syncelapse = 0; }
-	      rawdev[rawcpt].synccum = 0;
-	    }
+	          if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
+                  setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
+		}
+	      }
 
-	    if (mainraw < 0) {
-	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdev[rawcpt].freefreq) mainraw = rawcpt;
+	      printf("(%d)(%d)\n",mainraw,backraw);
+*/
 	    } else {
-	      if (!(rawdev[mainraw].freefreq)) {
-                if (backraw < 0) { for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdev[rawcpt].freefreq) mainraw = rawcpt; }
-	        else if (rawdev[backraw].freefreq) { mainraw = backraw; backraw = -1; }
-	      }
-	    }
+/*
+              wfb_utils_heads_pay_t headspay;
+              memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
+              memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
+              
+              struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+              struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
+              
+              struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
+              memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
+              
+              struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
+              len = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
 
-	    if ((mainraw >=0) && (backraw < 0)) {
-	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if ((rawdev[rawcpt].freefreq) && (rawcpt != mainraw)) backraw = rawcpt;
-	    }
-
-	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
-              if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
-                  ((!(rawdev[rawcpt].freefreq) && (rawdev[rawcpt].syncelapse == 0)))) {
-
-	        if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
-                setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
-	      }
-	    }
-
-	    printf("(%d)(%d)\n",mainraw,backraw);
-
-	  } else {
-            rawlen = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
-	    rawdev[cpt-1].synccum++;
-
-           if (!((len > 0) &&
-	      (headspay.droneid == DRONEID_GRD)
+              if (!((len > 0) &&
+	        (headspay.droneid == DRONEID_GRD)
                 && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
                 && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
-                  n.rawdevs[cpt-minraw]->stat.fails++;
-                } else {
-                if( headspay.msgcpt == WFB_PRO) {
-                  n.rawdevs[cpt-minraw]->stat.incoming++;
-                  n.rawdevs[cpt-minraw]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
-                }
 
+//              rawdevs[cpt-minraw]->stat.fails++;
+              } else {
+                if( headspay.msgcpt == WFB_PRO) {
+		  ((wfb_utils_pro_t *)&probuf[cpt - 1])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+		}
+              }
+*/
+	    }
 	  }
 	}
       }
