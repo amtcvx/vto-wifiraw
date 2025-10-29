@@ -48,7 +48,37 @@ sudo ./synchrawserv $DEVICE1 $DEVICE2
 #define MAXRAWNB 4
 #define MAXDEVNB 1 + MAXRAWNB
 
+#define DRONEID_GRD 0
+#define DRONEID_MIN 1
+#define DRONEID_MAX 2
+
+#define DRONEID 1
+
 /*****************************************************************************/
+#define NBFREQS 65
+#define PAY_MTU 1400
+
+#define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
+#define IEEE80211_RADIOTAP_MCS_HAVE_MCS   0x02
+#define IEEE80211_RADIOTAP_MCS_HAVE_GI    0x04
+
+#define IEEE80211_RADIOTAP_MCS_HAVE_STBC  0x20
+
+#define IEEE80211_RADIOTAP_MCS_BW_20    0
+#define IEEE80211_RADIOTAP_MCS_SGI      0x04
+
+#define IEEE80211_RADIOTAP_MCS_STBC_1  1
+#define IEEE80211_RADIOTAP_MCS_STBC_SHIFT 5
+
+#define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC )
+
+#define MCS_FLAGS  (IEEE80211_RADIOTAP_MCS_BW_20 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
+
+#define MCS_INDEX  2
+
+/*****************************************************************************/
+typedef enum { WFB_PRO, WFB_NB } type_d;
+
 typedef struct {
   bool    freefreq;
   uint8_t syncelapse;
@@ -60,6 +90,48 @@ typedef struct {
   uint32_t freqs[NBFREQS];
   uint32_t chans[NBFREQS];
 } rawdev_t;
+
+/*****************************************************************************/
+typedef struct {
+  uint8_t droneid;
+  uint8_t msgcpt;
+  uint16_t msglen;
+  uint8_t seq;
+  uint8_t fec;
+  uint8_t num;
+  uint8_t dum;
+} __attribute__((packed)) wfb_utils_heads_pay_t;
+
+typedef struct {
+  uint16_t feclen;
+} __attribute__((packed)) wfb_utils_fec_t;
+
+typedef struct {
+  int16_t chan;
+} __attribute__((packed)) wfb_utils_pro_t;
+
+#define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
+
+uint8_t radiotaphd_tx[] = {
+        0x00, 0x00, // <-- radiotap version
+        0x0d, 0x00, // <- radiotap header length
+        0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
+        0x08, 0x00,  // RADIOTAP_F_TX_NOACK
+        MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
+};
+uint8_t ieeehd_tx[] = {
+        0x08, 0x01,                         // Frame Control : Data frame from STA to DS
+        0x00, 0x00,                         // Duration
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Receiver MAC
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Transmitter MAC
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
+        0x10, 0x86                          // Sequence control
+};
+uint8_t llchd_tx[4] = {1,2,3,4};
+
+struct iovec iov_radiotaphd_tx = { .iov_base = radiotaphd_tx, .iov_len = sizeof(radiotaphd_tx)};
+struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(ieeehd_tx)};
+struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(llchd_tx)};
 
 /******************************************************************************/
 int finish_callback(struct nl_msg *nlmsg, void *arg) {
@@ -197,7 +269,11 @@ int main(int argc, char **argv) {
 
   if (!((argc >= 1) && (argc <= 3))) exit(-1);
   printf("START [%d]\n",argc);
-	
+
+  uint8_t probuf[MAXRAWNB][sizeof(wfb_utils_pro_t)];
+  ssize_t lentab[WFB_NB][MAXRAWNB];
+  memset(lentab, 0, sizeof(lentab));
+
   struct pollfd readsets[MAXDEVNB];
   uint8_t nbfd = 0;
 
@@ -215,6 +291,7 @@ int main(int argc, char **argv) {
 
   rawdev_t rawdev[MAXRAWNB]; memset(&rawdev,0,sizeof(rawdev));
   setraw(sockid, socknl, argc, argv, rawdev);
+  uint8_t minraw = 1, maxraw = 3;
 
   if (rawdev[1].freefreq) printf("OK\n");
   else printf("KO\n");
@@ -234,6 +311,7 @@ int main(int argc, char **argv) {
   }
   for (uint8_t cpt=0;cpt < nbfd; cpt++) readsets[cpt].events = POLLIN;
 
+  uint8_t sequence = 0, num = 0;
   uint8_t dumbuf[1500];
   struct iovec iov_dum = { .iov_base = dumbuf, .iov_len = sizeof(dumbuf)};
   struct iovec iovtab[1] = { iov_dum };
@@ -250,7 +328,7 @@ int main(int argc, char **argv) {
             len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
 
 
-	    printf("(%d)(%d)  (%d)(%d)\n",rawdev[0].freqs[rawdev[0].cptfreqs], rawdev[0].synccum, rawdev[1].freqs[rawdev[1].cptfreqs], rawdev[1].synccum);
+	    printf("\n(%d)(%d)  (%d)(%d)\n",rawdev[0].freqs[rawdev[0].cptfreqs], rawdev[0].synccum, rawdev[1].freqs[rawdev[1].cptfreqs], rawdev[1].synccum);
 
 
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
@@ -281,6 +359,16 @@ int main(int argc, char **argv) {
 	      }
 	    }
 
+	    if (mainraw >= 0) {
+              lentab[WFB_PRO][mainraw] = sizeof(wfb_utils_pro_t);
+              ((wfb_utils_pro_t *)&probuf[mainraw])->chan = -1;
+	      if (backraw >= 0) {
+                ((wfb_utils_pro_t *)&probuf[mainraw])->chan = rawdev[backraw].freqs[rawdev[backraw].cptfreqs];
+                ((wfb_utils_pro_t *)&probuf[backraw])->chan = -rawdev[mainraw].freqs[rawdev[mainraw].cptfreqs]; 
+		lentab[WFB_PRO][backraw] = sizeof(wfb_utils_pro_t);
+	      }
+	    }
+
 	    printf("(%d)(%d)\n",mainraw,backraw);
 
 	  } else {
@@ -288,6 +376,33 @@ int main(int argc, char **argv) {
 	    rawdev[cpt-1].synccum++;
 	  }
 	}
+      }
+
+      uint8_t kmin=0, kmax=1;
+
+      for (uint8_t k=kmin;k<kmax;k++) {
+        for (uint8_t d=0; d < WFB_NB; d++) {
+          for (uint8_t c = 0; c < (maxraw - minraw); c++) {
+
+            if (lentab[d][c] > 0) {
+
+              struct iovec iovpay;
+
+              if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
+
+              wfb_utils_heads_pay_t headspay =
+                { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
+              struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+              struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
+              struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
+              len = sendmsg(rawdev[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+
+              printf("(%d) sendmsg (%ld)(%d)\n", c, len, ((wfb_utils_pro_t *)&probuf[c])->chan );
+
+              lentab[d][c] = 0;
+            }
+          }
+        }
       }
     }
   }
