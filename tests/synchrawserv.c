@@ -53,7 +53,6 @@ typedef struct {
   bool    freefreq;
   uint8_t syncelapse;
   uint8_t synccum;
-  uint8_t synccpt;
   uint8_t ifindex;
   uint8_t fd;
   uint8_t cptfreqs;
@@ -217,6 +216,9 @@ int main(int argc, char **argv) {
   rawdev_t rawdev[MAXRAWNB]; memset(&rawdev,0,sizeof(rawdev));
   setraw(sockid, socknl, argc, argv, rawdev);
 
+  if (rawdev[1].freefreq) printf("OK\n");
+  else printf("KO\n");
+
   rawdev[0].cptfreqs = 0; 
   setfreq(sockid, socknl, rawdev[0].ifindex, rawdev[0].freqs[rawdev[0].cptfreqs]);
   readsets[nbfd].fd = rawdev[0].fd;
@@ -246,39 +248,44 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == 0) {
             len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
-//	    printf("cpt (%d)(%d) (%d)(%d)\n",rawdev[0].synccpt,rawdev[0].syncelapse, rawdev[1].synccpt,rawdev[1].syncelapse);
+
+
+	    printf("(%d)(%d)  (%d)(%d)\n",rawdev[0].freqs[rawdev[0].cptfreqs], rawdev[0].synccum, rawdev[1].freqs[rawdev[1].cptfreqs], rawdev[1].synccum);
+
 
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
-	      if (rawdev[rawcpt].synccum != rawdev[rawcpt].synccpt) rawdev[rawcpt].freefreq = false;
-	      else if (rawdev[rawcpt].syncelapse < FREESECS) rawdev[rawcpt].syncelapse++; else rawdev[rawcpt].freefreq = true;
+	      if (rawdev[rawcpt].synccum != 0) { rawdev[rawcpt].freefreq = false; rawdev[rawcpt].syncelapse = 0; }
+	      else if (rawdev[rawcpt].syncelapse < FREESECS) rawdev[rawcpt].syncelapse++; else { rawdev[rawcpt].freefreq = true; rawdev[rawcpt].syncelapse = 0; }
+	      rawdev[rawcpt].synccum = 0;
 	    }
 
-	    printf("(%d) (%d) (%d)\n",false,rawdev[0].freefreq, rawdev[1].freefreq);
-/*
-	    if ((mainraw >= 0) && (!(rawdev[mainraw].freefreq))) {
-              if ((backraw >= 0) && (rawdev[backraw].freefreq)) { tmpraw = backraw; mainraw = backraw; backraw = -1; }
-	    }
-*/
-	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
-              if (rawdev[rawcpt].freefreq) {
-/*
-                if (mainraw < 0) mainraw = rawcpt;
-		else if ((mainraw != rawcpt) && (backraw < 0)) backraw = rawcpt;
-*/
-	      } else {
-                rawdev[rawcpt].syncelapse = 0; rawdev[rawcpt].synccpt = 0; rawdev[rawcpt].synccum = 0;
-	        if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
-                setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
-
-		printf("set(%d) freq(%d)\n", rawcpt, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
+	    if (mainraw < 0) {
+	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdev[rawcpt].freefreq) mainraw = rawcpt;
+	    } else {
+	      if (!(rawdev[mainraw].freefreq)) {
+                if (backraw < 0) { for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdev[rawcpt].freefreq) mainraw = rawcpt; }
+	        else if (rawdev[backraw].freefreq) { mainraw = backraw; backraw = -1; }
 	      }
 	    }
 
-//	    printf("freq %d) (%d)    mainraw(%d) backraw(%d)\n",rawdev[0].cptfreqs,rawdev[1].cptfreqs, mainraw,backraw);
+	    if ((mainraw >=0) && (backraw < 0)) {
+	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if ((rawdev[rawcpt].freefreq) && (rawcpt != mainraw)) backraw = rawcpt;
+	    }
+
+	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
+              if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
+                  ((!(rawdev[rawcpt].freefreq) && (rawdev[rawcpt].syncelapse == 0)))) {
+
+	        if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
+                setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
+	      }
+	    }
+
+	    printf("(%d)(%d)\n",mainraw,backraw);
 
 	  } else {
             rawlen = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
-	    rawdev[cpt-1].synccpt++;
+	    rawdev[cpt-1].synccum++;
 	  }
 	}
       }
