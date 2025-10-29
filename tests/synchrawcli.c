@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
 
   rawdev_t rawdev[MAXRAWNB]; memset(&rawdev,0,sizeof(rawdev));
   setraw(sockid, socknl, argc, argv, rawdev);
-  uint8_t minraw = 1, maxraw = 3;
+//  uint8_t minraw = 1, maxraw = 2;
 
   if (rawdev[1].freefreq) printf("OK\n");
   else printf("KO\n");
@@ -293,55 +293,59 @@ int main(int argc, char **argv) {
   ssize_t rawlen = 0, len = 0;
 
   int8_t mainraw = -1, backraw = -1, tmpraw = -1;
+
   for(;;) {
     if (0 != poll(readsets, nbfd, -1)) {
       for (uint8_t cpt=0; cpt<nbfd; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
 
-          if (rawlen > 0) {
 
-            if (cpt == 0) {
-              len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
-	      printf("TIC\n");
+          if (cpt == 0) {
+            len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
+            printf("TIC\n");
+
+	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
+              if (rawdev[cpt-1].synccum != 0) 
+	    }
+	    
 /*
-	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
-                if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
-                   ((!(rawdev[rawcpt].freefreq) && (rawdev[rawcpt].syncelapse == 0)))) {
+	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
+              if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
+                 ((!(rawdev[rawcpt].freefreq) && (rawdev[rawcpt].syncelapse == 0)))) {
 
-	          if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
-                  setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
-		}
+	        if (rawdev[rawcpt].cptfreqs < (rawdev[rawcpt].nbfreqs - 1)) rawdev[rawcpt].cptfreqs++; else rawdev[rawcpt].cptfreqs = 0;
+                setfreq(sockid, socknl, rawdev[rawcpt].ifindex, rawdev[rawcpt].freqs[rawdev[rawcpt].cptfreqs]);
 	      }
-
-	      printf("(%d)(%d)\n",mainraw,backraw);
+	    }
 */
-	    } else {
-/*
-              wfb_utils_heads_pay_t headspay;
-              memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
-              memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
-              
-              struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-              struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
-              
-              struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
-              memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
-              
-              struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
-              len = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
+	    printf("(%d)(%d)  (%d)\n", mainraw,backraw,rawdev[0].freqs[0]);
 
-              if (!((len > 0) &&
-	        (headspay.droneid == DRONEID_GRD)
-                && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
-                && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
+	  } else {
+
+            wfb_utils_heads_pay_t headspay;
+            memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
+            memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
+              
+            struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+            struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
+              
+            struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
+            memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
+              
+            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
+            len = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
+
+            if (!((len > 0) &&
+	      (headspay.droneid == DRONEID_GRD)
+              && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
+              && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
 
 //              rawdevs[cpt-minraw]->stat.fails++;
-              } else {
-                if( headspay.msgcpt == WFB_PRO) {
-		  ((wfb_utils_pro_t *)&probuf[cpt - 1])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
-		}
+            } else {
+              if( headspay.msgcpt == WFB_PRO) {
+                rawdev[cpt-1].synccum++;
+	        ((wfb_utils_pro_t *)&probuf[cpt - 1])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
               }
-*/
 	    }
 	  }
 	}
