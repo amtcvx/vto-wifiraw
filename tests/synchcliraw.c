@@ -261,10 +261,11 @@ int main(int argc, char **argv) {
   rawdev_t rawdevs[MAXRAWNB]; memset(&rawdevs,0,sizeof(rawdevs));
   setraw(sockid, socknl, argc, argv, rawdevs);
 
-              
+
   uint8_t minraw = readnb, maxraw = minraw + 1;
   rawdevs[0].cptfreqs = 0;
   setfreq(sockid, socknl, rawdevs[0].ifindex, rawdevs[0].freqs[rawdevs[0].cptfreqs]);
+
   readsets[readnb++].fd = rawdevs[0].fd;
               
   if (argc == 3) {
@@ -274,12 +275,14 @@ int main(int argc, char **argv) {
     readsets[readnb++].fd = rawdevs[1].fd;
   }
 
+  uint8_t rawnb = (maxraw - minraw);
 
   uint8_t fd[MAXDEVNB];
   for (uint8_t cpt=0;cpt < readnb; cpt++) { fd[cpt] = readsets[cpt].fd; readsets[cpt].events = POLLIN; }
 
   int8_t mainraw = -1, backraw = -1;
   size_t len;
+
 
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
@@ -288,12 +291,17 @@ int main(int argc, char **argv) {
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
 
-	    for (uint8_t rawcpt=0;rawcpt < readnb; rawcpt++) {
+	    for (uint8_t rawcpt=0;rawcpt < rawnb; rawcpt++) {
+
 	      if ((((wfb_utils_pro_t *)&probuf[rawcpt])->chan) == 0) {
 
-                if (syncelapse 
-                if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
-                setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
+                if (rawdevs[rawcpt].syncelapse < SYNCSECS) rawdevs[rawcpt].syncelapse++; 
+		else {
+                  if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
+                  setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
+
+		  rawdevs[rawcpt].syncelapse = 0;
+		}
 
 	      } else {
 
