@@ -305,7 +305,7 @@ int main(int argc, char **argv) {
 	      } else {
                 int16_t chan = (((wfb_utils_pro_t *)&probuf[rawcpt])->chan);
 		(((wfb_utils_pro_t *)&probuf[rawcpt])->chan) = 0;
-		if (chan == -1) mainraw = rawcpt;
+		if (chan == -1) { mainraw = rawcpt; backraw = -1; }
 		else {
                   int8_t newraw = -1;
 		  if ((chan > 0) && (mainraw != rawcpt)) {
@@ -327,7 +327,7 @@ int main(int argc, char **argv) {
 	        }
 	      }
 	    }
-            printf("(%d)(%d)\n",mainraw,backraw);
+            printf("(%d)(%d) (%d)(%d)\n",mainraw,rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs],backraw,rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs]);
           }
 
 /*
