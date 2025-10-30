@@ -4,6 +4,8 @@ gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing
 
 cc scanraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o scanraw
 
+sudo rfkill unblock ...
+
 export DEVICE=wlx3c7c3fa9c1e4
 sudo ./scanraw $DEVICE
 

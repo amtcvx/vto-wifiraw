@@ -3,6 +3,8 @@ gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEO
 
 cc fectestservraw.o ../obj/zfex.o -g -o fectestservraw
 
+sudo rfkill unblock ...
+
 export DEVICE=wlxfc349725a319
 sudo ip link set $DEVICE down
 sudo iw dev $DEVICE set type monitor

@@ -5,6 +5,9 @@ gcc -g -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -D
 
 gcc fectestcliraw.o ../obj/zfex.o -g -o fectestcliraw
 
+
+sudo rfkill unblock ...
+
 export DEVICE=wlx54c9ff02e7ae
 sudo ip link set $DEVICE down
 sudo iw dev $DEVICE set type monitor

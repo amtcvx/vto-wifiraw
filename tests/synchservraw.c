@@ -4,6 +4,8 @@ gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing
 
 cc synchservraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o synchservraw
 
+sudo rfkill unblock ...
+
 export DEVICE1=wlx3c7c3fa9c1e4
 export DEVICE2=wlxfc349725a317
 
