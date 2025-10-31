@@ -292,13 +292,12 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
-
 	    for (uint8_t rawcpt=0;rawcpt < rawnb; rawcpt++) {
 	      if ((((wfb_utils_pro_t *)&probuf[rawcpt])->chan) == 0) {
                 if (rawdevs[rawcpt].syncelapse < SYNCSECS) rawdevs[rawcpt].syncelapse++; 
 		else {
                   rawdevs[rawcpt].syncelapse = 0;
-		  if ((mainraw < 0) && ((rawcpt != mainraw) && (rawcpt != backraw))) {
+		  if ((mainraw < 0) && (rawcpt != mainraw) && (rawcpt != backraw)) {
                     if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
                     setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
 		  }
@@ -309,12 +308,12 @@ int main(int argc, char **argv) {
 		if (chan == -1) { mainraw = rawcpt; backraw = -1; }
 		else {
                   int8_t newraw = -1; int16_t newchan = -1;
-		  if ((chan > 0) && (mainraw != rawcpt)) {
+                  if (chan > 0) {	  
 		    mainraw = rawcpt;
                     for (uint8_t i=0; i < rawnb; i++) if (i != mainraw) backraw = i;
                     newraw = backraw; newchan = chan;
 		  } 
-		  if ((chan < 0) && (backraw != rawcpt)) { 
+                  if (chan < 0) {
 		    backraw = rawcpt;
                     for (uint8_t i=0; i < rawnb; i++) if (i != backraw) mainraw = i;
 		    newraw = mainraw; newchan = (-chan);
@@ -322,16 +321,18 @@ int main(int argc, char **argv) {
 		  uint8_t cpt = 0; 
 		  for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
 		  if (rawdevs[newraw].freqs[cpt] == newchan) {
-                    rawdevs[newraw].cptfreqs = cpt;
-                    setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+		    if (rawdevs[newraw].cptfreqs != cpt) {
+                      rawdevs[newraw].cptfreqs = cpt;
+                      setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+		    }
 		  }
 	        }
 	      }
 	    }
+
             printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
             printf("mainraw(%d) backraw(%d)\n\n",mainraw,backraw);
           }
-
 /*
           if (u.readtab[cpt] == WFB_VID) 
 */
@@ -356,7 +357,7 @@ int main(int argc, char **argv) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
               if( headspay.msgcpt == WFB_PRO) { 
-	        if ((cpt-minraw) == mainraw) ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+	        ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
 		printf("recv [%d](%d)\n",cpt - minraw,((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan );
 	      }
 	    }
