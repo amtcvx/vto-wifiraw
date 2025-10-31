@@ -348,8 +348,12 @@ int main(int argc, char **argv) {
 	        else if (rawdevs[backraw].freefreq) { mainraw = backraw; backraw = -1; }
 	      }
 	    }
-	    if ((mainraw >=0) && (backraw < 0)) {
-	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) backraw = rawcpt;
+
+	    if (mainraw >=0) {
+	      if (backraw >= 0) { if (!(rawdevs[backraw].freefreq)) backraw= -1; } 
+              else {
+	        for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) backraw = rawcpt;
+	      }
 	    }
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
               if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
