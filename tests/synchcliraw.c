@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
 
 
   uint8_t minraw = readnb, maxraw = minraw + 1;
-  rawdevs[0].cptfreqs = 0;
+  rawdevs[0].cptfreqs = 10;
   setfreq(sockid, socknl, rawdevs[0].ifindex, rawdevs[0].freqs[rawdevs[0].cptfreqs]);
 
   readsets[readnb++].fd = rawdevs[0].fd;
@@ -292,7 +292,9 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
+
 	    for (uint8_t rawcpt=0;rawcpt < rawnb; rawcpt++) {
+
 	      if ((((wfb_utils_pro_t *)&probuf[rawcpt])->chan) == 0) {
                 if (rawdevs[rawcpt].syncelapse < SYNCSECS) rawdevs[rawcpt].syncelapse++; 
 		else {
@@ -303,29 +305,53 @@ int main(int argc, char **argv) {
 		  }
 		}
 	      } else {
+
                 int16_t chan = (((wfb_utils_pro_t *)&probuf[rawcpt])->chan);
 		(((wfb_utils_pro_t *)&probuf[rawcpt])->chan) = 0;
-		if (chan == -1) { mainraw = rawcpt; backraw = -1; }
-		else {
-                  int8_t newraw = -1; int16_t newchan = -1;
-                  if (chan > 0) {	  
-		    mainraw = rawcpt;
-                    for (uint8_t i=0; i < rawnb; i++) if (i != mainraw) backraw = i;
-                    newraw = backraw; newchan = chan;
-		  } 
-                  if (chan < 0) {
-		    backraw = rawcpt;
-                    for (uint8_t i=0; i < rawnb; i++) if (i != backraw) mainraw = i;
-		    newraw = mainraw; newchan = (-chan);
-                  }
-		  uint8_t cpt = 0; 
-		  for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
-		  if (rawdevs[newraw].freqs[cpt] == newchan) {
-		    if (rawdevs[newraw].cptfreqs != cpt) {
-                      rawdevs[newraw].cptfreqs = cpt;
-                      setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
-		    }
-		  }
+
+                if ((rawnb == 1)&&(mainraw < 0)) {  
+
+  		  mainraw = rawcpt; backraw = -1;
+
+		  printf("set mainraw (%d) (%d)\n",mainraw,chan);
+
+                  int16_t newchan = -1;
+                  if (chan > 0) newchan = chan; else newchan = (-chan);
+  		  uint8_t cpt = 0; 
+  		  for (cpt=0; cpt < rawdevs[rawcpt].nbfreqs; cpt++) if (rawdevs[rawcpt].freqs[cpt] == newchan) break; 
+  		  if (rawdevs[rawcpt].freqs[cpt] == newchan) {
+  		    if (rawdevs[rawcpt].cptfreqs != cpt) {
+                      rawdevs[rawcpt].cptfreqs = cpt;
+                      setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[cpt]);
+		      printf("set freq \n");
+  		    }
+  		  }
+
+                } else {
+ 
+  		  if (chan == -1) { mainraw = rawcpt; backraw = -1; }
+  		  else {
+
+                    int8_t newraw = -1; int16_t newchan = -1;
+                    if (chan > 0) {	  
+  		      mainraw = rawcpt;
+                      for (uint8_t i=0; i < rawnb; i++) if (i != mainraw) backraw = i;
+                      newraw = backraw; newchan = chan;
+  		    } 
+                    if (chan < 0) {
+  		      backraw = rawcpt;
+                      for (uint8_t i=0; i < rawnb; i++) if (i != backraw) mainraw = i;
+  		      newraw = mainraw; newchan = (-chan);
+                    }
+  		    uint8_t cpt = 0; 
+  		    for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
+  		    if (rawdevs[newraw].freqs[cpt] == newchan) {
+  		      if (rawdevs[newraw].cptfreqs != cpt) {
+                          rawdevs[newraw].cptfreqs = cpt;
+                          setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+  		      }
+  		    }
+  	          }
 	        }
 	      }
 	    }
