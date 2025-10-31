@@ -307,20 +307,20 @@ int main(int argc, char **argv) {
 		(((wfb_utils_pro_t *)&probuf[rawcpt])->chan) = 0;
 		if (chan == -1) { mainraw = rawcpt; backraw = -1; }
 		else {
-                  int8_t newraw = -1;
+                  int8_t newraw = -1; int16_t newchan = -1;
 		  if ((chan > 0) && (mainraw != rawcpt)) {
 		    mainraw = rawcpt;
                     for (uint8_t i=0; i < rawnb; i++) if (i != mainraw) backraw = i;
-                    newraw = backraw;
+                    newraw = backraw; newchan = chan;
 		  } 
 		  if ((chan < 0) && (backraw != rawcpt)) { 
 		    backraw = rawcpt;
                     for (uint8_t i=0; i < rawnb; i++) if (i != backraw) mainraw = i;
-		    newraw = mainraw;
+		    newraw = mainraw; newchan = (-chan);
                   }
 		  uint8_t cpt = 0; 
-		  for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == chan) break; 
-		  if (rawdevs[newraw].freqs[cpt] == chan) {
+		  for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
+		  if (rawdevs[newraw].freqs[cpt] == newchan) {
                     rawdevs[newraw].cptfreqs = cpt;
                     setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
 		  }
