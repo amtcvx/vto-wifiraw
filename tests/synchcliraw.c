@@ -356,7 +356,7 @@ int main(int argc, char **argv) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
               if( headspay.msgcpt == WFB_PRO) { 
-	        ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+	        if ((cpt-minraw) == mainraw) ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
 		printf("recv [%d](%d)\n",cpt - minraw,((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan );
 	      }
 	    }
