@@ -292,12 +292,13 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
+
 	    for (uint8_t rawcpt=0;rawcpt < rawnb; rawcpt++) {
 	      if ((((wfb_utils_pro_t *)&probuf[rawcpt])->chan) == 0) {
                 if (rawdevs[rawcpt].syncelapse < SYNCSECS) rawdevs[rawcpt].syncelapse++; 
 		else {
                   rawdevs[rawcpt].syncelapse = 0;
-		  if ((rawcpt != mainraw) && (rawcpt != backraw)) {
+		  if ((mainraw < 0) && ((rawcpt != mainraw) && (rawcpt != backraw))) {
                     if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
                     setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
 		  }
