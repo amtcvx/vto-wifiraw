@@ -327,7 +327,8 @@ int main(int argc, char **argv) {
 	        }
 	      }
 	    }
-            printf("(%d)(%d) (%d)(%d)\n",mainraw,rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs],backraw,rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs]);
+            printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
+            printf("mainraw(%d) backraw(%d)\n\n",mainraw,backraw);
           }
 
 /*
@@ -353,7 +354,10 @@ int main(int argc, char **argv) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
-              if( headspay.msgcpt == WFB_PRO) ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+              if( headspay.msgcpt == WFB_PRO) { 
+	        ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+		printf("recv [%d](%d)\n",cpt - minraw,((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan );
+	      }
 	    }
           }
         }
