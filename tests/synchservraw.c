@@ -333,7 +333,7 @@ int main(int argc, char **argv) {
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
 
-	    printf("\n(%d)(%d)\n",rawdevs[0].synccum, rawdevs[1].synccum);
+	    printf("\nsynccum [0](%d)  ",rawdevs[0].synccum); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].synccum); else printf("\n");
 
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
 	      if (rawdevs[rawcpt].synccum != 0) { rawdevs[rawcpt].freefreq = false; rawdevs[rawcpt].syncelapse = 0; }
@@ -368,9 +368,8 @@ int main(int argc, char **argv) {
 	      }
 	    }
 
-	    printf("(%d)(%d)  (%d)(%d)\n",mainraw,rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs],
-			    backraw,rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs]);
-
+	    printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
+	    printf("mainraw(%d) backraw(%d)\n",mainraw,backraw);
 	  }
 /*
 	  if (u.readtab[cpt] == WFB_VID) 
@@ -416,9 +415,9 @@ int main(int argc, char **argv) {
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
               len = sendmsg(rawdevs[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-/*
-              printf("(%d) sendmsg (%ld)(%d)\n", c, len, ((wfb_utils_pro_t *)&probuf[c])->chan );
-*/
+
+	      if (len > 0)printf("snd [%d](%d)\n",c,((wfb_utils_pro_t *)&probuf[c])->chan );
+
               lentab[d][c] = 0;
             }
           }
