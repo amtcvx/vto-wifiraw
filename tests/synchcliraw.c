@@ -304,7 +304,7 @@ uint8_t buid_tun(void) {
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
 
-  addr.sin_addr.s_addr = inet_addr(TUN_IP_BOARD);
+  addr.sin_addr.s_addr = inet_addr(TUN_IP_GROUND);
   memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
   if (ioctl( fd_tun_udp, SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
 
@@ -314,7 +314,7 @@ uint8_t buid_tun(void) {
 
   struct sockaddr_in dstaddr;
   dstaddr.sin_family = AF_INET;
-  dstaddr.sin_addr.s_addr = inet_addr(TUN_IP_GROUND);
+  dstaddr.sin_addr.s_addr = inet_addr(TUN_IP_BOARD);
   memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
   if (ioctl( fd_tun_udp, SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
 
@@ -431,10 +431,10 @@ int main(int argc, char **argv) {
 		}
 	      }
 	    }
-/*
+
             printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
             printf("mainraw(%d) backraw(%d)\n\n",mainraw,backraw);
-*/
+
           }
 	  if (cpt == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
@@ -492,9 +492,9 @@ int main(int argc, char **argv) {
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
               len = sendmsg(rawdevs[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-
+/*
               if (len > 0)printf("snd [%d](%d)\n",c,((wfb_utils_pro_t *)&probuf[c])->chan );
-
+*/
               lentab[d][c] = 0;
             }
           }
