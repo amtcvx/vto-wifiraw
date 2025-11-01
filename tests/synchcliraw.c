@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
 
 
   uint8_t minraw = readnb, maxraw = minraw + 1;
-  rawdevs[0].cptfreqs = 10;
+  rawdevs[0].cptfreqs = 0;
   setfreq(sockid, socknl, rawdevs[0].ifindex, rawdevs[0].freqs[rawdevs[0].cptfreqs]);
 
   readsets[readnb++].fd = rawdevs[0].fd;
@@ -317,6 +317,8 @@ int main(int argc, char **argv) {
   		  if (rawdevs[newraw].cptfreqs != cpt) {
                     rawdevs[newraw].cptfreqs = cpt;
                     setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+
+		    printf("set freq (%d)(%d)\n",newraw,rawdevs[newraw].freqs[cpt]);
 		  }
   	        }
 	      }
@@ -328,6 +330,16 @@ int main(int argc, char **argv) {
 		else {
 		  rawdevs[rawcpt].syncelapse = 0;
 	          if ((rawcpt != mainraw) && (rawcpt != backraw)) {
+
+	            if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
+
+		    for (uint8_t i=0;i<rawnb;i++) {
+                      if ((i != rawcpt) && (rawdevs[i].freqs[rawdevs[i].cptfreqs] == rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs])) {
+	                if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
+		      }
+		    }
+                    setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
+
                     if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
                     setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
 		  }

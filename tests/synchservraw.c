@@ -358,10 +358,16 @@ int main(int argc, char **argv) {
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
               if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
                   ((!(rawdevs[rawcpt].freefreq) && (rawdevs[rawcpt].syncelapse == 0)))) {
+
 	        if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
+		for (uint8_t i=0;i<nbraw;i++) {
+                  if ((i != rawcpt) && (rawdevs[i].freqs[rawdevs[i].cptfreqs] == rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs])) {
+	            if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
+		  }
+		}
                 setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
 	      }
-	    }
+	    
 	    if (mainraw >= 0) {
               lentab[WFB_PRO][mainraw] = sizeof(wfb_utils_pro_t);
               ((wfb_utils_pro_t *)&probuf[mainraw])->chan = -1;

@@ -1,7 +1,4 @@
 /*
-
-https://www-inf.telecom-sudparis.eu/COURS/CSC5004/libnl/route.html
-      
 gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DCONFIG_LIBNL30 -I/usr/include/libnl3 -c sendnoizeraw.c -o sendnoizeraw.o
 
 cc sendnoizeraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o sendnoizeraw
