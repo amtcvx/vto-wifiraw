@@ -421,10 +421,10 @@ int main(int argc, char **argv) {
 		lentab[WFB_PRO][backraw] = sizeof(wfb_utils_pro_t);
 	      }
 	    }
-/*
+
 	    printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
 	    printf("mainraw(%d) backraw(%d)\n",mainraw,backraw);
-*/
+
 	  }
 /*
 	  if (u.readtab[cpt] == WFB_VID) 
@@ -478,9 +478,9 @@ int main(int argc, char **argv) {
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
               len = sendmsg(rawdevs[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-
+/*
 	      if (len > 0)printf("snd [%d](%d)\n",c,((wfb_utils_pro_t *)&probuf[c])->chan );
-
+*/
               lentab[d][c] = 0;
             }
           }
