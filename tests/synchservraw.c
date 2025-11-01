@@ -367,6 +367,7 @@ int main(int argc, char **argv) {
 		}
                 setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
 	      }
+	    }
 	    
 	    if (mainraw >= 0) {
               lentab[WFB_PRO][mainraw] = sizeof(wfb_utils_pro_t);
