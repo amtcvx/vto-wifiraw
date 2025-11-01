@@ -23,6 +23,9 @@ sudo ./synchcliraw $DEVICE1 $DEVICE2
 #include <poll.h>
 #include <sys/uio.h>
 
+#include <fcntl.h>
+#include <linux/if_tun.h>
+
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
@@ -54,6 +57,12 @@ sudo ./synchcliraw $DEVICE1 $DEVICE2
 #define DRONEID_MIN 1
 #define DRONEID_MAX 2
 
+#define TUN_NAME      "grdtun"
+#define TUN_IP_BOARD  "10.0.1.2"
+#define TUN_IP_GROUND "10.0.1.1"
+#define TUN_MTU       1400
+#define IPBROAD       "255.255.255.0"
+
 #define FEC_N   12
 #define MAXNBRAWBUF 2*FEC_N
 
@@ -61,8 +70,26 @@ sudo ./synchcliraw $DEVICE1 $DEVICE2
 #define NBFREQS 65
 #define PAY_MTU 1400
 
+#define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
+#define IEEE80211_RADIOTAP_MCS_HAVE_MCS   0x02
+#define IEEE80211_RADIOTAP_MCS_HAVE_GI    0x04
+
+#define IEEE80211_RADIOTAP_MCS_HAVE_STBC  0x20
+
+#define IEEE80211_RADIOTAP_MCS_BW_20    0
+#define IEEE80211_RADIOTAP_MCS_SGI      0x04
+
+#define IEEE80211_RADIOTAP_MCS_STBC_1  1
+#define IEEE80211_RADIOTAP_MCS_STBC_SHIFT 5
+
+#define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC )
+
+#define MCS_FLAGS  (IEEE80211_RADIOTAP_MCS_BW_20 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
+
+#define MCS_INDEX  2
+
 /*****************************************************************************/
-typedef enum { WFB_PRO, WFB_NB } type_d;
+typedef enum { WFB_PRO, WFB_TUN, WFB_NB } type_d;
 
 typedef struct {
   bool    freefreq;
@@ -106,9 +133,30 @@ uint8_t radiotaphd_rx[35];
 uint8_t ieeehd_rx[24];
 uint8_t llchd_rx[4];
 
+uint8_t radiotaphd_tx[] = {
+        0x00, 0x00, // <-- radiotap version
+        0x0d, 0x00, // <- radiotap header length
+        0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
+        0x08, 0x00,  // RADIOTAP_F_TX_NOACK
+        MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
+};
+uint8_t ieeehd_tx[] = {
+        0x08, 0x01,                         // Frame Control : Data frame from STA to DS
+        0x00, 0x00,                         // Duration
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Receiver MAC
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Transmitter MAC
+        0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
+        0x10, 0x86                          // Sequence control
+};
+uint8_t llchd_tx[4] = {1,2,3,4};
+
 struct iovec iov_radiotaphd_rx = { .iov_base = radiotaphd_rx, .iov_len = sizeof(radiotaphd_rx)};
 struct iovec iov_ieeehd_rx =     { .iov_base = ieeehd_rx,     .iov_len = sizeof(ieeehd_rx)};
 struct iovec iov_llchd_rx =      { .iov_base = llchd_rx,      .iov_len = sizeof(llchd_rx)};
+
+struct iovec iov_radiotaphd_tx = { .iov_base = radiotaphd_tx, .iov_len = sizeof(radiotaphd_tx)};
+struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(ieeehd_tx)};
+struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(llchd_tx)};
 
 /******************************************************************************/
 int finish_callback(struct nl_msg *nlmsg, void *arg) {
@@ -242,6 +290,43 @@ void setraw(uint8_t sockid, struct nl_sock *socknl, int argc, char **argv, rawde
 }
 
 /*****************************************************************************/
+uint8_t buid_tun(void) {
+  uint8_t fd;
+  if (0 > (fd = open("/dev/net/tun",O_RDWR))) exit(-1);
+
+  struct ifreq ifr; memset(&ifr, 0, sizeof(struct ifreq));
+  strcpy(ifr.ifr_name, TUN_NAME);
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (ioctl(fd, TUNSETIFF, &ifr ) < 0 ) exit(-1);
+
+  static uint16_t fd_tun_udp;
+  if (-1 == (fd_tun_udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+
+  addr.sin_addr.s_addr = inet_addr(TUN_IP_BOARD);
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
+
+  addr.sin_addr.s_addr = inet_addr(IPBROAD);
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
+
+  struct sockaddr_in dstaddr;
+  dstaddr.sin_family = AF_INET;
+  dstaddr.sin_addr.s_addr = inet_addr(TUN_IP_GROUND);
+  memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
+
+  ifr.ifr_mtu = TUN_MTU;
+  if (ioctl( fd_tun_udp, SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
+  ifr.ifr_flags = IFF_UP ;
+  if (ioctl( fd_tun_udp, SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
+
+  return(fd);
+}
+
+/*****************************************************************************/
 int main(int argc, char **argv) {
 
   if (!((argc >= 1) && (argc <= 3))) exit(-1);
@@ -249,17 +334,19 @@ int main(int argc, char **argv) {
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU], rawcur = 0;
   uint8_t probuf[MAXRAWNB][sizeof(wfb_utils_pro_t)]; memset(probuf, 0, sizeof(probuf));
+  uint8_t tunbuf[ONLINE_MTU];
   size_t lentab[WFB_NB][MAXRAWNB]; memset(lentab, 0, sizeof(lentab));
 
   struct pollfd readsets[MAXDEVNB];
   uint8_t readnb = 0;
 
-
   uint64_t exptime;
   if (-1 == (readsets[readnb].fd = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(readsets[readnb++].fd, 0, &period, NULL);
-            
+           
+  readsets[readnb++].fd = buid_tun();
+
   uint8_t sockid; struct nl_sock *socknl;
   if  (!(socknl = nl_socket_alloc()))  exit(-1);
   nl_socket_set_buffer_size(socknl, 8192, 8192);
@@ -287,6 +374,7 @@ int main(int argc, char **argv) {
   uint8_t fd[MAXDEVNB];
   for (uint8_t cpt=0;cpt < readnb; cpt++) { fd[cpt] = readsets[cpt].fd; readsets[cpt].events = POLLIN; }
 
+  int8_t sequence=0, num=0;
   int8_t mainraw = -1, backraw = -1;
   size_t len;
 
@@ -296,45 +384,35 @@ int main(int argc, char **argv) {
     if (0 != poll(readsets, readnb, -1)) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
+
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
-
 	    if (lastsync.chan != 0) {
-              
   	      if (lastsync.chan == -1) { mainraw = lastsync.raw; backraw = -1; }
 	      else {
                 int16_t newchan = -1;  int8_t newraw = -1; 
 		if (rawnb == 1) {
-
                   if (lastsync.chan > 0) { mainraw = lastsync.raw; backraw = -1; }
                   if (lastsync.chan < 0) { mainraw = lastsync.raw; backraw = -1; newchan = (-lastsync.chan); newraw = mainraw; }
-
 		} else {
-
                   if (lastsync.chan > 0) { backraw = -1; mainraw = lastsync.raw; newchan = lastsync.chan; }
                   if (lastsync.chan < 0) { mainraw = -1; backraw = lastsync.raw; newchan = (-lastsync.chan); }
 		  lastsync.chan = 0;
 		  if (mainraw < 0) mainraw = newraw; else backraw = newraw;
                   for (uint8_t i=0; i < rawnb; i++) if (i != lastsync.raw) newraw = i;
 		  if (mainraw < 0) mainraw = newraw; else backraw = newraw;
-
 		}
-
 		if (newraw >= 0) {
   		  uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
-
   		  if (rawdevs[newraw].freqs[cpt] == newchan) {
   		    if (rawdevs[newraw].cptfreqs != cpt) {
                       rawdevs[newraw].cptfreqs = cpt;
                       setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
-
-		      printf("set freq (%d)(%d)\n",newraw,rawdevs[newraw].freqs[cpt]);
 		    }
 		  }
   	        }
 	      }
 	    }
-
 	    for (uint8_t rawcpt=0;rawcpt < rawnb; rawcpt++) {
 	      if ((((wfb_utils_pro_t *)&probuf[rawcpt])->chan) == 0) {
                 if (rawdevs[rawcpt].syncelapse < SYNCSECS) rawdevs[rawcpt].syncelapse++; 
@@ -353,9 +431,14 @@ int main(int argc, char **argv) {
 		}
 	      }
 	    }
-
+/*
             printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
             printf("mainraw(%d) backraw(%d)\n\n",mainraw,backraw);
+*/
+          }
+	  if (cpt == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU);
+            struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
+            lentab[WFB_TUN][mainraw] = readv( fd[WFB_TUN], &iov, 1);
           }
 /*
           if (u.readtab[cpt] == WFB_VID) 
@@ -385,7 +468,35 @@ int main(int argc, char **argv) {
 	        ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
 		printf("recv [%d](%d)\n",cpt - minraw,((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan );
 	      }
+              if( headspay.msgcpt == WFB_TUN) len = write(fd[WFB_TUN], iovpay.iov_base, len);
 	    }
+          }
+        }
+      }
+
+      uint8_t kmin=0, kmax=1;
+      for (uint8_t k=kmin;k<kmax;k++) {
+        for (uint8_t d=0; d < WFB_NB; d++) {
+          for (uint8_t c = 0; c < (maxraw - minraw); c++) {
+
+            if (lentab[d][c] > 0) {
+
+              struct iovec iovpay;
+
+              if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
+              if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; };
+
+              wfb_utils_heads_pay_t headspay =
+                { .droneid = DRONEID_GRD, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
+              struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+              struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
+              struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
+              len = sendmsg(rawdevs[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+
+              if (len > 0)printf("snd [%d](%d)\n",c,((wfb_utils_pro_t *)&probuf[c])->chan );
+
+              lentab[d][c] = 0;
+            }
           }
         }
       }
