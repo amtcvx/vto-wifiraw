@@ -331,21 +331,12 @@ int main(int argc, char **argv) {
 		  rawdevs[rawcpt].syncelapse = 0;
 	          if ((rawcpt != mainraw) && (rawcpt != backraw)) {
 
-                printf("%d\n",rawdevs[rawcpt].nbfreqs);
-                for(uint8_t j=0;j<rawdevs[rawcpt].nbfreqs;j++) printf("(%d)(%d) ",j,rawdevs[rawcpt].freqs[j]);
-                printf("\n");
-
 	            if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
-/*
 		    for (uint8_t i=0;i<rawnb;i++) {
                       if ((i != rawcpt) && (rawdevs[i].freqs[rawdevs[i].cptfreqs] == rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs])) {
 	                if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
 		      }
 		    }
-*/
-                    setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
-
-                    if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
                     setfreq(sockid, socknl, rawdevs[rawcpt].ifindex, rawdevs[rawcpt].freqs[rawdevs[rawcpt].cptfreqs]);
 		  }
 		}
