@@ -303,22 +303,33 @@ int main(int argc, char **argv) {
               
   	      if (lastsync.chan == -1) { mainraw = lastsync.raw; backraw = -1; }
 	      else {
-                int16_t newchan = -1;
-                if (lastsync.chan > 0) { backraw = -1; mainraw = lastsync.raw; newchan = lastsync.chan; }
-                if (lastsync.chan < 0) { mainraw = -1; backraw = lastsync.raw; newchan = (-lastsync.chan); }
-		lastsync.chan = 0;
+                int16_t newchan = -1;  int8_t newraw = -1; 
+		if (rawnb == 1) {
 
-                int8_t newraw = -1; for (uint8_t i=0; i < rawnb; i++) if (i != lastsync.raw) newraw = i;
-  		uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
+                  if (lastsync.chan > 0) { mainraw = lastsync.raw; backraw = -1; }
+                  if (lastsync.chan < 0) { mainraw = lastsync.raw; backraw = -1; newchan = (-lastsync.chan); newraw = mainraw; }
 
-		if (mainraw < 0) mainraw = newraw; else backraw = newraw; 
+		} else {
 
-  		if (rawdevs[newraw].freqs[cpt] == newchan) {
-  		  if (rawdevs[newraw].cptfreqs != cpt) {
-                    rawdevs[newraw].cptfreqs = cpt;
-                    setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+                  if (lastsync.chan > 0) { backraw = -1; mainraw = lastsync.raw; newchan = lastsync.chan; }
+                  if (lastsync.chan < 0) { mainraw = -1; backraw = lastsync.raw; newchan = (-lastsync.chan); }
+		  lastsync.chan = 0;
+		  if (mainraw < 0) mainraw = newraw; else backraw = newraw;
+                  for (uint8_t i=0; i < rawnb; i++) if (i != lastsync.raw) newraw = i;
+		  if (mainraw < 0) mainraw = newraw; else backraw = newraw;
 
-		    printf("set freq (%d)(%d)\n",newraw,rawdevs[newraw].freqs[cpt]);
+		}
+
+		if (newraw >= 0) {
+  		  uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
+
+  		  if (rawdevs[newraw].freqs[cpt] == newchan) {
+  		    if (rawdevs[newraw].cptfreqs != cpt) {
+                      rawdevs[newraw].cptfreqs = cpt;
+                      setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+
+		      printf("set freq (%d)(%d)\n",newraw,rawdevs[newraw].freqs[cpt]);
+		    }
 		  }
   	        }
 	      }
