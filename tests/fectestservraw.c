@@ -39,6 +39,9 @@ apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreame
 #include <linux/if_packet.h>
 #include <linux/filter.h>
 
+#include <sys/timerfd.h>
+#include <unistd.h>
+
 #include "../src/zfex.h"
 
 #define FEC_K   8
@@ -66,6 +69,8 @@ typedef struct {
 
 #define IP_LOCAL "127.0.0.1"
 #define PORT_VID  5600
+
+#define PERIOD_DELAY_S  1
 
 /************************************************************************************************/
 #define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
@@ -130,7 +135,7 @@ int main(int argc, char **argv) {
   ssize_t vidlen=0;
 
   uint8_t sockfd;
-  ssize_t rawlen;
+  ssize_t rawlen, rawlencum=0, len;
 
   uint16_t protocol = htons(ETH_P_ALL);
 
@@ -158,36 +163,50 @@ int main(int argc, char **argv) {
   const int32_t sock_qdisc_bypass = 1;
   if (-1 == setsockopt(sockfd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) exit(-1);
 
-  uint8_t vidfd;
-  if (-1 == (vidfd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  if (-1 == setsockopt(vidfd, SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct pollfd readsets[2];
+  uint8_t readnb = 0;
+
+  uint64_t exptime;
+  if (-1 == (readsets[readnb].fd = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
+  timerfd_settime(readsets[readnb].fd, 0, &period, NULL);
+  readsets[readnb++].events = POLLIN;
+
+  if (-1 == (readsets[readnb].fd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == setsockopt(readsets[readnb].fd, SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in vidinaddr;
   vidinaddr.sin_family = AF_INET;
   vidinaddr.sin_port = htons(PORT_VID);
   vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
-  if (-1 == bind( vidfd, (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
-
-  struct pollfd readsets;
-  readsets.fd = vidfd;
-  readsets.events = POLLIN;
+  if (-1 == bind( readsets[readnb].fd, (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
+  readsets[readnb++].events = POLLIN;
 
   for(;;) {
-    if (0 != poll(&readsets, 1, -1)) {
-      if (readsets.revents == POLLIN) {
-        memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
-        struct iovec iov;
-        iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
-        iov.iov_len = PAY_MTU;
-        vidlen = readv(vidfd,&iov,1) + sizeof(wfb_utils_fec_t);
-        ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
-        vidcur++;
+    if (0 != poll(readsets, readnb, -1)) {
+      for (uint8_t cpt=0; cpt<readnb; cpt++) {
+        if (readsets[cpt].revents == POLLIN) {
+          if (cpt == 0 )  {
+            len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
+	    printf("(%ld) Kbits/sec\n",(rawlencum * 8) / 1000); 
+	    rawlencum = 0;
+	  }
+          if (cpt == 1 )  {
+            memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
+            struct iovec iov;
+            iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fec_t)];
+            iov.iov_len = PAY_MTU;
+            vidlen = readv(readsets[cpt].fd, &iov,1) + sizeof(wfb_utils_fec_t);
+            ((wfb_utils_fec_t *)&vidbuf[vidcur][0])->feclen = vidlen;
+            vidcur++;
 /*
-        uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-        ptr += sizeof(wfb_utils_fec_t);
-        printf("len(%ld) ",tmp);
-        for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
-        for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
+            uint8_t *ptr = vidbuf[vidcur-1]; ssize_t tmp = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+            ptr += sizeof(wfb_utils_fec_t);
+            printf("len(%ld) ",tmp);
+            for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
+            for (uint16_t i=tmp-5;i<tmp;i++) printf("%x ",*(ptr+i));printf("\n");
 */
+          }
+	}
       }
 
       if (vidcur == FEC_K) {
@@ -220,6 +239,7 @@ int main(int argc, char **argv) {
           struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
 
           rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+	  rawlencum += rawlen;
 /*
           if (k<FEC_K) {
             uint8_t *ptr = vidbuf[k]; ssize_t tmp;
@@ -230,7 +250,7 @@ int main(int argc, char **argv) {
           }
 */
           vidlen = 0;
-          if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; printf("\n"); }
+          if ((vidcur == 0)&&(k == (FEC_N-1))) { sequence++; } // printf("\n"); }
 
         }
       }
