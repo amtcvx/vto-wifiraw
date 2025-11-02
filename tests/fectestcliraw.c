@@ -45,6 +45,9 @@ apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreame
 #include <linux/if_packet.h>
 #include <linux/filter.h>
 
+#include <sys/timerfd.h>
+#include <unistd.h>
+
 #include "../src/zfex.h"
 
 #define FEC_K   8
@@ -76,6 +79,8 @@ typedef struct {
 #define IP_LOCAL "127.0.0.1"
 
 #define PORT_VID  5600
+
+#define PERIOD_DELAY_S  1
 
 /************************************************************************************************/
 #define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
@@ -133,33 +138,38 @@ int main(int argc, char **argv) {
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
 
-  uint8_t sockfd;
-  ssize_t rawlen;
-  uint16_t protocol = htons(ETH_P_ALL);
+  struct pollfd readsets[2];
+  uint8_t readnb = 0;
 
-   if (-1 == (sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
+  uint64_t exptime;
+  if (-1 == (readsets[readnb].fd = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
+  timerfd_settime(readsets[readnb].fd, 0, &period, NULL);
+  readsets[readnb++].events = POLLIN;
+
+  uint16_t protocol = htons(ETH_P_ALL);
+  if (-1 == (readsets[readnb].fd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(struct ifreq));
   strncpy( ifr.ifr_name, argv[1], sizeof( ifr.ifr_name ) - 1 );
-  if (ioctl( sockfd, SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
+  if (ioctl( readsets[readnb].fd , SIOCGIFINDEX, &ifr ) < 0 ) exit(-1);
   struct sockaddr_ll sll;
   memset( &sll, 0, sizeof( sll ) );
   sll.sll_family   = AF_PACKET;
   sll.sll_ifindex  = ifr.ifr_ifindex;
   sll.sll_protocol = protocol;
-  if (-1 == bind(sockfd, (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
-
+  if (-1 == bind(readsets[readnb].fd , (struct sockaddr *)&sll, sizeof(sll))) exit(-1);
   struct sock_filter zero_bytecode = BPF_STMT(BPF_RET | BPF_K, 0);
   struct sock_fprog zero_program = { 1, &zero_bytecode};
-  setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program));
+  setsockopt( readsets[readnb].fd, SOL_SOCKET, SO_ATTACH_FILTER, &zero_program, sizeof(zero_program));
   char drain[1];
-  while (recv(sockfd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) printf("----\n");
+  while (recv( readsets[readnb].fd, drain, sizeof(drain), MSG_DONTWAIT) >= 0) printf("----\n");
   struct sock_filter full_bytecode = BPF_STMT(BPF_RET | BPF_K, (u_int)-1);
   struct sock_fprog full_program = { 1, &full_bytecode};
-  setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program));
-
+  setsockopt( readsets[readnb].fd, SOL_SOCKET, SO_ATTACH_FILTER, &full_program, sizeof(full_program));
   const int32_t sock_qdisc_bypass = 1;
-  if (-1 == setsockopt(sockfd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) exit(-1);
+  if (-1 == setsockopt( readsets[readnb].fd, SOL_PACKET, PACKET_QDISC_BYPASS, &sock_qdisc_bypass, sizeof(sock_qdisc_bypass))) exit(-1);
+  readsets[readnb++].events = POLLIN;
 
   uint8_t vidfd;
   if (-1 == (vidfd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
@@ -169,9 +179,6 @@ int main(int argc, char **argv) {
   vidoutaddr.sin_port = htons(PORT_VID);
   vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 
-  struct pollfd readsets;
-  readsets.fd = sockfd;
-  readsets.events = POLLIN;
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
   uint8_t rawcur=0;
@@ -200,150 +207,161 @@ int main(int argc, char **argv) {
 
   ssize_t vidlen=0;
 
+  ssize_t rawlen,rawlencum=0,len;
+
 
   for(;;) {
-    if (0 != poll(&readsets, 1, -1)) {
-      if (readsets.revents == POLLIN) {
+    if (0 != poll(readsets, readnb, -1)) {
+      for (uint8_t cpt=0; cpt<readnb; cpt++) {
+        if (readsets[cpt].revents == POLLIN) {
+          if (cpt == 0 )  {
+            len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
+            printf("(%ld) Kbits/sec\n",(rawlencum * 8) / 1000);
+            rawlencum = 0;
+          }
+          if (cpt == 1 )  {
 
-        wfb_utils_heads_pay_t headspay;
-        memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
-        memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
+            wfb_utils_heads_pay_t headspay;
+            memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
+            memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
 
-        struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-        struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
+            struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+            struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
 
-        struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
-        memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
+            struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay };
+            memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
 
-        struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
-        rawlen = recvmsg(sockfd, &msg, MSG_DONTWAIT);
+            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
+            rawlen = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
 
-        if (rawlen > 0) {
+            if (rawlen > 0) {
 
-          if(headspay.msgcpt == WFB_VID) {
+              if(headspay.msgcpt == WFB_VID) {
 
-            if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
+                if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0;
 
-            if (headspay.fec < FEC_K) {
+                if (headspay.fec < FEC_K) {
 
-              if (msgincurseq < 0) msgincurseq = headspay.seq;
+                  if (msgincurseq < 0) msgincurseq = headspay.seq;
 
-              int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
+                  int16_t nextseqtmp = msginnxtseq; if (nextseqtmp < 255) nextseqtmp++ ; else nextseqtmp = 0;
 
-              if ((inblockstofec >= 0) && (failfec < 0) && (
-                   ((msginnxtseq != headspay.seq) && (msginnxtfec != headspay.fec)) ||
-                   ((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
-                   ((nextseqtmp  == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))  {
+                  if ((inblockstofec >= 0) && (failfec < 0) && (
+                    ((msginnxtseq != headspay.seq) && (msginnxtfec != headspay.fec)) ||
+                    ((msginnxtseq == headspay.seq) && (msginnxtfec != headspay.fec)) ||
+                    ((nextseqtmp  == headspay.seq) && (msginnxtfec == (FEC_K - 1)))))  {
 
-                failfec = msginnxtfec;
-                if (failfec == 0) bypassflag = false;
-              }
+                    failfec = msginnxtfec;
+                    if (failfec == 0) bypassflag = false;
+                  }
 
-              if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
-              else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
-            }
-
-            uint8_t imax=0, imin=0;
-            if (msgincurseq == headspay.seq) {
-
-              if (headspay.fec < FEC_K) {
-
-                if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); }
-                inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; alldata |= (1 << headspay.fec);
-                inblocksnb++;
-
-              } else {
-
-                for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) {
-                  inblocks[k] = iovpay.iov_base; index[k] = headspay.fec; alldata |= (1 << k);
-                  outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
-                  break;
+                  if (headspay.fec < (FEC_K-1)) msginnxtfec = headspay.fec+1;
+                  else { msginnxtfec = 0; if (headspay.seq < 255) msginnxtseq = headspay.seq+1; else msginnxtseq = 0; }
                 }
-              }
 
-            } else {
+                uint8_t imax=0, imin=0;
+                if (msgincurseq == headspay.seq) {
 
-              msgincurseq = headspay.seq;
-              inblocks[FEC_K] = iovpay.iov_base;
-              clearflag=true;
+                  if (headspay.fec < FEC_K) {
 
-              imin = FEC_K; imax = (FEC_K+1);
+                    if ((failfec < 0) || ((failfec > 0) && (headspay.fec < failfec))) { imin = headspay.fec; imax = (imin+1); }
+                    inblocks[headspay.fec] = iovpay.iov_base; index[headspay.fec] = headspay.fec; alldata |= (1 << headspay.fec);
+                    inblocksnb++;
 
-              if (inblockstofec >= 0) {
-
-                if ((failfec == 0) && (!(bypassflag))) { imin = 0; imax = 0; }
-
-                if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
-
-                  imin = failfec;
-
-                  if (!((recovcpt > 0) && ((recovcpt + inblocksnb) == FEC_K) && (alldata == 255))) {
-                    for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0;
                   } else {
-                    imin = outblockrecov[0];
 
-                    for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
-                    printf("\nDECODE (%d)\n",recovcpt);
+                    for (uint8_t k=0;k<FEC_K;k++) if (!(inblocks[k])) {
+                      inblocks[k] = iovpay.iov_base; index[k] = headspay.fec; alldata |= (1 << k);
+                      outblocks[recovcpt]=&outblocksbuf[recovcpt][0]; outblockrecov[recovcpt] = k; recovcpt++;
+                      break;
+                    }
+                  }
 
-                    fec_decode(fec_p,
+                } else {
+
+                  msgincurseq = headspay.seq;
+                  inblocks[FEC_K] = iovpay.iov_base;
+                  clearflag=true;
+
+                  imin = FEC_K; imax = (FEC_K+1);
+
+                  if (inblockstofec >= 0) {
+
+                    if ((failfec == 0) && (!(bypassflag))) { imin = 0; imax = 0; }
+
+                    if ((failfec > 0) || ((failfec == 0) && (bypassflag))) {
+
+                      imin = failfec;
+
+                      if (!((recovcpt > 0) && ((recovcpt + inblocksnb) == FEC_K) && (alldata == 255))) {
+                        for (uint8_t k=0;k<recovcpt;k++) inblocks[ outblockrecov[k] ] = 0;
+                      } else {
+                        imin = outblockrecov[0];
+
+                        for (uint8_t k=0;k<FEC_K;k++) printf("%d ",index[k]);
+                        printf("\nDECODE (%d)\n",recovcpt);
+
+                        fec_decode(fec_p,
                                (const unsigned char **)inblocks,
                                (unsigned char * const*)outblocks,
                                (unsigned int *)index,
                                ONLINE_MTU);
 
-                    for (uint8_t k=0;k<recovcpt;k++) {
-                      inblocks[ outblockrecov[k] ] = outblocks[k];
+                        for (uint8_t k=0;k<recovcpt;k++) {
+                          inblocks[ outblockrecov[k] ] = outblocks[k];
 
-                      uint8_t *ptr=inblocks[ outblockrecov[k] ];
-                      vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-                      if (vidlen <= PAY_MTU) {
-                        ptr += sizeof(wfb_utils_fec_t);
-//                      printf("recover len(%ld)  ", vidlen);
-                        for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
-                        for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
-                      } else {
-//                      printf("missed recovered (%d)(%d)\n",headspay.seq,failfec);
+                          uint8_t *ptr=inblocks[ outblockrecov[k] ];
+                          vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+                          if (vidlen <= PAY_MTU) {
+                            ptr += sizeof(wfb_utils_fec_t);
+//                          printf("recover len(%ld)  ", vidlen);
+                            for (uint8_t i=0;i<5;i++) printf("%x ",*(ptr+i));printf(" ... ");
+                            for (uint16_t i=vidlen-5;i<vidlen;i++) printf("%x ",*(ptr+i));printf("\n");
+                          } else {
+//                          printf("missed recovered (%d)(%d)\n",headspay.seq,failfec);
+                          }
+                        }
                       }
                     }
                   }
                 }
-              }
-            }
 
-            for (uint8_t i=imin;i<imax;i++) {
-              uint8_t *ptr=inblocks[i];
-              if (ptr) {
-                vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
-                if (vidlen <= PAY_MTU) {
-                  ptr += sizeof(wfb_utils_fec_t);
+                for (uint8_t i=imin;i<imax;i++) {
+                  uint8_t *ptr=inblocks[i];
+                  if (ptr) {
+                    vidlen = ((wfb_utils_fec_t *)ptr)->feclen - sizeof(wfb_utils_fec_t);
+                    if (vidlen <= PAY_MTU) {
+                      ptr += sizeof(wfb_utils_fec_t);
 /*
-                  printf("len(%ld) ",vidlen);
-                  for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
-                  for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
-                  printf("\n");
+                      printf("len(%ld) ",vidlen);
+                      for (uint8_t j=0;j<5;j++) printf("%x ",*(j + ptr));printf(" ... ");
+                      for (uint16_t j=vidlen-5;j<vidlen;j++) printf("%x ",*(j + ptr));
+                      printf("\n");
 */
-                  vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
-                } else {
-//                printf("miss send\n");
+                      vidlen = sendto(vidfd, ptr, vidlen, MSG_DONTWAIT, (struct sockaddr *)&vidoutaddr, sizeof(vidoutaddr));
+                    } else {
+//                    printf("miss send\n");
+                    }
+                  }
                 }
-              }
-            }
 
-            if (clearflag) {
+                if (clearflag) {
 
-              if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
-              else failfec = -1;
+                  if ((failfec == 0)&&(!(bypassflag))) bypassflag = true;
+                  else failfec = -1;
 
-              clearflag=false;
-              msginnxtseq = headspay.seq;
-              inblockstofec = headspay.fec;
+                  clearflag=false;
+                  msginnxtseq = headspay.seq;
+                  inblockstofec = headspay.fec;
 
-              memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
+                  memset(inblocks, 0, (FEC_K * sizeof(uint8_t *)));
 
-              recovcpt=0; inblocksnb=0;
-              if (headspay.fec < FEC_K) { inblocks[headspay.fec] = inblocks[FEC_K];
-                index[headspay.fec] = headspay.fec; alldata |= (1 << headspay.fec);
-                inblocksnb = 1;
+                  recovcpt=0; inblocksnb=0;
+                  if (headspay.fec < FEC_K) { inblocks[headspay.fec] = inblocks[FEC_K];
+                    index[headspay.fec] = headspay.fec; alldata |= (1 << headspay.fec);
+                    inblocksnb = 1;
+		  }
+		}
               } 
             }
           }
