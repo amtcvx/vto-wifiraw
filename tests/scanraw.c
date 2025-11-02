@@ -8,6 +8,7 @@ sudo rfkill unblock ...
 
 export DEVICE=wlx3c7c3fa9c1e4
 sudo ./scanraw $DEVICE
+sudo ./scanraw $DEVICE 2442
 
 export DEVICE=wlx3c7c3fa9c1e4
 sudo ip link set $DEVICE down
@@ -207,7 +208,14 @@ int main(int argc, char **argv) {
   ssize_t rawlen = 0, len = 0;
   uint8_t rawnb = 0;
 
+  printf("argc(%d) argv(%s)\n",argc,argv[2]);
+
   rawdev.cptfreqs = 0; 
+  if (argc == 3) { 
+    uint8_t i = 0;
+    for (i=0;i<rawdev.nbfreqs; i++) if (rawdev.freqs[i] == atoi(argv[2])) break;
+    if (rawdev.freqs[i] == atoi(argv[2])) rawdev.cptfreqs = i;
+  }
   setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
 
   struct pollfd readsets[2] = { { .fd = fd[0], .events = POLLIN }, { .fd = fd[1], .events = POLLIN }};
@@ -220,8 +228,10 @@ int main(int argc, char **argv) {
             len = read(fd[0], &exptime, sizeof(uint64_t));
 	    printf("[%d] (%d)\n",rawdev.freqs[rawdev.cptfreqs],rawnb);
 	    rawnb=0;
-	    if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs = 0;
-	    setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
+	    if (argc != 3) {
+	      if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs = 0;
+	      setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
+	    }
 	  } else {
             rawlen = recvmsg(fd[1], &msg, MSG_DONTWAIT);
 	    rawnb++;
