@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == 0 )  {
             len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
-            printf("(%d) (%ld) Kbits/sec\n",radiotaphd_rx[12],(rawlencum * 8) / 1000);
+            printf("(%d) (%ld) Kbits/sec\n",radiotaphd_rx[30],(rawlencum * 8) / 1000);
             rawlencum = 0;
           }
           if (cpt == 1 )  {
