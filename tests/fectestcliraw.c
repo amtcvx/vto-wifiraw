@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == 0 )  {
             len = read(readsets[cpt].fd, &exptime, sizeof(uint64_t));
-            printf("(%ld) Kbits/sec\n",(rawlencum * 8) / 1000);
+            printf("(%d) (%ld) Kbits/sec\n",radiotaphd_rx[12],(rawlencum * 8) / 1000);
             rawlencum = 0;
           }
           if (cpt == 1 )  {
@@ -233,6 +233,7 @@ int main(int argc, char **argv) {
 
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 5 };
             rawlen = recvmsg(readsets[cpt].fd, &msg, MSG_DONTWAIT);
+	    rawlencum += rawlen;
 
             if (rawlen > 0) {
 

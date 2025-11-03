@@ -12,6 +12,7 @@ sudo ip link set $DEVICE up
 sudo iw dev $DEVICE set channel 18
 
 sudo ./fectestservraw  $DEVICE
+sudo ./fectestservraw  $DEVICE 2
 
 gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
 
@@ -89,7 +90,7 @@ typedef struct {
 
 #define MCS_FLAGS  (IEEE80211_RADIOTAP_MCS_BW_20 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
 
-#define MCS_INDEX  2
+#define MCS_INDEX  1
 
 /************************************************************************************************/
 
@@ -124,6 +125,9 @@ struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(
 
 /*****************************************************************************/
 int main(int argc, char **argv) {
+
+  if(argc == 3)  { radiotaphd_tx[12] = atoi(argv[2]); if (atoi(argv[2]) > 7) exit(-1); }
+
 
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
