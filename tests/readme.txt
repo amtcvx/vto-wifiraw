@@ -13,6 +13,8 @@ Ubuntu 24.04 + NVIDIA
 
 gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! nvh265enc bitrate=1000 ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
 
+gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H265, payload=96 ! rtph265depay ! h265parse ! queue ! nvh265dec !  videoconvert ! autovideosink sync=false
+
 
 
 Ubuntu 22.04 + NVIDIA
