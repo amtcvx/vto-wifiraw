@@ -1,0 +1,29 @@
+------------------------------------------
+NOMINAL
+nvh265enc rc-mode=2 bitrate=6000
+MCS=2
+(10145) Kbits/sec
+
+------------------------------------------
+TESTS
+
+5080
+nvh265enc rc-mode=2 bitrate=15000 
+15000 kbit/sec
+MCS=7,6,5
+(24291) Kbits/sec
+MCS=4 KO
+
+nvh265enc rc-mode=2 bitrate=10000 
+MCS=7,6,5
+(16396) Kbits/sec
+MCS=2 KO
+
+nvh265enc rc-mode=2 bitrate=5000 
+MCS=7,6,5,4,3,2
+(12918) Kbits/sec
+MCS=1 KO
+
+nvh265enc rc-mode=2 bitrate=6000 
+MCS=7,6,5,4,3,2,1
+(8287) Kbits/sec
