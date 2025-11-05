@@ -95,7 +95,8 @@ typedef enum { WFB_PRO, WFB_TUN,  WFB_NB } type_d;
 
 typedef struct {
   bool    freefreq;
-  uint8_t syncelapse;
+  bool    syncelapse;
+  uint8_t syncfree;
   uint8_t synccum;
   uint8_t ifindex;
   uint8_t fd;
@@ -107,6 +108,7 @@ typedef struct {
 
 /*****************************************************************************/
 typedef struct {
+  int16_t chan;
   uint8_t droneid;
   uint8_t msgcpt;
   uint16_t msglen;
@@ -378,11 +380,16 @@ int main(int argc, char **argv) {
     if (0 != poll(readsets, readnb, -1)) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
         if (readsets[cpt].revents == POLLIN) {
+
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
+
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
-	      if (rawdevs[rawcpt].synccum != 0) { rawdevs[rawcpt].freefreq = false; rawdevs[rawcpt].syncelapse = 0; }
-	      else if (rawdevs[rawcpt].syncelapse < FREESECS) rawdevs[rawcpt].syncelapse++; else { rawdevs[rawcpt].freefreq = true; rawdevs[rawcpt].syncelapse = 0; }
+
+              rawdevs[rawcpt].syncelapse = true;
+
+	      if (rawdevs[rawcpt].synccum != 0) { rawdevs[rawcpt].freefreq = false; rawdevs[rawcpt].syncfree = 0; }
+	      else if (rawdevs[rawcpt].syncfree < FREESECS) rawdevs[rawcpt].syncfree++; else { rawdevs[rawcpt].freefreq = true; rawdevs[rawcpt].syncfree = 0; }
 	      rawdevs[rawcpt].synccum = 0;
 	    }
 	    if (mainraw < 0) {
@@ -401,7 +408,7 @@ int main(int argc, char **argv) {
 	    }
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
               if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
-                  ((!(rawdevs[rawcpt].freefreq) && (rawdevs[rawcpt].syncelapse == 0)))) {
+                  ((!(rawdevs[rawcpt].freefreq) && (rawdevs[rawcpt].syncfree == 0)))) {
 
 	        if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
 		for (uint8_t i=0;i<rawnb;i++) {
@@ -469,11 +476,18 @@ int main(int argc, char **argv) {
 
               struct iovec iovpay;
 
-              if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
-              if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; };
+              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (rawdevs[mainraw].syncelapse)))) {
+	        iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c];
+	      }
+
+
+              if (d == WFB_TUN) { 
+	        iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; 
+		if (c == mainraw)  rawdevs[mainraw].syncelapse = false;
+	      };
 
               wfb_utils_heads_pay_t headspay =
-                { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
+                { .chan = ((wfb_utils_pro_t *)&probuf[c])->chan, .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
               struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };

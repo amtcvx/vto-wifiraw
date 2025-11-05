@@ -93,8 +93,15 @@ typedef enum { WFB_PRO, WFB_TUN, WFB_NB } type_d;
 
 typedef struct {
   bool    freefreq;
-  uint8_t syncelapse;
+  bool    syncelapse;
+
+  uint8_t syncfree;
   uint8_t synccum;
+
+  int16_t syncchan;
+  int8_t  syncraw;
+
+
   uint8_t ifindex;
   uint8_t fd;
   uint8_t cptfreqs;
@@ -103,13 +110,9 @@ typedef struct {
   uint32_t chans[NBFREQS];
 } rawdev_t;
 
-typedef struct {
-  int16_t chan;
-  int8_t  raw;
-} lastsync_t;
-
 /*****************************************************************************/
 typedef struct {
+  int16_t chan;
   uint8_t droneid;
   uint8_t msgcpt;
   uint16_t msglen;
@@ -378,8 +381,6 @@ int main(int argc, char **argv) {
   int8_t mainraw = -1, backraw = -1;
   size_t len;
 
-  lastsync_t lastsync = { .chan = -1, .raw = -1 };
-
   for(;;) {
     if (0 != poll(readsets, readnb, -1)) {
       for (uint8_t cpt=0; cpt<readnb; cpt++) {
@@ -387,37 +388,12 @@ int main(int argc, char **argv) {
 
           if (cpt == WFB_PRO )  {
             len = read(fd[WFB_PRO], &exptime, sizeof(uint64_t));
-	    if (lastsync.chan != 0) {
-  	      if (lastsync.chan == -1) { mainraw = lastsync.raw; backraw = -1; }
-	      else {
-                int16_t newchan = -1;  int8_t newraw = -1; 
-		if (rawnb == 1) {
-                  if (lastsync.chan > 0) { mainraw = lastsync.raw; backraw = -1; }
-                  if (lastsync.chan < 0) { mainraw = lastsync.raw; backraw = -1; newchan = (-lastsync.chan); newraw = mainraw; }
-		} else {
-                  if (lastsync.chan > 0) { backraw = -1; mainraw = lastsync.raw; newchan = lastsync.chan; }
-                  if (lastsync.chan < 0) { mainraw = -1; backraw = lastsync.raw; newchan = (-lastsync.chan); }
-		  lastsync.chan = 0;
-		  if (mainraw < 0) mainraw = newraw; else backraw = newraw;
-                  for (uint8_t i=0; i < rawnb; i++) if (i != lastsync.raw) newraw = i;
-		  if (mainraw < 0) mainraw = newraw; else backraw = newraw;
-		}
-		if (newraw >= 0) {
-  		  uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
-  		  if (rawdevs[newraw].freqs[cpt] == newchan) {
-  		    if (rawdevs[newraw].cptfreqs != cpt) {
-                      rawdevs[newraw].cptfreqs = cpt;
-                      setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
-		    }
-		  }
-  	        }
-	      }
-	    }
+
 	    for (uint8_t rawcpt=0;rawcpt < rawnb; rawcpt++) {
 	      if ((((wfb_utils_pro_t *)&probuf[rawcpt])->chan) == 0) {
-                if (rawdevs[rawcpt].syncelapse < SYNCSECS) rawdevs[rawcpt].syncelapse++; 
+                if (rawdevs[rawcpt].syncfree < SYNCSECS) rawdevs[rawcpt].syncfree++; 
 		else {
-		  rawdevs[rawcpt].syncelapse = 0;
+		  rawdevs[rawcpt].syncfree = 0;
 	          if ((rawcpt != mainraw) && (rawcpt != backraw)) {
 
 	            if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
@@ -463,12 +439,55 @@ int main(int argc, char **argv) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
-              if( headspay.msgcpt == WFB_PRO) { 
-                lastsync.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan; lastsync.raw = (cpt - minraw);
-	        ((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
+
+
+              uint8_t rawcpt = cpt - minraw;
+              if (rawdevs[rawcpt].syncchan != ((wfb_utils_pro_t *)iovheadpay.iov_base)->chan) {
+
+                rawdevs[rawcpt].syncchan = ((wfb_utils_pro_t *)iovheadpay.iov_base)->chan;
+                int16_t curchan = rawdevs[rawcpt].syncchan;
+
+		if (curchan != 0) {
+                  if (curchan == -1) { mainraw = rawcpt; backraw = -1; }
+		  else {
+                    int16_t newchan = 0;
+
+                    if (rawnb == 1) {
+                      mainraw = rawcpt; backraw = -1;
+                      if (curchan < 0) newchan = (-curchan);
+                    } else {
+                      if (curchan > 0) { mainraw = rawcpt; newchan = curchan; }
+                      if (curchan < 0) { backraw = rawcpt; newchan = (-curchan); }
+		    }
+
+		    if (newchan > 0) {
+
+                      uint8_t newraw = 0; for (newraw=0; newraw < (maxraw - minraw); newraw++) if (newraw != rawcpt) break;
+		      if (newraw != rawcpt) {
+
+  		        uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
+  		        if (rawdevs[newraw].freqs[cpt] == newchan) {
+
+		          if (rawdevs[newraw].cptfreqs != cpt) {
+                            rawdevs[newraw].cptfreqs = cpt;
+                            setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
+		          }
+		        }
+  	              }
+	            } 
+		  }
+		}
+	      }
+
+
+              if (headspay.msgcpt == WFB_PRO) { 
+
 		printf("recv [%d](%d)\n",cpt - minraw,((wfb_utils_pro_t *)&probuf[cpt - minraw])->chan );
 	      }
-              if( headspay.msgcpt == WFB_TUN) len = write(fd[WFB_TUN], iovpay.iov_base, len);
+              if (headspay.msgcpt == WFB_TUN) {
+
+	        len = write(fd[WFB_TUN], iovpay.iov_base, len);
+	      }
 	    }
           }
         }
