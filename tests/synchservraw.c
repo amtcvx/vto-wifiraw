@@ -332,7 +332,9 @@ int main(int argc, char **argv) {
   printf("START [%d]\n",argc);
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU], rawcur = 0;
-  uint8_t probuf[MAXRAWNB][sizeof(wfb_utils_pro_t)];
+
+  int16_t probuf[MAXRAWNB];
+
   uint8_t tunbuf[ONLINE_MTU];
   size_t lentab[WFB_NB][MAXRAWNB]; memset(lentab, 0, sizeof(lentab));
 
@@ -369,6 +371,7 @@ int main(int argc, char **argv) {
 
   uint8_t rawnb = (maxraw - minraw);
 
+
   uint8_t fd[MAXDEVNB];
   for (uint8_t cpt=0;cpt < readnb; cpt++) { fd[cpt] = readsets[cpt].fd; readsets[cpt].events = POLLIN; }
 
@@ -392,6 +395,7 @@ int main(int argc, char **argv) {
 	      else if (rawdevs[rawcpt].syncfree < FREESECS) rawdevs[rawcpt].syncfree++; else { rawdevs[rawcpt].freefreq = true; rawdevs[rawcpt].syncfree = 0; }
 	      rawdevs[rawcpt].synccum = 0;
 	    }
+
 	    if (mainraw < 0) {
 	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdevs[rawcpt].freefreq) mainraw = rawcpt;
 	    } else {
@@ -406,9 +410,10 @@ int main(int argc, char **argv) {
 	        for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) backraw = rawcpt;
 	      }
 	    }
+
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
               if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
-                  ((!(rawdevs[rawcpt].freefreq) && (rawdevs[rawcpt].syncfree == 0)))) {
+                 ((!(rawdevs[rawcpt].freefreq) && (rawdevs[rawcpt].syncfree == 0)))) {
 
 	        if (rawdevs[rawcpt].cptfreqs < (rawdevs[rawcpt].nbfreqs - 1)) rawdevs[rawcpt].cptfreqs++; else rawdevs[rawcpt].cptfreqs = 0;
 		for (uint8_t i=0;i<rawnb;i++) {
@@ -421,10 +426,10 @@ int main(int argc, char **argv) {
 	    }
 	    if (mainraw >= 0) {
               lentab[WFB_PRO][mainraw] = sizeof(wfb_utils_pro_t);
-              ((wfb_utils_pro_t *)&probuf[mainraw])->chan = -1;
+              probuf[mainraw] = -1;
 	      if (backraw >= 0) {
-                ((wfb_utils_pro_t *)&probuf[mainraw])->chan = rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs];
-                ((wfb_utils_pro_t *)&probuf[backraw])->chan = -rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs]; 
+                probuf[mainraw] = rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs];
+                probuf[backraw] = -rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs]; 
 		lentab[WFB_PRO][backraw] = sizeof(wfb_utils_pro_t);
 	      }
 	    }
@@ -436,7 +441,8 @@ int main(int argc, char **argv) {
 /*
 	  if (u.readtab[cpt] == WFB_VID) 
 */
-	  if (cpt == WFB_TUN) { memset(&tunbuf[0],0,ONLINE_MTU);
+	  if (cpt == WFB_TUN) { 
+	    memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
             lentab[WFB_TUN][mainraw] = readv( fd[WFB_TUN], &iov, 1);
           }
@@ -469,7 +475,8 @@ int main(int argc, char **argv) {
 
       uint8_t kmin=0, kmax=1;
       for (uint8_t k=kmin;k<kmax;k++) {
-        for (uint8_t d=0; d < WFB_NB; d++) {
+        for (uint8_t d = (WFB_NB -1) ; d <= 0; d++) {
+
           for (uint8_t c = 0; c < (maxraw - minraw); c++) {
 
             if (lentab[d][c] > 0) {
@@ -487,14 +494,11 @@ int main(int argc, char **argv) {
 	      };
 
               wfb_utils_heads_pay_t headspay =
-                { .chan = ((wfb_utils_pro_t *)&probuf[c])->chan, .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
+                { .chan = probuf[c], .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
               struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
               len = sendmsg(rawdevs[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-/*
-	      if (len > 0)printf("snd [%d](%d)\n",c,((wfb_utils_pro_t *)&probuf[c])->chan );
-*/
               lentab[d][c] = 0;
             }
           }

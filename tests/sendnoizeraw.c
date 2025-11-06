@@ -75,7 +75,7 @@ uint8_t ieeehd_tx[] = {
         0x66, 0x55, 0x44, 0x33, 0x22, 0x11, // Destination MAC
         0x10, 0x86                          // Sequence control
 };
-uint8_t llchd_tx[4] = {1,2,3,4};
+uint8_t llchd_tx[4];
 
 struct iovec iov_radiotaphd_tx = { .iov_base = radiotaphd_tx, .iov_len = sizeof(radiotaphd_tx)};
 struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(ieeehd_tx)};
