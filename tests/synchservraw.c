@@ -122,10 +122,6 @@ typedef struct {
   uint16_t feclen;
 } __attribute__((packed)) wfb_utils_fec_t;
 
-typedef struct {
-  int16_t chan;
-} __attribute__((packed)) wfb_utils_pro_t;
-
 #define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
 uint8_t radiotaphd_rx[35];
@@ -425,12 +421,12 @@ int main(int argc, char **argv) {
 	      }
 	    }
 	    if (mainraw >= 0) {
-              lentab[WFB_PRO][mainraw] = sizeof(wfb_utils_pro_t);
+              lentab[WFB_PRO][mainraw] = sizeof(int16_t);
               probuf[mainraw] = -1;
 	      if (backraw >= 0) {
                 probuf[mainraw] = rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs];
                 probuf[backraw] = -rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs]; 
-		lentab[WFB_PRO][backraw] = sizeof(wfb_utils_pro_t);
+		lentab[WFB_PRO][backraw] = sizeof(int16_t);
 	      }
 	    }
 
@@ -438,9 +434,7 @@ int main(int argc, char **argv) {
 	    printf("mainraw(%d) backraw(%d)\n",mainraw,backraw);
 
 	  }
-/*
-	  if (u.readtab[cpt] == WFB_VID) 
-*/
+
 	  if (cpt == WFB_TUN) { 
 	    memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
@@ -473,9 +467,12 @@ int main(int argc, char **argv) {
         }
       }
 
+TODO !!      if (lentab[WFB_TUN][mainraw] > 0) lentab[WFB_PRO][mainraw] = 0;
+
       uint8_t kmin=0, kmax=1;
       for (uint8_t k=kmin;k<kmax;k++) {
-        for (uint8_t d = (WFB_NB -1) ; d <= 0; d++) {
+
+        for (uint8_t d = 0; d < WFB_NB; d++) {
 
           for (uint8_t c = 0; c < (maxraw - minraw); c++) {
 
@@ -483,7 +480,9 @@ int main(int argc, char **argv) {
 
               struct iovec iovpay;
 
-              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (rawdevs[mainraw].syncelapse)))) {
+              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (lentab[WFB_TUN][c] == 0)))) {
+//              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (rawdevs[mainraw].syncelapse)))) {
+//              if (d == WFB_PRO) {
 	        iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c];
 	      }
 
@@ -493,12 +492,15 @@ int main(int argc, char **argv) {
 		if (c == mainraw)  rawdevs[mainraw].syncelapse = false;
 	      };
 
+	      printf("send(%d)\n",d);
+
               wfb_utils_heads_pay_t headspay =
                 { .chan = probuf[c], .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
               struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
               struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
               len = sendmsg(rawdevs[ c ].fd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+
               lentab[d][c] = 0;
             }
           }
