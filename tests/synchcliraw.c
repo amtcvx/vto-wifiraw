@@ -440,6 +440,7 @@ int main(int argc, char **argv) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
 
+              printf("recv chan (%d)\n",headspay.chan);
 
               uint8_t rawcpt = cpt - minraw;
               if (rawdevs[rawcpt].syncchan != headspay.chan) {
@@ -451,27 +452,26 @@ int main(int argc, char **argv) {
                   if (curchan == -1) { mainraw = rawcpt; backraw = -1; }
 		  else {
                     int16_t newchan = 0;
+		    uint8_t newraw = 0;
 
                     if (rawnb == 1) {
                       mainraw = rawcpt; backraw = -1;
                       if (curchan < 0) newchan = (-curchan);
+		      newraw = mainraw;
                     } else {
                       if (curchan > 0) { mainraw = rawcpt; newchan = curchan; }
                       if (curchan < 0) { backraw = rawcpt; newchan = (-curchan); }
+                      for (newraw=0; newraw < (maxraw - minraw); newraw++) if (newraw != rawcpt) break;
 		    }
 
 		    if (newchan > 0) {
 
-                      uint8_t newraw = 0; for (newraw=0; newraw < (maxraw - minraw); newraw++) if (newraw != rawcpt) break;
-		      if (newraw != rawcpt) {
+  		      uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
+  		      if (rawdevs[newraw].freqs[cpt] == newchan) {
 
-  		        uint8_t cpt = 0; for (cpt=0; cpt < rawdevs[newraw].nbfreqs; cpt++) if (rawdevs[newraw].freqs[cpt] == newchan) break; 
-  		        if (rawdevs[newraw].freqs[cpt] == newchan) {
-
-		          if (rawdevs[newraw].cptfreqs != cpt) {
-                            rawdevs[newraw].cptfreqs = cpt;
-                            setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
-		          }
+		        if (rawdevs[newraw].cptfreqs != cpt) {
+                          rawdevs[newraw].cptfreqs = cpt;
+                          setfreq(sockid, socknl, rawdevs[newraw].ifindex, rawdevs[newraw].freqs[cpt]);
 		        }
   	              }
 	            } 
