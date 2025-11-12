@@ -421,12 +421,12 @@ int main(int argc, char **argv) {
 	      }
 	    }
 	    if (mainraw >= 0) {
-              lentab[WFB_PRO][mainraw] = sizeof(int16_t);
+              lentab[WFB_PRO][mainraw] = 1; 
               probuf[mainraw] = -1;
 	      if (backraw >= 0) {
                 probuf[mainraw] = rawdevs[backraw].freqs[rawdevs[backraw].cptfreqs];
                 probuf[backraw] = -rawdevs[mainraw].freqs[rawdevs[mainraw].cptfreqs]; 
-		lentab[WFB_PRO][backraw] = sizeof(int16_t);
+		lentab[WFB_PRO][backraw] = 1;
 	      }
 	    }
 
@@ -467,7 +467,6 @@ int main(int argc, char **argv) {
         }
       }
 
-TODO !!      if (lentab[WFB_TUN][mainraw] > 0) lentab[WFB_PRO][mainraw] = 0;
 
       uint8_t kmin=0, kmax=1;
       for (uint8_t k=kmin;k<kmax;k++) {
@@ -480,10 +479,10 @@ TODO !!      if (lentab[WFB_TUN][mainraw] > 0) lentab[WFB_PRO][mainraw] = 0;
 
               struct iovec iovpay;
 
-              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (lentab[WFB_TUN][c] == 0)))) {
-//              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (rawdevs[mainraw].syncelapse)))) {
-//              if (d == WFB_PRO) {
-	        iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c];
+              if ((d == WFB_PRO) && ((c != mainraw) || ((c == mainraw) && (rawdevs[mainraw].syncelapse)))) {
+	        iovpay.iov_base = &probuf[c]; 
+		lentab[WFB_PRO][c] = 0;
+		iovpay.iov_len = lentab[WFB_PRO][c];
 	      }
 
 
