@@ -325,7 +325,7 @@ uint8_t buid_tun(void) {
 int main(int argc, char **argv) {
 
   if (!((argc >= 1) && (argc <= 3))) exit(-1);
-  printf("START [%d]\n",argc);
+  printf("START [%d]\n",argc);fflush (stdout);
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU], rawcur = 0;
 
@@ -433,7 +433,8 @@ int main(int argc, char **argv) {
 	    }
 
 	    printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
-	    printf("mainraw(%d) backraw(%d)\n",mainraw,backraw);
+	    printf("mainraw(%d) backraw(%d)\n\n",mainraw,backraw);
+	    fflush (stdout);
 
 	  }
 
@@ -492,7 +493,8 @@ int main(int argc, char **argv) {
 	        iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][c]; 
 	      };
 
-	      printf("[%d] send(%d) (%d)\n",c,d,probuf[c]);
+	      printf("[%d] send(%d) (%d)\n",c,d,probuf[c]);fflush (stdout);
+
 
               wfb_utils_heads_pay_t headspay =
                 { .chan = probuf[c], .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
