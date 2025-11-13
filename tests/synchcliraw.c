@@ -440,8 +440,6 @@ int main(int argc, char **argv) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
 
-              printf("recv chan (%d)\n",headspay.chan);
-
               uint8_t rawcpt = cpt - minraw;
               if (rawdevs[rawcpt].syncchan != headspay.chan) {
 
@@ -459,9 +457,11 @@ int main(int argc, char **argv) {
                       if (curchan < 0) newchan = (-curchan);
 		      newraw = mainraw;
                     } else {
-                      if (curchan > 0) { mainraw = rawcpt; newchan = curchan; }
-                      if (curchan < 0) { backraw = rawcpt; newchan = (-curchan); }
                       for (newraw=0; newraw < (maxraw - minraw); newraw++) if (newraw != rawcpt) break;
+		      if (newraw != rawcpt) {
+                        if (curchan > 0) { mainraw = rawcpt; backraw = newraw; newchan = curchan; }
+                        if (curchan < 0) { mainraw = newraw; backraw = rawcpt; newchan = (-curchan); }
+		      }
 		    }
 
 		    if (newchan > 0) {
