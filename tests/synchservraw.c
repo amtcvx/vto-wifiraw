@@ -442,7 +442,10 @@ int main(int argc, char **argv) {
 	    memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
             len = readv( fd[WFB_TUN], &iov, 1);
-	    if (mainraw >= 0) { lentab[WFB_TUN][mainraw] = len; rawdevs[mainraw].syncelapse = true; }
+	    if (mainraw >= 0) { 
+	      lentab[WFB_TUN][mainraw] = len; rawdevs[mainraw].syncelapse = true; 
+	      printf("TUN read(%ld)\n",len); fflush (stdout);
+	    }
           }
 
 	  if ((cpt >= minraw) && (cpt < maxraw)) {
@@ -465,7 +468,10 @@ int main(int argc, char **argv) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
                 rawdevs[cpt-minraw].synccum++;
 	    } else {
-              if( headspay.msgcpt == WFB_TUN) len = write(fd[WFB_TUN], iovpay.iov_base, len);
+              if( headspay.msgcpt == WFB_TUN) { 
+	        len = write(fd[WFB_TUN], iovpay.iov_base, len);
+		printf("TUN write(%ld)\n",len); fflush (stdout);
+	      }
 	    }
 	  }
         }
@@ -491,6 +497,7 @@ int main(int argc, char **argv) {
 
               if (d == WFB_TUN) { 
 	        iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][c]; 
+		printf("TUN send(%ld)\n",iovpay.iov_len); fflush (stdout);
 	      };
 
 	      printf("[%d] send(%d) (%d)\n",c,d,probuf[c]);fflush (stdout);
