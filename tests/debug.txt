@@ -1,0 +1,4 @@
+sudo ./synchcliraw $DEVICE1 $DEVICE2 | tee /tmp/cli.txt
+
+sudo ./synchservraw $DEVICE1 $DEVICE2 | tee /tmp/srv.txt
+

@@ -417,7 +417,11 @@ int main(int argc, char **argv) {
 	  if (cpt == WFB_TUN) { 
 	    memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
-            lentab[WFB_TUN][mainraw] = readv( fd[WFB_TUN], &iov, 1);
+            len = readv( fd[WFB_TUN], &iov, 1);
+	    if (mainraw >= 0) { 
+	      lentab[WFB_TUN][mainraw] = len;
+              printf("TUN read(%ld)\n",len); fflush (stdout);
+	    }
           }
 
           if ((cpt >= minraw) && (cpt < maxraw)) {
@@ -486,8 +490,11 @@ int main(int argc, char **argv) {
 
               if (headspay.msgcpt == WFB_TUN) {
 	        len = write(fd[WFB_TUN], iovpay.iov_base, len);
-	      }
+                printf("TUN write(%ld)\n",len); fflush (stdout);
 
+		// TODO missing TUN write(151)
+
+	      }
 	    }
           }
         }
@@ -502,7 +509,10 @@ int main(int argc, char **argv) {
 
               struct iovec iovpay;
 
-              if (d == WFB_TUN) { iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; };
+              if (d == WFB_TUN) { 
+	        iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; 
+                printf("TUN send(%ld)\n",iovpay.iov_len); fflush (stdout);
+	      };
 
               wfb_utils_heads_pay_t headspay =
                 { .droneid = DRONEID_GRD, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
