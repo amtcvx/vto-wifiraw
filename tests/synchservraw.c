@@ -390,17 +390,21 @@ int main(int argc, char **argv) {
 	    }
 
 	    if (mainraw < 0) {
-	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdevs[rawcpt].freefreq) { mainraw = rawcpt; printf("1 mainraw(%d)\n",mainraw); fflush (stdout); }
+	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++)
+	        if (rawdevs[rawcpt].freefreq) { mainraw = rawcpt; printf("1 mainraw(%d)\n",mainraw); fflush (stdout); }
 	    } else {
 	      if (!(rawdevs[mainraw].freefreq)) {
-                if (backraw < 0) { for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if (rawdevs[rawcpt].freefreq) { mainraw = rawcpt; printf("2 mainraw(%d)\n",mainraw); fflush (stdout); }
-		} else if (rawdevs[backraw].freefreq) { mainraw = backraw; backraw = -1; printf("3 mainraw(%d) backraw(%d)\n",mainraw,backraw); fflush (stdout); }
+                if (backraw < 0) { for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++)
+		  if (rawdevs[rawcpt].freefreq) { mainraw = rawcpt; printf("2 mainraw(%d)\n",mainraw); fflush (stdout); }
+		} else if (rawdevs[backraw].freefreq) 
+		  { mainraw = backraw; backraw = -1; printf("3 mainraw(%d) backraw(%d)\n",mainraw,backraw); fflush (stdout); }
 	      }
 	    }
 	    if (mainraw >=0) {
 	      if (backraw >= 0) { if (!(rawdevs[backraw].freefreq)) { backraw= -1; printf("4 backraw(%d)\n",backraw); fflush (stdout); }
 	      } else {
-	        for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) { backraw = rawcpt; printf("5 backraw(%d)\n",backraw); fflush (stdout); }
+	        for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) 
+		  if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) { backraw = rawcpt; printf("5 backraw(%d)\n",backraw); fflush (stdout); }
 	      }
 	    }
 
@@ -432,7 +436,8 @@ int main(int argc, char **argv) {
 	      }
 	    }
 
-	    printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
+	    printf("freqs [0](%d)  ",rawdevs[0].freqs[rawdevs[0].cptfreqs]); 
+	    if (rawnb > 1)printf("[1](%d)\n",rawdevs[1].freqs[rawdevs[1].cptfreqs]); else printf("\n");
 	    printf("mainraw(%d) backraw(%d)\n\n",mainraw,backraw);
 	    fflush (stdout);
 
