@@ -22,6 +22,7 @@ typedef struct {
 
 typedef struct {
   bool freqfree;
+  int16_t syncchan;
   int16_t chan;
   uint8_t timecpt;
   uint8_t freqnb;

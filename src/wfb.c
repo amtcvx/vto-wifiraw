@@ -11,6 +11,7 @@
 #endif // RAW
 
 typedef struct {
+  int16_t chan;
   uint8_t droneid;
   uint8_t msgcpt;
   uint16_t msglen;
@@ -30,7 +31,7 @@ int main(void) {
   uint8_t minraw = u.readnb;
 
 #if RAW
-  uint8_t probuf[MAXRAWDEV][sizeof(wfb_utils_pro_t)];
+  int16_t probuf[MAXRAWDEV];
   ssize_t lentab[WFB_NB][MAXRAWDEV];
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
@@ -83,46 +84,55 @@ int main(void) {
       	    vidcur++;
 	  }
 #endif // BOARD
-        
-          for (uint8_t cptraw = minraw; cptraw < maxraw; cptraw++) {
-            if (cpt == cptraw) {
+  
+          if ((cpt >= minraw) && (cpt < maxraw)) {
 
-              wfb_utils_heads_pay_t headspay;
-              memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
-              memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
+            wfb_utils_heads_pay_t headspay;
+            memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
+            memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
 
-              struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
-              struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
+            struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
+            struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
 #if RAW
-              struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay }; uint8_t msglen = 5;
-	      memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
+            struct iovec iovtab[5] = { iov_radiotaphd_rx, iov_ieeehd_rx, iov_llchd_rx, iovheadpay, iovpay }; uint8_t msglen = 5;
+	    memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
 #endif // RAW
-              struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
-              len = recvmsg(u.fd[u.socktab[cptraw]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
+            struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
+            len = recvmsg(u.fd[u.socktab[cpt]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
 #if RAW
-              if (!((len > 0) &&
+            if (!((len > 0) &&
 #if BOARD
-                (headspay.droneid == DRONEID_GRD)
+              (headspay.droneid == DRONEID_GRD)
 #else // BOARD
-                (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEID_MAX)
+              (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEID_MAX)
 #endif // BOARD
-                && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
-                && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
-		  n.rawdevs[cpt-minraw]->stat.fails++;
-                } else {
+              && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
+              && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
+	        n.rawdevs[cpt-minraw]->stat.fails++;
+              } else {
+/*
                 if( headspay.msgcpt == WFB_PRO) {
                   n.rawdevs[cpt-minraw]->stat.incoming++;
                   n.rawdevs[cpt-minraw]->stat.chan = ((wfb_utils_pro_t *)iovpay.iov_base)->chan;
                 }
+*/
 #endif // RAW
 #if BOARD
 #else
+#if RAW
+		if (headspay.chan != 0) {
+                  uint8_t rawcpt = cpt - minraw;
+                  if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
+                    n.rawdevs[rawcpt]->stat.syncchan = headspay.chan;
+		    wfb_utils_syncground(&u, &n, rawcpt);
+		  }
+		}
+#endif // RAW
                 if( headspay.msgcpt == WFB_VID) {
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; 
 		  wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base, &u.fec);
 	        } 
 #endif // BOARD
-              }
 	    } 
 	  }
         } 
@@ -154,7 +164,10 @@ int main(void) {
               struct iovec iovpay;
 #if BOARD
 #if RAW
-              if (d == WFB_PRO) { iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c]; };
+              if (d == WFB_PRO) {
+                lentab[WFB_PRO][c] = 0;
+                iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c];
+              }
 #endif // RAW
 #endif // BOARD
 #if BOARD
@@ -164,7 +177,7 @@ int main(void) {
 	      }
 #endif // BOARD
               wfb_utils_heads_pay_t headspay =
-                { .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
+                { .chan = probuf[c], .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
               struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
 #if RAW
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
