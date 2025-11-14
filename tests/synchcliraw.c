@@ -158,7 +158,8 @@ struct iovec iov_radiotaphd_tx = { .iov_base = radiotaphd_tx, .iov_len = sizeof(
 struct iovec iov_ieeehd_tx =     { .iov_base = ieeehd_tx,     .iov_len = sizeof(ieeehd_tx)};
 struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(llchd_tx)};
 
-/******************************************************************************/
+/******************64 bytes from 10.0.1.2: icmp_seq=38 ttl=64 time=3.16 ms
+************************************************************/
 int finish_callback(struct nl_msg *nlmsg, void *arg) {
   bool* finished = arg;
   *finished = true;
@@ -420,7 +421,6 @@ int main(int argc, char **argv) {
             len = readv( fd[WFB_TUN], &iov, 1);
 	    if (mainraw >= 0) { 
 	      lentab[WFB_TUN][mainraw] = len;
-//              printf("TUN read(%ld)\n",len); fflush (stdout);
 	    }
           }
 
@@ -445,8 +445,6 @@ int main(int argc, char **argv) {
 //                rawdevs[cpt-minraw].synccum++;
             } else {
 
-              printf("[%d] chan (%d)\n", cpt - minraw, headspay.chan); fflush (stdout);
-
               uint8_t rawcpt = cpt - minraw;
               if (rawdevs[rawcpt].syncchan != headspay.chan) {
 
@@ -454,20 +452,20 @@ int main(int argc, char **argv) {
                 int16_t curchan = rawdevs[rawcpt].syncchan;
 
 		if (curchan != 0) {
-                  if (curchan == -1) { mainraw = rawcpt; backraw = -1; printf("1 mainraw'%d) backraw(%d)\n",mainraw,backraw); fflush (stdout); }
+                  if (curchan == -1) { mainraw = rawcpt; backraw = -1; }
 		  else {
                     int16_t newchan = 0;
 		    uint8_t newraw = 0;
 
                     if (rawnb == 1) {
-                      mainraw = rawcpt; backraw = -1; printf("2 mainraw'%d) backraw(%d)\n",mainraw,backraw); fflush (stdout);
+                      mainraw = rawcpt; backraw = -1;
                       if (curchan < 0) newchan = (-curchan);
 		      newraw = mainraw;
                     } else {
                       for (newraw=0; newraw < (maxraw - minraw); newraw++) if (newraw != rawcpt) break;
 		      if (newraw != rawcpt) {
-                        if (curchan > 0) { mainraw = rawcpt; backraw = newraw; newchan = curchan; printf("3 mainraw'%d) backraw(%d)\n",mainraw,backraw); fflush (stdout); }
-                        if (curchan < 0) { mainraw = newraw; backraw = rawcpt; newchan = (-curchan); printf("4 mainraw'%d) backraw(%d)\n",mainraw,backraw); fflush (stdout); }
+                        if (curchan > 0) { mainraw = rawcpt; backraw = newraw; newchan = curchan; }
+                        if (curchan < 0) { mainraw = newraw; backraw = rawcpt; newchan = (-curchan); }
 		      }
 		    }
 
@@ -487,12 +485,10 @@ int main(int argc, char **argv) {
 	      }
 
               if (headspay.msgcpt == WFB_PRO) { 
-//		printf("recv [%d](%d)\n",cpt - minraw,probuf[cpt - minraw]); fflush (stdout);
 	      }
 
               if (headspay.msgcpt == WFB_TUN) {
 	        len = write(fd[WFB_TUN], iovpay.iov_base, len);
-                printf("TUN write(%ld)\n",len); fflush (stdout);
 	      }
 	    }
           }
@@ -510,7 +506,6 @@ int main(int argc, char **argv) {
 
               if (d == WFB_TUN) { 
 	        iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][mainraw]; 
-//                printf("TUN send(%ld)\n",iovpay.iov_len); fflush (stdout);
 	      };
 
               wfb_utils_heads_pay_t headspay =

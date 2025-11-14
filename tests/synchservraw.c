@@ -389,24 +389,18 @@ int main(int argc, char **argv) {
 	      rawdevs[rawcpt].synccum = 0;
 	    }
 
-	    if (mainraw < 0) {
-	      for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++)
-	        if (rawdevs[rawcpt].freefreq) { mainraw = rawcpt; printf("1 mainraw(%d)\n",mainraw); fflush (stdout); }
-	    } else {
-	      if (!(rawdevs[mainraw].freefreq)) {
-                if (backraw < 0) { for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++)
-		  if (rawdevs[rawcpt].freefreq) { mainraw = rawcpt; printf("2 mainraw(%d)\n",mainraw); fflush (stdout); }
-		} else if (rawdevs[backraw].freefreq) 
-		  { mainraw = backraw; backraw = -1; printf("3 mainraw(%d) backraw(%d)\n",mainraw,backraw); fflush (stdout); }
-	      }
+            if (mainraw < 0) {
+              for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++)
+                if (rawdevs[rawcpt].freefreq) mainraw = rawcpt;
+            } else {
+              if ((!(rawdevs[mainraw].freefreq)) && (backraw >= 0) && (rawdevs[backraw].freefreq))
+	        { mainraw = backraw; backraw = -1; }
 	    }
-	    if (mainraw >=0) {
-	      if (backraw >= 0) { if (!(rawdevs[backraw].freefreq)) { backraw= -1; printf("4 backraw(%d)\n",backraw); fflush (stdout); }
-	      } else {
-	        for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) 
-		  if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) { backraw = rawcpt; printf("5 backraw(%d)\n",backraw); fflush (stdout); }
-	      }
-	    }
+
+            if (backraw < 0) {
+              for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++)
+	        if ((rawdevs[rawcpt].freefreq) && (rawcpt != mainraw)) backraw = rawcpt;
+	    } else if (!(rawdevs[backraw].freefreq)) backraw = -1;
 
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
               if (((rawcpt != mainraw) && (rawcpt != backraw)) &&
@@ -449,7 +443,6 @@ int main(int argc, char **argv) {
             len = readv( fd[WFB_TUN], &iov, 1);
 	    if (mainraw >= 0) { 
 	      lentab[WFB_TUN][mainraw] = len; rawdevs[mainraw].syncelapse = true; 
-//	      printf("TUN read(%ld)\n",len); fflush (stdout);
 	    }
           }
 
@@ -472,13 +465,9 @@ int main(int argc, char **argv) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
                 rawdevs[cpt-minraw].synccum++;
-
-		printf("[%d] syncuum (%d)\n",cpt-minraw,rawdevs[cpt-minraw].synccum); fflush (stdout);
-
 	    } else {
               if( headspay.msgcpt == WFB_TUN) { 
 	        len = write(fd[WFB_TUN], iovpay.iov_base, len);
-//		printf("TUN write(%ld)\n",len); fflush (stdout);
 	      }
 	    }
 	  }
@@ -502,14 +491,9 @@ int main(int argc, char **argv) {
 		iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c];
 	      }
 
-
               if (d == WFB_TUN) { 
 	        iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][c]; 
-//		printf("TUN send(%ld)\n",iovpay.iov_len); fflush (stdout);
 	      };
-
-	      printf("[%d] send(%d) (%d)\n",c,d,probuf[c]);fflush (stdout);
-
 
               wfb_utils_heads_pay_t headspay =
                 { .chan = probuf[c], .droneid = DRONEID, .msgcpt = d, .msglen = lentab[d][c], .seq = sequence, .fec = k, .num = num++ };
