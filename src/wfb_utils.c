@@ -15,10 +15,16 @@ void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
   wfb_utils_log_t *plog = &u->log;
   for (uint8_t i=0; i < n->nbraws; i++) {
     wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
+    uint8_t dum; 
+#if BOARD
+    dum = pst->cumfails; pst->cumfails = 0;
+#else
+    dum = pst->fails; pst->fails = 0;
+#endif 
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
                           i, n->rawdevs[i]->freqs[pst->freqnb], n->rawchan.mainraw, n->rawchan.backraw,
-                          pst->cumfails, pst->sent);
-    pst->cumfails = 0;
+                          dum, pst->sent);
+    pst->sent = 0; 
   }
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
   plog->len = 0;
@@ -139,8 +145,9 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
   for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) {
     wfb_net_status_t *pst = &(p->rawdevs[rawcpt]->stat);
 
-    if (pst->fails != 0) { pst->freqfree = false; pst->timecpt = 0; pst->cumfails += pst->fails; pst->fails = 0; }
+    if (pst->fails != 0) { pst->freqfree = false; pst->timecpt = 0; pst->cumfails = pst->fails; }
     else if (pst->timecpt < FREESECS) (pst->timecpt)++; else { pst->freqfree = true; pst->timecpt = 0; }
+    pst->fails = 0;
   }
 
   if (p->rawchan.mainraw < 0) {
@@ -184,8 +191,6 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
 #else
   for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) {
     wfb_net_status_t *pst = &(p->rawdevs[rawcpt]->stat);
-
-    if (pst->fails != 0) { pst->cumfails += pst->fails; pst->fails = 0; }
 
     if (probuf[rawcpt] == 0) {
 
@@ -266,6 +271,13 @@ void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn) {
     pu->readtab[pu->readnb] = WFB_NB; pu->socktab[WFB_NB] = pu->readnb;
     pu->fd[pu->readnb] = pn->rawdevs[i]->sockfd;
     pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
+
+    memset(&(pn->rawdevs[i]->stat), 0, sizeof(wfb_net_status_t));
+
+    if (i == 1) { 
+      pn->rawdevs[1]->stat.freqnb = pn->rawdevs[1]->nbfreqs / 2;
+      wfb_net_setfreq(&pn->sockidnl, pn->rawdevs[1]->ifindex, pn->rawdevs[1]->freqs[pn->rawdevs[1]->stat.freqnb]);
+    }
   }
 }
 #endif // RAW

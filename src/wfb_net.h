@@ -26,9 +26,10 @@ typedef struct {
   int16_t syncchan;
   uint8_t timecpt;
   uint8_t freqnb;
-  uint32_t fails;
-  uint32_t cumfails;
-  uint32_t sent;
+
+  uint8_t fails;
+  uint8_t cumfails;
+  uint8_t sent;
 } wfb_net_status_t;
 
 typedef struct {
