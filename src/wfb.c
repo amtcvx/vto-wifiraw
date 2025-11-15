@@ -18,19 +18,11 @@ int main(void) {
 
   uint8_t minraw = u.readnb;
 
-  uint8_t tunbuf[ONLINE_MTU];
 #if RAW
   int16_t probuf[MAXRAWDEV];
   ssize_t lentab[WFB_NB][MAXRAWDEV];
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
-  for(uint8_t i=0;i<n.nbraws;i++) {
-#if BOARD
-    n.rawdevs[i]->stat.freqfree = false;
-#else
-    n.rawdevs[i]->stat.freqfree = true;
-#endif // BOARD
-  }
   wfb_utils_addraw(&u,&n);
 #endif // RAW
       
@@ -43,7 +35,7 @@ int main(void) {
   uint8_t rawcur=0;;
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
-
+  uint8_t tunbuf[ONLINE_MTU];
 #if BOARD
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
@@ -61,18 +53,16 @@ int main(void) {
             wfb_utils_periodic(&u,&n,lentab,probuf);
 	    mainraw = n.rawchan.mainraw; backraw = n.rawchan.backraw;
 #endif // RAW
+	  } else {
+            if ((cpt < minraw) && (mainraw >= 0)) n.rawdevs[mainraw]->stat.syncelapse = true;
 	  }
 
 	  if (u.readtab[cpt] == WFB_TUN) {
             memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
             len = readv( u.fd[u.socktab[WFB_TUN]], &iov, 1);
-            if (mainraw >= 0) {
-              lentab[WFB_TUN][mainraw] = len; 
-	      n.rawdevs[mainraw]->stat.syncelapse = true;
-            }
+            if (mainraw >= 0) lentab[WFB_TUN][mainraw] = len; 
           }
-
 #if BOARD
           if (u.readtab[cpt] == WFB_VID) {
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
@@ -82,16 +72,13 @@ int main(void) {
             lentab[WFB_VID][mainraw] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
             ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][mainraw];
       	    vidcur++;
-	    n.rawdevs[mainraw]->stat.syncelapse = true;
 	  }
 #endif // BOARD
   
           if ((cpt >= minraw) && (cpt < maxraw)) {
-
             wfb_utils_heads_pay_t headspay;
             memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
             memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
-
             struct iovec iovheadpay = { .iov_base = &headspay, .iov_len = sizeof(wfb_utils_heads_pay_t) };
             struct iovec iovpay = { .iov_base = &rawbuf[rawcur][0], .iov_len = ONLINE_MTU };
 #if RAW
@@ -112,9 +99,7 @@ int main(void) {
 	        n.rawdevs[cpt-minraw]->stat.fails++;
               } else {
 #endif // RAW
-                if( headspay.msgcpt == WFB_TUN) {
-                  len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
-                }
+	        if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
 #if BOARD
 #else
 #if RAW
@@ -156,9 +141,7 @@ int main(void) {
       for (uint8_t k=kmin;k<kmax;k++) {
         for (uint8_t d=0; d < WFB_NB; d++) {
           for (uint8_t c = 0; c < (maxraw - minraw); c++) {
-
             if (lentab[d][c] > 0) {
-
               struct iovec iovpay;
 #if BOARD
 #if RAW
