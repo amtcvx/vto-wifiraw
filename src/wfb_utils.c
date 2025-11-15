@@ -218,7 +218,7 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
 /*****************************************************************************/
 #if RAW
 #if BOARD
-#else
+#else // BOARD
 void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt) {
 
   int16_t curchan =  n->rawdevs[rawcpt]->stat.syncchan;
@@ -252,7 +252,7 @@ void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt
   }
 }
 #endif //  BOARD
-#endif //  RAW
+#endif  // RAW
 
 
 /*****************************************************************************/

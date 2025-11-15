@@ -99,10 +99,10 @@ int main(void) {
 	        n.rawdevs[cpt-minraw]->stat.fails++;
               } else {
 #endif // RAW
-	        if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
-#if BOARD
-#else
+                if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
 #if RAW
+#if BOARD
+#else // BOARD
 		if (headspay.chan != 0) {
                   uint8_t rawcpt = cpt - minraw;
                   if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
@@ -110,12 +110,12 @@ int main(void) {
 		    wfb_utils_syncground(&u, &n, rawcpt);
 		  }
 		}
-#endif // RAW
                 if( headspay.msgcpt == WFB_VID) {
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; 
 		  wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base, &u.fec);
 	        } 
 #endif // BOARD
+#endif // RAW
 	    } 
 	  }
         } 
