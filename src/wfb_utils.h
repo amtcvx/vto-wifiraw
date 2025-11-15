@@ -17,7 +17,7 @@
 
 #include "zfex.h"
 
-typedef enum { WFB_PRO, WFB_VID, WFB_NB } type_d;
+typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_NB } type_d;
      
 #define PAY_MTU 1400
 
@@ -51,18 +51,42 @@ typedef enum { WFB_PRO, WFB_VID, WFB_NB } type_d;
 #define DRONEID DRONEID_GRD
 #endif // BOARD
 
+
+#define TUN_IP_BOARD	"10.0.1.2"
+#define TUN_IP_GROUND	"10.0.1.1"
+#define TUN_MTU		1400
+#define IPBROAD		"255.255.255.0"
+
+#if BOARD
+#define TUN_NAME	"artun"
+#define TUN_IP_SRC	TUN_IP_BOARD
+#define TUN_IP_DST	TUN_IP_GROUND
+#else
+#define TUN_NAME	"grdtun"
+#define TUN_IP_SRC	TUN_IP_GROUND
+#define TUN_IP_DST	TUN_IP_BOARD
+#endif // BOARD
+
+
 #define FEC_K   8
 #define FEC_N   12
+
+typedef struct {
+  int16_t chan;
+  uint8_t droneid;
+  uint8_t msgcpt;
+  uint16_t msglen;
+  uint8_t seq;
+  uint8_t fec;
+  uint8_t num;
+  uint8_t dum;
+} __attribute__((packed)) wfb_utils_heads_pay_t;
 
 typedef struct {
   uint16_t feclen;
 } __attribute__((packed)) wfb_utils_fechd_t;
 
 #define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fechd_t)
-
-typedef struct {
-  int16_t chan;
-} __attribute__((packed)) wfb_utils_pro_t;
 
 #if BOARD
 #else

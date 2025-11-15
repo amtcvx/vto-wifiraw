@@ -11,12 +11,12 @@
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
-  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) incom(%d) fails(%d) sent(%d)\n";
+  uint8_t template[]="devraw(%d) freqnb(%d) mainraw(%d) backraw(%d) fails(%d) sent(%d)\n";
   wfb_utils_log_t *plog = &u->log;
   for (uint8_t i=0; i < n->nbraws; i++) {
     wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-                          i, pst->freqnb, n->rawchan.mainraw, n->rawchan.backraw, pst->incoming,
+                          i, pst->freqnb, n->rawchan.mainraw, n->rawchan.backraw,
                           pst->fails, pst->sent);
   }
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
@@ -170,10 +170,10 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
   if (p->rawchan.mainraw >= 0) {
     lentab[WFB_PRO][p->rawchan.mainraw] = 1;
     probuf[p->rawchan.mainraw] = -1;
-/*
-    if (!(rawdevs[mainraw].syncelapse)) lentab[WFB_PRO][mainraw] = 1; else lentab[WFB_PRO][mainraw] = 0;
-    rawdevs[mainraw].syncelapse = false;
-*/
+
+    if (!(p->rawdevs[p->rawchan.mainraw]->stat.syncelapse)) lentab[WFB_PRO][p->rawchan.mainraw] = 1; else lentab[WFB_PRO][p->rawchan.mainraw] = 0;
+    p->rawdevs[p->rawchan.mainraw]->stat.syncelapse = false;
+
 
     if (p->rawchan.backraw >= 0) {
       lentab[WFB_PRO][p->rawchan.mainraw] = 1;
@@ -269,6 +269,43 @@ void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn) {
 #endif // RAW
 
 /*****************************************************************************/
+uint8_t build_tun(void) {
+  uint8_t fd;
+  if (0 > (fd = open("/dev/net/tun",O_RDWR))) exit(-1);
+
+  struct ifreq ifr; memset(&ifr, 0, sizeof(struct ifreq));
+  strcpy(ifr.ifr_name, TUN_NAME);
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (ioctl(fd, TUNSETIFF, &ifr ) < 0 ) exit(-1);
+
+  static uint16_t fd_tun_udp;
+  if (-1 == (fd_tun_udp = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP))) exit(-1);
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+
+  addr.sin_addr.s_addr = inet_addr(TUN_IP_SRC);
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFADDR, &ifr ) < 0 ) exit(-1);
+
+  addr.sin_addr.s_addr = inet_addr(IPBROAD);
+  memcpy(&ifr.ifr_addr, &addr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFNETMASK, &ifr ) < 0 ) exit(-1);
+
+  struct sockaddr_in dstaddr;
+  dstaddr.sin_family = AF_INET;
+  dstaddr.sin_addr.s_addr = inet_addr(TUN_IP_DST);
+  memcpy(&ifr.ifr_addr, &dstaddr, sizeof(struct sockaddr));
+  if (ioctl( fd_tun_udp, SIOCSIFDSTADDR, &ifr ) < 0 ) exit(-1);
+
+  ifr.ifr_mtu = TUN_MTU;
+  if (ioctl( fd_tun_udp, SIOCSIFMTU, &ifr ) < 0 ) exit(-1);
+  ifr.ifr_flags = IFF_UP ;
+  if (ioctl( fd_tun_udp, SIOCSIFFLAGS, &ifr ) < 0 ) exit(-1);
+
+  return(fd);
+}
+
+/*****************************************************************************/
 void wfb_utils_init(wfb_utils_init_t *pu) {
 
   if (-1 == (pu->log.fd = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
@@ -280,6 +317,10 @@ void wfb_utils_init(wfb_utils_init_t *pu) {
   if (-1 == (pu->fd[pu->readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(pu->fd[pu->readnb], 0, &period, NULL);
+  pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
+
+  pu->readtab[pu->readnb] = WFB_TUN; pu->socktab[WFB_TUN] = pu->readnb;
+  if (-1 == (pu->fd[pu->readnb] = build_tun())) exit(-1);
   pu->readsets[pu->readnb].fd = pu->fd[pu->readnb]; pu->readsets[pu->readnb].events = POLLIN; pu->readnb++;
 
   pu->readtab[pu->readnb] = WFB_VID; pu->socktab[WFB_VID] = pu->readnb;
