@@ -18,7 +18,7 @@ void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
                           i, n->rawdevs[i]->freqs[pst->freqnb], n->rawchan.mainraw, n->rawchan.backraw,
                           pst->fails, pst->sent);
-    pst->sent = 0; 
+    pst->fails = 0; pst->sent = 0; 
   }
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
   plog->len = 0;
