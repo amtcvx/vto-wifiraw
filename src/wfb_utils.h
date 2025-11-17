@@ -134,11 +134,11 @@ typedef struct {
 } wfb_utils_init_t;
 
 
-void wfb_utils_init(wfb_utils_init_t *pu);
+void wfb_utils_init(wfb_utils_init_t *u);
 
 #if RAW
 void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t probuf[MAXRAWDEV]); 
-void wfb_utils_addraw(wfb_utils_init_t *pu, wfb_net_init_t *pn);
+void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n);
 #if BOARD
 #else // BOARD
 void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt);
@@ -147,7 +147,7 @@ void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt
 
 #if BOARD
 #else
-void wfb_utils_sendfec(fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base,  wfb_utils_fec_t *pu); 
+void wfb_utils_sendfec(wfb_utils_fec_t *uf, fec_t *fec_p, uint8_t hdseq,  uint8_t hdfec, void *base);
 #endif // BOARD
 
 

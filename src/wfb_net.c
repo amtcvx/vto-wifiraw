@@ -322,20 +322,20 @@ bool wfb_net_setfreq(wfb_net_sockidnl_t *psock, int ifindex, uint32_t freq) {
 }
 
 /******************************************************************************/
-bool wfb_net_init(wfb_net_init_t *p) {
+bool wfb_net_init(wfb_net_init_t *n) {
 
-  if  (!(p->sockidnl.socknl = nl_socket_alloc())) return(false);
-  nl_socket_set_buffer_size(p->sockidnl.socknl, 8192, 8192);
-  if (genl_connect(p->sockidnl.socknl)) return(false);
-  if ((p->sockidnl.sockid = genl_ctrl_resolve(p->sockidnl.socknl, "nl80211")) < 0) return(false);
+  if  (!(n->sockidnl.socknl = nl_socket_alloc())) return(false);
+  nl_socket_set_buffer_size(n->sockidnl.socknl, 8192, 8192);
+  if (genl_connect(n->sockidnl.socknl)) return(false);
+  if ((n->sockidnl.sockid = genl_ctrl_resolve(n->sockidnl.socknl, "nl80211")) < 0) return(false);
 
   static wfb_net_device_t wfb_net_all80211[MAXRAWDEV];
   elt_t elt; memset(&elt, 0, sizeof(elt_t)); elt.devs = wfb_net_all80211;
 
   uint8_t nb;
-  if ((nb = setwifi(&elt, &p->sockidnl)) > 0) {
-    if ((nb = setraw(&elt, p->rawdevs)) > 0) {
-      p->nbraws = nb; p->rawchan.mainraw = -1; p->rawchan.backraw = -1;
+  if ((nb = setwifi(&elt, &n->sockidnl)) > 0) {
+    if ((nb = setraw(&elt, n->rawdevs)) > 0) {
+      n->nbraws = nb; n->rawchan.mainraw = -1; n->rawchan.backraw = -1;
       return(true); 
     }
   }

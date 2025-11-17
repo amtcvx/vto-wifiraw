@@ -111,7 +111,7 @@ int main(void) {
 
                 if( headspay.msgcpt == WFB_VID) {
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; 
-		  wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base, &u.fec);
+		  wfb_utils_sendfec(&u.fec, u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base);
 	        } 
 #endif // BOARD
 #endif // RAW
