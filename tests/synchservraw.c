@@ -385,7 +385,8 @@ int main(int argc, char **argv) {
 	    for (uint8_t rawcpt = 0; rawcpt < rawnb; rawcpt++) {
 
 	      if (rawdevs[rawcpt].synccum != 0) { rawdevs[rawcpt].freefreq = false; rawdevs[rawcpt].syncfree = 0; }
-	      else if (rawdevs[rawcpt].syncfree < FREESECS) rawdevs[rawcpt].syncfree++; else { rawdevs[rawcpt].freefreq = true; rawdevs[rawcpt].syncfree = 0; }
+	      else if (rawdevs[rawcpt].syncfree < FREESECS) rawdevs[rawcpt].syncfree++; 
+	        else { rawdevs[rawcpt].freefreq = true; rawdevs[rawcpt].syncfree = 0; }
 	      rawdevs[rawcpt].synccum = 0;
 	    }
 

@@ -15,15 +15,9 @@ void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
   wfb_utils_log_t *plog = &u->log;
   for (uint8_t i=0; i < n->nbraws; i++) {
     wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
-    uint8_t dum; 
-#if BOARD
-    dum = pst->cumfails; pst->cumfails = 0;
-#else
-    dum = pst->fails; pst->fails = 0;
-#endif 
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
                           i, n->rawdevs[i]->freqs[pst->freqnb], n->rawchan.mainraw, n->rawchan.backraw,
-                          dum, pst->sent);
+                          pst->fails, pst->sent);
     pst->sent = 0; 
   }
   sendto(plog->fd, plog->txt, plog->len, 0,  (const struct sockaddr *)&plog->addr, sizeof(struct sockaddr));
@@ -144,31 +138,36 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
 #if BOARD
   for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) {
     wfb_net_status_t *pst = &(p->rawdevs[rawcpt]->stat);
-
-    if (pst->fails != 0) { pst->freqfree = false; pst->timecpt = 0; pst->cumfails = pst->fails; }
-    else if (pst->timecpt < FREESECS) (pst->timecpt)++; else { pst->freqfree = true; pst->timecpt = 0; }
-    pst->fails = 0;
+    if (pst->synccum != 0) { pst->syncfree = false; pst->synccpt = 0; pst->fails = pst->synccum; pst->synccum = 0; }
+    else if (pst->synccpt < FREESECS) (pst->synccpt)++; 
+      else { pst->syncfree = true; pst->synccpt = 0; }
   }
 
   if (p->rawchan.mainraw < 0) {
-    for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) if (p->rawdevs[rawcpt]->stat.freqfree) p->rawchan.mainraw = rawcpt;
+    for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) 
+      if (p->rawdevs[rawcpt]->stat.syncfree) p->rawchan.mainraw = rawcpt;
   } else {
-    if ((!(p->rawdevs[p->rawchan.mainraw]->stat.freqfree)) && (p->rawchan.backraw >=0 ) && (p->rawdevs[p->rawchan.backraw]->stat.freqfree))
+    if ((!(p->rawdevs[p->rawchan.mainraw]->stat.syncfree)) && (p->rawchan.backraw >=0 ) && (p->rawdevs[p->rawchan.backraw]->stat.syncfree))
       { p->rawchan.mainraw = p->rawchan.backraw; p->rawchan.backraw = -1; }
   }
 
   if (p->rawchan.backraw < 0) {
-    for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) if ((p->rawdevs[rawcpt]->stat.freqfree) && (p->rawchan.mainraw != rawcpt)) p->rawchan.backraw = rawcpt;
-  } else if (!(p->rawdevs[p->rawchan.backraw]->stat.freqfree)) p->rawchan.backraw = -1;
+    for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) 
+      if ((p->rawdevs[rawcpt]->stat.syncfree) && (p->rawchan.mainraw != rawcpt)) p->rawchan.backraw = rawcpt;
+  } else if (!(p->rawdevs[p->rawchan.backraw]->stat.syncfree)) p->rawchan.backraw = -1;
 
   for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) {
-    if ((rawcpt != p->rawchan.mainraw) && (rawcpt != p->rawchan.backraw) && (!(p->rawdevs[rawcpt]->stat.freqfree)) && (p->rawdevs[rawcpt]->stat.timecpt ==0)) {
+    if ((rawcpt != p->rawchan.mainraw) && (rawcpt != p->rawchan.backraw) &&
+      (!(p->rawdevs[rawcpt]->stat.syncfree) && (p->rawdevs[rawcpt]->stat.synccpt ==0))) {
 
-      if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; else p->rawdevs[rawcpt]->stat.freqnb = 0;
+      if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; 
+      else p->rawdevs[rawcpt]->stat.freqnb = 0;
+
       for (uint8_t i=0; i < p->nbraws; i++) { 
         if ((i != rawcpt) &&  (p->rawdevs[i]->freqs[ p->rawdevs[i]->stat.freqnb] == p->rawdevs[rawcpt]->freqs[ p->rawdevs[rawcpt]->stat.freqnb])) {
-          if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; else p->rawdevs[rawcpt]->stat.freqnb = 0;
-	}
+          if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; 
+	  else p->rawdevs[rawcpt]->stat.freqnb = 0;
+        }
       }
       wfb_net_setfreq(&p->sockidnl, p->rawdevs[rawcpt]->ifindex, p->rawdevs[rawcpt]->freqs[p->rawdevs[rawcpt]->stat.freqnb]);
     }
@@ -181,9 +180,8 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
     if (!(p->rawdevs[p->rawchan.mainraw]->stat.syncelapse)) lentab[WFB_PRO][p->rawchan.mainraw] = 1; else lentab[WFB_PRO][p->rawchan.mainraw] = 0;
     p->rawdevs[p->rawchan.mainraw]->stat.syncelapse = false;
 
-
     if (p->rawchan.backraw >= 0) {
-      lentab[WFB_PRO][p->rawchan.mainraw] = 1;
+      lentab[WFB_PRO][p->rawchan.backraw] = 1;
       probuf[p->rawchan.mainraw] = p->rawdevs[p->rawchan.backraw]->stat.freqnb;
       probuf[p->rawchan.backraw] = -(p->rawdevs[p->rawchan.mainraw]->stat.freqnb);
     }
@@ -192,17 +190,22 @@ void setmainbackup(wfb_net_init_t *p, ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t
   for (uint8_t rawcpt=0; rawcpt < p->nbraws; rawcpt++) {
     wfb_net_status_t *pst = &(p->rawdevs[rawcpt]->stat);
 
+    if (pst->synccum != 0) { pst->fails = pst->synccum; pst->synccum = 0; }
+
     if (probuf[rawcpt] == 0) {
 
-      if (pst->timecpt < SYNCSECS) (pst->timecpt)++;
+      if (pst->synccpt < SYNCSECS) (pst->synccpt)++;
       else {
-        pst->timecpt = 0;
+        pst->synccpt = 0;
 	if ((rawcpt != p->rawchan.mainraw) && (rawcpt != p->rawchan.backraw)) {
 
-          if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; else p->rawdevs[rawcpt]->stat.freqnb = 0;
+          if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; 
+	  else p->rawdevs[rawcpt]->stat.freqnb = 0;
+
 	  for (uint8_t i=0; i < p->nbraws; i++) {
-            if ((i != rawcpt) &&  (p->rawdevs[i]->freqs[ p->rawdevs[i]->stat.freqnb] == p->rawdevs[rawcpt]->freqs[ p->rawdevs[rawcpt]->stat.freqnb])) {
-              if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; else p->rawdevs[rawcpt]->stat.freqnb = 0;
+            if ((i != rawcpt) && (p->rawdevs[i]->freqs[ p->rawdevs[i]->stat.freqnb] == p->rawdevs[rawcpt]->freqs[ p->rawdevs[rawcpt]->stat.freqnb])) {
+              if (p->rawdevs[rawcpt]->stat.freqnb < (p->rawdevs[rawcpt]->nbfreqs - 1)) (p->rawdevs[rawcpt]->stat.freqnb)++; 
+	      else p->rawdevs[rawcpt]->stat.freqnb = 0;
             }
 	  }
           wfb_net_setfreq(&p->sockidnl, p->rawdevs[rawcpt]->ifindex, p->rawdevs[rawcpt]->freqs[p->rawdevs[rawcpt]->stat.freqnb]);
@@ -245,7 +248,7 @@ void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt
       if (n->rawdevs[newraw]->freqs[cpt] == newchan) {
         if (n->rawdevs[newraw]->stat.freqnb != cpt) {
           n->rawdevs[newraw]->stat.freqnb = cpt;
-          wfb_net_setfreq(&n->sockidnl, n->rawdevs[newraw]->ifindex, n->rawdevs[newraw]->freqs[n->rawdevs[newraw]->stat.freqnb]);
+          wfb_net_setfreq(&n->sockidnl, n->rawdevs[newraw]->ifindex, n->rawdevs[newraw]->freqs[cpt]);
 	}
       }
     }

@@ -185,9 +185,13 @@ void unblock_rfkill(elt_t *elt) {
 }
 
 /******************************************************************************/
-uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *sockrt, elt_t *elt) {
+uint8_t setwifi(elt_t *elt, wfb_net_sockidnl_t *n) {
 
   bool msg_received = false;
+
+  struct nl_sock *sockrt;
+  if (!(sockrt = nl_socket_alloc())) return(false);
+  if (nl_connect(sockrt, NETLINK_ROUTE)) return(false);
 
   struct nl_cb *cb1 = nl_cb_alloc(NL_CB_DEFAULT);
   if (!cb1) return(0);
@@ -196,10 +200,10 @@ uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *sockrt, 
 
   struct nl_msg *msg1 = nlmsg_alloc();
   if (!msg1) return(0);
-  genlmsg_put(msg1, NL_AUTO_PORT, NL_AUTO_SEQ, sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
-  nl_send_auto(socknl, msg1);
+  genlmsg_put(msg1, NL_AUTO_PORT, NL_AUTO_SEQ, n->sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
+  nl_send_auto(n->socknl, msg1);
   msg_received = false;
-  while (!msg_received) nl_recvmsgs(socknl, cb1);
+  while (!msg_received) nl_recvmsgs(n->socknl, cb1);
   nlmsg_free(msg1);
 
   if (elt->nb == 0) return(0);
@@ -207,21 +211,21 @@ uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *sockrt, 
   for(uint8_t i=0;i<elt->nb;i++) {
     struct nl_msg *msg3 = nlmsg_alloc();
     if (!msg3) return(0);
-    genlmsg_put(msg3,0,0,sockid,0,0,NL80211_CMD_SET_INTERFACE,0);  //  DOWN interfaces
+    genlmsg_put(msg3,0,0,n->sockid,0,0,NL80211_CMD_SET_INTERFACE,0);  //  DOWN interfaces
     nla_put_u32(msg3, NL80211_ATTR_IFINDEX, elt->devs[i].ifindex);
     nla_put_u32(msg3, NL80211_ATTR_IFTYPE,NL80211_IFTYPE_MONITOR);
-    nl_send_auto(socknl, msg3);
-    if (nl_send_auto(socknl, msg3) >= 0)  nl_recvmsgs_default(socknl);
+    nl_send_auto(n->socknl, msg3);
+    if (nl_send_auto(n->socknl, msg3) >= 0)  nl_recvmsgs_default(n->socknl);
     nlmsg_free(msg3);
   }
 
   elt->nb = 0;
   struct nl_msg *msg4 = nlmsg_alloc();
   if (!msg4) return(0);
-  genlmsg_put(msg4, NL_AUTO_PORT, NL_AUTO_SEQ, sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
-  nl_send_auto(socknl, msg4);
+  genlmsg_put(msg4, NL_AUTO_PORT, NL_AUTO_SEQ, n->sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_INTERFACE, 0);
+  nl_send_auto(n->socknl, msg4);
   msg_received = false;
-  while (!msg_received) nl_recvmsgs(socknl, cb1);
+  while (!msg_received) nl_recvmsgs(n->socknl, cb1);
   nlmsg_free(msg4);
 
   unblock_rfkill(elt);
@@ -246,11 +250,11 @@ uint8_t setwifi(uint8_t sockid, struct nl_sock *socknl, struct nl_sock *sockrt, 
     elt->curr = i;
     struct nl_msg *msg2 = nlmsg_alloc();
     if (!msg2) return(0);
-    genlmsg_put(msg2, NL_AUTO_PORT, NL_AUTO_SEQ, sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
+    genlmsg_put(msg2, NL_AUTO_PORT, NL_AUTO_SEQ, n->sockid, 0, NLM_F_DUMP, NL80211_CMD_GET_WIPHY, 0);
     nla_put_u32(msg2, NL80211_ATTR_IFINDEX, elt->devs[i].ifindex);
-    nl_send_auto(socknl, msg2);
+    nl_send_auto(n->socknl, msg2);
     msg_received = false;
-    while (!msg_received) nl_recvmsgs(socknl, cb1);
+    while (!msg_received) nl_recvmsgs(n->socknl, cb1);
     nlmsg_free(msg2);
   }
 
@@ -325,15 +329,11 @@ bool wfb_net_init(wfb_net_init_t *p) {
   if (genl_connect(p->sockidnl.socknl)) return(false);
   if ((p->sockidnl.sockid = genl_ctrl_resolve(p->sockidnl.socknl, "nl80211")) < 0) return(false);
 
-  struct nl_sock *sockrt;
-  if (!(sockrt = nl_socket_alloc())) return(false);
-  if (nl_connect(sockrt, NETLINK_ROUTE)) return(false);
-
   static wfb_net_device_t wfb_net_all80211[MAXRAWDEV];
   elt_t elt; memset(&elt, 0, sizeof(elt_t)); elt.devs = wfb_net_all80211;
 
   uint8_t nb;
-  if ((nb = setwifi(p->sockidnl.sockid, p->sockidnl.socknl, sockrt, &elt)) > 0) {
+  if ((nb = setwifi(&elt, &p->sockidnl)) > 0) {
     if ((nb = setraw(&elt, p->rawdevs)) > 0) {
       p->nbraws = nb; p->rawchan.mainraw = -1; p->rawchan.backraw = -1;
       return(true); 

@@ -96,20 +96,19 @@ int main(void) {
 #endif // BOARD
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
-	        n.rawdevs[cpt-minraw]->stat.fails++;
+	        (n.rawdevs[cpt-minraw]->stat.synccum)++;
               } else {
 #endif // RAW
                 if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
 #if RAW
 #if BOARD
 #else // BOARD
-		if (headspay.chan != 0) {
-                  uint8_t rawcpt = cpt - minraw;
-                  if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
-                    n.rawdevs[rawcpt]->stat.syncchan = headspay.chan;
-		    wfb_utils_syncground(&u, &n, rawcpt);
-		  }
+                uint8_t rawcpt = cpt - minraw;
+                if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
+                  n.rawdevs[rawcpt]->stat.syncchan = headspay.chan;
+		  if (headspay.chan != 0) wfb_utils_syncground(&u, &n, rawcpt);
 		}
+
                 if( headspay.msgcpt == WFB_VID) {
                   if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; 
 		  wfb_utils_sendfec(u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base, &u.fec);

@@ -21,15 +21,14 @@ typedef struct {
 } wfb_net_rawchan_t;
 
 typedef struct {
-  bool    freqfree;
-  bool    syncelapse; 
+  bool    syncelapse;
+  bool    syncfree;
+  uint8_t synccum;
+  uint8_t synccpt;
   int16_t syncchan;
-  uint8_t timecpt;
-  uint8_t freqnb;
-
   uint8_t fails;
-  uint8_t cumfails;
   uint8_t sent;
+  uint8_t freqnb;
 } wfb_net_status_t;
 
 typedef struct {
