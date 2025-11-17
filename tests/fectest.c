@@ -1,7 +1,7 @@
 /*
 gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DBOARD=0 -c fectest.c -o fectest.o
 
-gcc fectest.o ../obj/zfex.o -g -o fectest
+gcc fectest.o ../obj/zfex.o -g -o exe_fectest
 
 sudo ./fectest
 

@@ -2,7 +2,7 @@
 
 gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DCONFIG_LIBNL30 -I/usr/include/libnl3 -c scanraw.c -o scanraw.o
 
-cc scanraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o scanraw
+cc scanraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o exe_scanraw
 
 sudo rfkill unblock ...
 
