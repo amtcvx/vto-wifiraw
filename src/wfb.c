@@ -95,6 +95,10 @@ int main(void) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
 	        (n.rawdevs[cpt-minraw]->stat.synccum)++;
+
+		printf("[%d](%d) synccum(%d)\n",cpt-minraw, n.rawdevs[cpt-minraw]->freqs[n.rawdevs[cpt-minraw]->stat.freqnb], 
+				                n.rawdevs[cpt-minraw]->stat.synccum);
+
               } else {
 #endif // RAW
                 if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
