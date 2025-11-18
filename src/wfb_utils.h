@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <linux/if_tun.h>
 
+#include <unistd.h>
 
 #include "zfex.h"
 
