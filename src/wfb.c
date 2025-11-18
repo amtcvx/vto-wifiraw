@@ -27,7 +27,6 @@ int main(void) {
 #endif // RAW
       
   uint8_t maxraw = u.readnb; 
-  int8_t mainraw = 0, backraw = -1; 
   uint8_t sequence=0;
   uint8_t num=0;
   uint64_t exptime;
@@ -51,17 +50,16 @@ int main(void) {
 	    len = read(u.fd[u.socktab[WFB_PRO]], &exptime, sizeof(uint64_t)); 
 #if RAW
             wfb_utils_periodic(&u,&n,lentab,probuf);
-	    mainraw = n.rawchan.mainraw; backraw = n.rawchan.backraw;
 #endif // RAW
 	  } else {
-            if ((cpt < minraw) && (mainraw >= 0)) n.rawdevs[mainraw]->stat.syncelapse = true;
+            if ((cpt < minraw) && (n.rc.mainraw >= 0)) n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
 	  }
 
 	  if (u.readtab[cpt] == WFB_TUN) {
             memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
             len = readv( u.fd[u.socktab[WFB_TUN]], &iov, 1);
-            if (mainraw >= 0) lentab[WFB_TUN][mainraw] = len; 
+            if (n.rc.mainraw >= 0) lentab[WFB_TUN][n.rc.mainraw] = len; 
           }
 #if BOARD
           if (u.readtab[cpt] == WFB_VID) {
@@ -69,8 +67,8 @@ int main(void) {
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fechd_t)];
             iov.iov_len = PAY_MTU;
-            lentab[WFB_VID][mainraw] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
-            ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][mainraw];
+            lentab[WFB_VID][n.rc.mainraw] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
+            ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][n.rc.mainraw];
       	    vidcur++;
 	  }
 #endif // BOARD
@@ -122,7 +120,7 @@ int main(void) {
 
       uint8_t kmin = 0, kmax = 1;
 #if BOARD
-      if (lentab[WFB_VID][mainraw] > 0) {
+      if (lentab[WFB_VID][n.rc.mainraw] > 0) {
         kmin=(vidcur-1);
         if (vidcur == FEC_K) {
           vidcur=0; kmax=FEC_N;
@@ -155,8 +153,8 @@ int main(void) {
               };
 #if BOARD
               if (d == WFB_VID) {
-                if (k<FEC_K) lentab[WFB_VID][mainraw]=((wfb_utils_fechd_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID][mainraw]=ONLINE_MTU;
-                iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID][mainraw];
+                if (k<FEC_K) lentab[WFB_VID][n.rc.mainraw]=((wfb_utils_fechd_t *)&vidbuf[k][0])->feclen; else lentab[WFB_VID][n.rc.mainraw]=ONLINE_MTU;
+                iovpay.iov_base = &vidbuf[k][0]; iovpay.iov_len = lentab[WFB_VID][n.rc.mainraw];
 	      }
 #endif // BOARD
               wfb_utils_heads_pay_t headspay =

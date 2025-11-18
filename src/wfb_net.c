@@ -335,7 +335,7 @@ bool wfb_net_init(wfb_net_init_t *n) {
   uint8_t nb;
   if ((nb = setwifi(&elt, &n->sockidnl)) > 0) {
     if ((nb = setraw(&elt, n->rawdevs)) > 0) {
-      n->nbraws = nb; n->rawchan.mainraw = -1; n->rawchan.backraw = -1;
+      n->nbraws = nb; n->rc.mainraw = -1; n->rc.backraw = -1;
       return(true); 
     }
   }

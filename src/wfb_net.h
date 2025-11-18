@@ -50,7 +50,7 @@ typedef struct {
 
 typedef struct {
   uint8_t nbraws;
-  wfb_net_rawchan_t rawchan;
+  wfb_net_rawchan_t rc;
   wfb_net_sockidnl_t sockidnl;
   wfb_net_device_t *rawdevs[MAXRAWDEV];
 } wfb_net_init_t;

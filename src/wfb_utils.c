@@ -16,7 +16,7 @@ void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
   for (uint8_t i=0; i < n->nbraws; i++) {
     wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
     plog->len += sprintf((char *)plog->txt + plog->len, (char *)template,
-                          i, n->rawdevs[i]->freqs[pst->freqnb], n->rawchan.mainraw, n->rawchan.backraw,
+                          i, n->rawdevs[i]->freqs[pst->freqnb], n->rc.mainraw, n->rc.backraw,
                           pst->fails, pst->sent);
     pst->fails = 0; pst->sent = 0; 
   }
@@ -150,21 +150,21 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
       rawcpt, n->rawdevs[rawcpt]->ifindex, pst->synccum, pst->synccpt, pst->syncfree, true);
   }
 
-  if (n->rawchan.mainraw < 0) {
+  if (n->rc.mainraw < 0) {
     for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) 
-      if (n->rawdevs[rawcpt]->stat.syncfree) n->rawchan.mainraw = rawcpt;
+      if (n->rawdevs[rawcpt]->stat.syncfree) n->rc.mainraw = rawcpt;
   } else {
-    if ((!(n->rawdevs[n->rawchan.mainraw]->stat.syncfree)) && (n->rawchan.backraw >=0 ) && (n->rawdevs[n->rawchan.backraw]->stat.syncfree))
-      { n->rawchan.mainraw = n->rawchan.backraw; n->rawchan.backraw = -1; }
+    if ((!(n->rawdevs[n->rc.mainraw]->stat.syncfree)) && (n->rc.backraw >=0 ) && (n->rawdevs[n->rc.backraw]->stat.syncfree))
+      { n->rc.mainraw = n->rc.backraw; n->rc.backraw = -1; }
   }
 
-  if (n->rawchan.backraw < 0) {
+  if (n->rc.backraw < 0) {
     for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) 
-      if ((n->rawdevs[rawcpt]->stat.syncfree) && (n->rawchan.mainraw != rawcpt)) n->rawchan.backraw = rawcpt;
-  } else if (!(n->rawdevs[n->rawchan.backraw]->stat.syncfree)) n->rawchan.backraw = -1;
+      if ((n->rawdevs[rawcpt]->stat.syncfree) && (n->rc.mainraw != rawcpt)) n->rc.backraw = rawcpt;
+  } else if (!(n->rawdevs[n->rc.backraw]->stat.syncfree)) n->rc.backraw = -1;
 
   for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) {
-    if ((rawcpt != n->rawchan.mainraw) && (rawcpt != n->rawchan.backraw) &&
+    if ((rawcpt != n->rc.mainraw) && (rawcpt != n->rc.backraw) &&
       (!(n->rawdevs[rawcpt]->stat.syncfree) && (n->rawdevs[rawcpt]->stat.synccpt ==0))) {
 
       if (n->rawdevs[rawcpt]->stat.freqnb < (n->rawdevs[rawcpt]->nbfreqs - 1)) (n->rawdevs[rawcpt]->stat.freqnb)++; 
@@ -183,17 +183,17 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
     }
   }
 
-  if (n->rawchan.mainraw >= 0) {
-    lentab[WFB_PRO][n->rawchan.mainraw] = 1;
-    probuf[n->rawchan.mainraw] = -1;
+  if (n->rc.mainraw >= 0) {
+    lentab[WFB_PRO][n->rc.mainraw] = 1;
+    probuf[n->rc.mainraw] = -1;
 
-    if (!(n->rawdevs[n->rawchan.mainraw]->stat.syncelapse)) lentab[WFB_PRO][n->rawchan.mainraw] = 1; else lentab[WFB_PRO][n->rawchan.mainraw] = 0;
-    n->rawdevs[n->rawchan.mainraw]->stat.syncelapse = false;
+    if (!(n->rawdevs[n->rc.mainraw]->stat.syncelapse)) lentab[WFB_PRO][n->rc.mainraw] = 1; else lentab[WFB_PRO][n->rc.mainraw] = 0;
+    n->rawdevs[n->rc.mainraw]->stat.syncelapse = false;
 
-    if (n->rawchan.backraw >= 0) {
-      lentab[WFB_PRO][n->rawchan.backraw] = 1;
-      probuf[n->rawchan.mainraw] = n->rawdevs[n->rawchan.backraw]->stat.freqnb;
-      probuf[n->rawchan.backraw] = -(n->rawdevs[n->rawchan.mainraw]->stat.freqnb);
+    if (n->rc.backraw >= 0) {
+      lentab[WFB_PRO][n->rc.backraw] = 1;
+      probuf[n->rc.mainraw] = n->rawdevs[n->rc.backraw]->stat.freqnb;
+      probuf[n->rc.backraw] = -(n->rawdevs[n->rc.mainraw]->stat.freqnb);
     }
   }
 #else
@@ -207,7 +207,7 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
       if (pst->synccpt < SYNCSECS) (pst->synccpt)++;
       else {
         pst->synccpt = 0;
-	if ((rawcpt != n->rawchan.mainraw) && (rawcpt != n->rawchan.backraw)) {
+	if ((rawcpt != n->rc.mainraw) && (rawcpt != n->rc.backraw)) {
 
           if (n->rawdevs[rawcpt]->stat.freqnb < (n->rawdevs[rawcpt]->nbfreqs - 1)) (n->rawdevs[rawcpt]->stat.freqnb)++; 
 	  else n->rawdevs[rawcpt]->stat.freqnb = 0;
@@ -239,20 +239,20 @@ void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt
 
   int16_t curchan =  n->rawdevs[rawcpt]->stat.syncchan;
 
-  if (curchan == -1) { n->rawchan.mainraw = rawcpt; n->rawchan.backraw = -1; }
+  if (curchan == -1) { n->rc.mainraw = rawcpt; n->rc.backraw = -1; }
   else {
     int16_t newchan = 0;
     uint8_t newraw = 0;
 
     if (n->nbraws == 1) {
-      n->rawchan.mainraw = rawcpt; n->rawchan.backraw = -1;
+      n->rc.mainraw = rawcpt; n->rc.backraw = -1;
       if (curchan < 0) newchan = (-curchan);
-      newraw = n->rawchan.mainraw;
+      newraw = n->rc.mainraw;
     } else {
       for (newraw=0; newraw < n->nbraws; newraw++) if (newraw != rawcpt) break;
       if (newraw != rawcpt) {
-        if (curchan > 0) { n->rawchan.mainraw = rawcpt; n->rawchan.backraw = newraw; newchan = curchan; }
-        if (curchan < 0) { n->rawchan.mainraw = newraw; n->rawchan.backraw = rawcpt; newchan = (-curchan); }
+        if (curchan > 0) { n->rc.mainraw = rawcpt; n->rc.backraw = newraw; newchan = curchan; }
+        if (curchan < 0) { n->rc.mainraw = newraw; n->rc.backraw = rawcpt; newchan = (-curchan); }
       }
     }
 
@@ -293,8 +293,11 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n) {
     u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
     memset(&(n->rawdevs[rawcpt]->stat), 0, sizeof(wfb_net_status_t));
+#if BOARD
+    n->rawdevs[rawcpt]->stat.syncfree = false;
+#else
     n->rawdevs[rawcpt]->stat.syncfree = true;
-
+#endif
     n->rawdevs[rawcpt]->stat.freqnb = (n->nbraws - rawcpt - 1) * (n->rawdevs[rawcpt]->nbfreqs / n->nbraws);
     wfb_net_setfreq(&n->sockidnl, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
 
