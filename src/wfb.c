@@ -38,14 +38,15 @@ int main(void) {
   uint8_t vidcur=0;;
 #endif // BOARD
 
+
   for(;;) {
     if (0 != poll(u.readsets, u.readnb, -1)) {
 
       for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
         if (u.readsets[cpt].revents == POLLIN) {
 
-          if (u.readtab[cpt] == WFB_PRO )  { 
-	    len = read(u.fd[u.socktab[WFB_PRO]], &exptime, sizeof(uint64_t)); 
+          if ( cpt == WFB_PRO )  { 
+	    len = read(u.fd[WFB_PRO], &exptime, sizeof(uint64_t)); 
 #if RAW
             wfb_utils_periodic(&u,&n,lentab,probuf);
 #endif // RAW
@@ -53,19 +54,19 @@ int main(void) {
             if ((cpt < minraw) && (n.rc.mainraw >= 0)) n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
 	  }
 
-	  if (u.readtab[cpt] == WFB_TUN) {
+	  if (cpt == WFB_TUN) {
             memset(&tunbuf[0],0,ONLINE_MTU);
             struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
-            len = readv( u.fd[u.socktab[WFB_TUN]], &iov, 1);
+            len = readv( u.fd[WFB_TUN], &iov, 1);
             if (n.rc.mainraw >= 0) lentab[WFB_TUN][n.rc.mainraw] = len; 
           }
 #if BOARD
-          if (u.readtab[cpt] == WFB_VID) {
+          if (cpt == WFB_VID) {
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fechd_t)];
             iov.iov_len = PAY_MTU;
-            lentab[WFB_VID][n.rc.mainraw] = readv( u.fd[u.socktab[WFB_VID]], &iov, 1) + sizeof(wfb_utils_fechd_t);
+            lentab[WFB_VID][n.rc.mainraw] = readv( u.fd[WFB_VID], &iov, 1) + sizeof(wfb_utils_fechd_t);
             ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][n.rc.mainraw];
       	    vidcur++;
 	  }
@@ -82,7 +83,7 @@ int main(void) {
 	    memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
 #endif // RAW
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
-            len = recvmsg(u.fd[u.socktab[cpt]], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
+            len = recvmsg(u.fd[cpt], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
 #if RAW
             if (!((len > 0) &&
 #if BOARD
@@ -93,13 +94,9 @@ int main(void) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
 	        (n.rawdevs[cpt-minraw]->stat.synccum)++;
-
-		printf("[%d](%d) synccum(%d)\n",cpt-minraw, n.rawdevs[cpt-minraw]->freqs[n.rawdevs[cpt-minraw]->stat.freqnb], 
-				                n.rawdevs[cpt-minraw]->stat.synccum);
-
               } else {
 #endif // RAW
-                if( headspay.msgcpt == WFB_TUN) len = write(u.fd[u.socktab[WFB_TUN]], iovpay.iov_base, len);
+                if( headspay.msgcpt == WFB_TUN) len = write(u.fd[WFB_TUN], iovpay.iov_base, len);
 #if RAW
 #if BOARD
 #else // BOARD

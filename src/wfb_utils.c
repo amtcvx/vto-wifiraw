@@ -138,17 +138,10 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
 #if BOARD
   for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) {
     wfb_net_status_t *pst = &(n->rawdevs[rawcpt]->stat);
-
-    u->log.len += sprintf((char *)u->log.txt + u->log.len,  "IN raw[%d] index[%d] setmainbackup [%d][%d][%d]  [%d]\n",
-      rawcpt, n->rawdevs[rawcpt]->ifindex, pst->synccum, pst->synccpt, pst->syncfree, true);
-
     if (pst->synccum != 0) { pst->syncfree = false; pst->synccpt = 0; pst->fails = pst->synccum; }
     else if (pst->synccpt < FREESECS) (pst->synccpt)++; 
       else { pst->syncfree = true; pst->synccpt = 0; }
     pst->synccum = 0;
-
-    u->log.len += sprintf((char *)u->log.txt + u->log.len,  "OUT raw[%d] index[%d] setmainbackup [%d][%d][%d]  [%d]\n",
-      rawcpt, n->rawdevs[rawcpt]->ifindex, pst->synccum, pst->synccpt, pst->syncfree, true);
   }
 
   if (n->rc.mainraw < 0) {
@@ -178,9 +171,6 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
         }
       }
       wfb_net_setfreq(&n->sockidnl, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
-
-      u->log.len += sprintf((char *)u->log.txt + u->log.len,  "B raw[%d] index[%d] setfreq [%d][%d]\n",
-        rawcpt, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->stat.freqnb, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
     }
   }
 
@@ -220,9 +210,6 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
             }
 	  }
           wfb_net_setfreq(&n->sockidnl, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
-
-	  u->log.len += sprintf((char *)u->log.txt + u->log.len,  "B raw[%d] index[%d] setfreq [%d][%d]\n",
-	    rawcpt, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->stat.freqnb, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
 	}
       }
     }
@@ -262,9 +249,6 @@ void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt
         if (n->rawdevs[newraw]->stat.freqnb != cpt) {
           n->rawdevs[newraw]->stat.freqnb = cpt;
           wfb_net_setfreq(&n->sockidnl, n->rawdevs[newraw]->ifindex, n->rawdevs[newraw]->freqs[cpt]);
-
-	  u->log.len += sprintf((char *)u->log.txt + u->log.len,  "C raw[%d] index[%d] setfreq [%d][%d]\n",
-	    newraw, n->rawdevs[newraw]->ifindex, n->rawdevs[newraw]->stat.freqnb, n->rawdevs[newraw]->freqs[n->rawdevs[newraw]->stat.freqnb]);
 	}
       }
     }
@@ -353,17 +337,17 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   u->log.addr.sin_addr.s_addr = inet_addr(IP_LOCAL);
   u->log.len = 0;
 
-  u->readtab[u->readnb] = WFB_PRO; u->socktab[WFB_PRO] = u->readnb;
+  u->readtab[u->readnb] = WFB_PRO; //u->socktab[WFB_PRO] = u->readnb;
   if (-1 == (u->fd[u->readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
   timerfd_settime(u->fd[u->readnb], 0, &period, NULL);
   u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
-  u->readtab[u->readnb] = WFB_TUN; u->socktab[WFB_TUN] = u->readnb;
+  u->readtab[u->readnb] = WFB_TUN; //u->socktab[WFB_TUN] = u->readnb;
   if (-1 == (u->fd[u->readnb] = build_tun())) exit(-1);
   u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
-  u->readtab[u->readnb] = WFB_VID; u->socktab[WFB_VID] = u->readnb;
+  u->readtab[u->readnb] = WFB_VID; //u->socktab[WFB_VID] = u->readnb;
   if (-1 == (u->fd[u->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
   if (-1 == setsockopt(u->fd[u->readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
