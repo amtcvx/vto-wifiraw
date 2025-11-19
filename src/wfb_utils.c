@@ -142,9 +142,10 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
     u->log.len += sprintf((char *)u->log.txt + u->log.len,  "IN raw[%d] index[%d] setmainbackup [%d][%d][%d]  [%d]\n",
       rawcpt, n->rawdevs[rawcpt]->ifindex, pst->synccum, pst->synccpt, pst->syncfree, true);
 
-    if (pst->synccum != 0) { pst->syncfree = false; pst->synccpt = 0; pst->fails = pst->synccum; pst->synccum = 0; }
+    if (pst->synccum != 0) { pst->syncfree = false; pst->synccpt = 0; pst->fails = pst->synccum; }
     else if (pst->synccpt < FREESECS) (pst->synccpt)++; 
       else { pst->syncfree = true; pst->synccpt = 0; }
+    pst->synccum = 0;
 
     u->log.len += sprintf((char *)u->log.txt + u->log.len,  "OUT raw[%d] index[%d] setmainbackup [%d][%d][%d]  [%d]\n",
       rawcpt, n->rawdevs[rawcpt]->ifindex, pst->synccum, pst->synccpt, pst->syncfree, true);
@@ -164,7 +165,7 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
   } else if (!(n->rawdevs[n->rc.backraw]->stat.syncfree)) n->rc.backraw = -1;
 
   for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) {
-    if ((rawcpt != n->rc.mainraw) && (rawcpt != n->rc.backraw) &&
+    if (((rawcpt != n->rc.mainraw) && (rawcpt != n->rc.backraw)) &&
       (!(n->rawdevs[rawcpt]->stat.syncfree) && (n->rawdevs[rawcpt]->stat.synccpt ==0))) {
 
       if (n->rawdevs[rawcpt]->stat.freqnb < (n->rawdevs[rawcpt]->nbfreqs - 1)) (n->rawdevs[rawcpt]->stat.freqnb)++; 

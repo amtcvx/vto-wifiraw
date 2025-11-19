@@ -466,6 +466,10 @@ int main(int argc, char **argv) {
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
                 rawdevs[cpt-minraw].synccum++;
+
+		printf("[%d](%d) synccum(%d)\n",cpt-minraw, rawdevs[cpt-minraw].freqs[rawdevs[cpt-minraw].cptfreqs],
+                                                rawdevs[cpt-minraw].synccum); fflush (stdout);
+
 	    } else {
               if( headspay.msgcpt == WFB_TUN) { 
 	        len = write(fd[WFB_TUN], iovpay.iov_base, len);
