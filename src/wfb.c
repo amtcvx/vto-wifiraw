@@ -15,9 +15,7 @@ int main(void) {
 
   wfb_utils_init_t u;
   wfb_utils_init(&u);
-
   uint8_t minraw = u.readnb;
-
 #if RAW
   int16_t probuf[MAXRAWDEV];
   ssize_t lentab[WFB_NB][MAXRAWDEV];
@@ -25,8 +23,8 @@ int main(void) {
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
   wfb_utils_addraw(&u,&n);
 #endif // RAW
-      
   uint8_t maxraw = u.readnb; 
+
   uint8_t sequence=0;
   uint8_t num=0;
   uint64_t exptime;

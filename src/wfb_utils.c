@@ -227,7 +227,6 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
       }
     }
   }
-
 #endif // BOARD
 }
 #endif  // RAW
@@ -289,7 +288,6 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
   for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) {
 
-    u->readtab[u->readnb] = WFB_NB; u->socktab[WFB_NB] = u->readnb;
     u->fd[u->readnb] = n->rawdevs[rawcpt]->sockfd;
     u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
@@ -304,6 +302,7 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
     u->log.len += sprintf((char *)u->log.txt + u->log.len,  "A raw[%d] index[%d] setfreq [%d][%d]\n",
       rawcpt, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->stat.freqnb, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
+
   }
 }
 #endif // RAW
@@ -352,6 +351,7 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   u->log.addr.sin_family = AF_INET;
   u->log.addr.sin_port = htons(PORT_LOG);
   u->log.addr.sin_addr.s_addr = inet_addr(IP_LOCAL);
+  u->log.len = 0;
 
   u->readtab[u->readnb] = WFB_PRO; u->socktab[WFB_PRO] = u->readnb;
   if (-1 == (u->fd[u->readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
@@ -372,13 +372,13 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   vidinaddr.sin_port = htons(PORT_VID);
   vidinaddr.sin_addr.s_addr =inet_addr(IP_LOCAL);
   if (-1 == bind( u->fd[u->readnb], (const struct sockaddr *)&vidinaddr, sizeof( vidinaddr))) exit(-1);
-  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 #else
   u->fec.fdvid = u->fd[u->readnb];
   u->fec.vidoutaddr.sin_family = AF_INET;
   u->fec.vidoutaddr.sin_port = htons(PORT_VID);
   u->fec.vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
+  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
   fec_new(FEC_K, FEC_N, &u->fec_p);
 #if BOARD
