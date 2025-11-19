@@ -9,8 +9,8 @@ sudo rfkill unblock ...
 export DEVICE1=wlx3c7c3fa9bfb6
 export DEVICE2=wlxfc349725a317
 
-sudo ./synchcliraw $DEVICE1
-sudo ./synchcliraw $DEVICE1 $DEVICE2
+sudo ./exe_synchcliraw $DEVICE1
+sudo ./exe_synchcliraw $DEVICE1 $DEVICE2
 */
 
 #include<unistd.h>

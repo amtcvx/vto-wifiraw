@@ -6,9 +6,9 @@ cc sendnoizeraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o exe_sendnoizeraw
 sudo rfkill unblock ...
 
 export DEVICE=wlx3c7c3fa9c1e4
-sudo ./sendnoizeraw $DEVICE 2412
-sudo ./sendnoizeraw $DEVICE 2427
-sudo ./sendnoizeraw $DEVICE 5090
+sudo ./exe_sendnoizeraw $DEVICE 2412
+sudo ./exe_sendnoizeraw $DEVICE 2427
+sudo ./exe_sendnoizeraw $DEVICE 5090
 
 */
 #include<unistd.h>

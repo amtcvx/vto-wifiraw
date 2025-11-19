@@ -7,8 +7,8 @@ cc scanraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o exe_scanraw
 sudo rfkill unblock ...
 
 export DEVICE=wlx3c7c3fa9c1e4
-sudo ./scanraw $DEVICE
-sudo ./scanraw $DEVICE 2442
+sudo ./exe_scanraw $DEVICE
+sudo ./exe_scanraw $DEVICE 2442
 
 export DEVICE=wlx3c7c3fa9c1e4
 sudo ip link set $DEVICE down

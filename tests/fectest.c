@@ -3,7 +3,7 @@ gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEO
 
 gcc fectest.o ../obj/zfex.o -g -o exe_fectest
 
-sudo ./fectest
+sudo ./exe_fectest
 
 gst-launch-1.0 videotestsrc ! video/x-raw,framerate=20/1 ! videoconvert ! x265enc ! rtph265pay config-interval=1 ! udpsink host=127.0.0.1 port=5600
 
