@@ -102,9 +102,6 @@ int main(void) {
 #else // BOARD
                 uint8_t rawcpt = cpt - minraw;
                 if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
-
-                  printf("stat.syncchan(%d) headspay.chan(%d)\n",n.rawdevs[rawcpt]->stat.syncchan, headspay.chan);
-
                   n.rawdevs[rawcpt]->stat.syncchan = headspay.chan;
 		  if (headspay.chan != 0) wfb_utils_syncground(&u, &n, rawcpt);
 		}
