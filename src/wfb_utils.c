@@ -183,8 +183,8 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
 
     if (n->rc.backraw >= 0) {
       lentab[WFB_PRO][n->rc.backraw] = 1;
-      probuf[n->rc.mainraw] = n->rawdevs[n->rc.backraw]->stat.freqnb;
-      probuf[n->rc.backraw] = -(n->rawdevs[n->rc.mainraw]->stat.freqnb);
+      probuf[n->rc.mainraw] = n->rawdevs[n->rc.backraw]->freqs[ n->rawdevs[n->rc.backraw]->stat.freqnb ];
+      probuf[n->rc.backraw] = -(n->rawdevs[n->rc.mainraw]->freqs[ n->rawdevs[n->rc.mainraw]->stat.freqnb ]);
     }
   }
 #else
@@ -224,7 +224,7 @@ void setmainbackup(wfb_utils_init_t *u, wfb_net_init_t *n, ssize_t lentab[WFB_NB
 #else // BOARD
 void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt) {
 
-  int16_t curchan =  n->rawdevs[rawcpt]->stat.syncchan;
+  int16_t curchan = n->rawdevs[rawcpt]->stat.syncchan;
 
   if (curchan == -1) { n->rc.mainraw = rawcpt; n->rc.backraw = -1; }
   else {

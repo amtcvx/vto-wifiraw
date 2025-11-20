@@ -102,6 +102,9 @@ int main(void) {
 #else // BOARD
                 uint8_t rawcpt = cpt - minraw;
                 if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
+
+                  printf("stat.syncchan(%d) headspay.chan(%d)\n",n.rawdevs[rawcpt]->stat.syncchan, headspay.chan);
+
                   n.rawdevs[rawcpt]->stat.syncchan = headspay.chan;
 		  if (headspay.chan != 0) wfb_utils_syncground(&u, &n, rawcpt);
 		}
@@ -142,8 +145,8 @@ int main(void) {
 #if BOARD
 #if RAW
               if (d == WFB_PRO) {
-                lentab[WFB_PRO][c] = 0;
-                iovpay.iov_base = &probuf[c]; iovpay.iov_len = lentab[WFB_PRO][c];
+                lentab[WFB_PRO][c] = 0; iovpay.iov_len = 0;
+                //iovpay.iov_base = &probuf[c]; 
               }
 #endif // RAW
 #endif // BOARD
