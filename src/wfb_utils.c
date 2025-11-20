@@ -11,7 +11,7 @@
 /*****************************************************************************/
 void printlog(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
-  uint8_t template[]="devraw(%d) freq(%ld) mainraw(%d) backraw(%d) fails(%d) sent(%d)\n\n";
+  uint8_t template[]="devraw(%d) freq(%ld) mainraw(%d) backraw(%d) fails(%d) sent(%d)\n";
   wfb_utils_log_t *plog = &u->log;
   for (uint8_t i=0; i < n->nbraws; i++) {
     wfb_net_status_t *pst = &(n->rawdevs[i]->stat);
@@ -283,10 +283,6 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n) {
 #endif
     n->rawdevs[rawcpt]->stat.freqnb = (n->nbraws - rawcpt - 1) * (n->rawdevs[rawcpt]->nbfreqs / n->nbraws);
     wfb_net_setfreq(&n->sockidnl, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
-
-    u->log.len += sprintf((char *)u->log.txt + u->log.len,  "A raw[%d] index[%d] setfreq [%d][%d]\n",
-      rawcpt, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->stat.freqnb, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
-
   }
 }
 #endif // RAW
