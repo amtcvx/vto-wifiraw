@@ -358,10 +358,6 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   timerfd_settime(u->fd[u->readnb], 0, &period, NULL);
   u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
-  u->readtab[u->readnb] = WFB_TUN;
-  if (-1 == (u->fd[u->readnb] = build_tun())) exit(-1);
-  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
-
   u->readtab[u->readnb] = WFB_VID;
   if (-1 == (u->fd[u->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
@@ -377,6 +373,10 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   u->fec.vidoutaddr.sin_port = htons(PORT_VID);
   u->fec.vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
+  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+
+  u->readtab[u->readnb] = WFB_TUN;
+  if (-1 == (u->fd[u->readnb] = build_tun())) exit(-1);
   u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
 #if TELEM
