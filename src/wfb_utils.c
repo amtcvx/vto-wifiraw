@@ -380,9 +380,6 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
 #if TELEM
-  u->teloutaddr.sin_family = AF_INET;
-  u->teloutaddr.sin_port = htons(PORT_TEL_DOWN);
-  u->teloutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #if BOARD
   if (-1 == (u->fd[u->readnb] = build_uart())) exit(-1);
 #else
@@ -393,6 +390,9 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   telinaddr.sin_port = htons(PORT_TEL_UP);
   telinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
   if (-1 == bind( u->fd[u->readnb], (const struct sockaddr *)&telinaddr, sizeof(telinaddr))) exit(-1);
+  u->teloutaddr.sin_family = AF_INET;
+  u->teloutaddr.sin_port = htons(PORT_TEL_DOWN);
+  u->teloutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
   u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 #endif // TELEM

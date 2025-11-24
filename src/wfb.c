@@ -106,10 +106,15 @@ int main(void) {
               } else {
 #endif // RAW
                 if (headspay.msgcpt == WFB_TUN) len = write(u.fd[WFB_TUN], iovpay.iov_base, len);
-#if TELEM
-                if (headspay.msgcpt == WFB_TEL) len = sendto(u.fd[WFB_TEL], iovpay.iov_base, len, MSG_DONTWAIT,  (struct sockaddr *)&(u.teloutaddr), sizeof(struct sockaddr));
 
+#if TELEM
+#if BOARD
+                if (headspay.msgcpt == WFB_TEL) len = write(u.fd[WFB_TEL], iovpay.iov_base, len);
+#else // BOARD
+                if (headspay.msgcpt == WFB_TEL) len = sendto(u.fd[WFB_TEL], iovpay.iov_base, len, MSG_DONTWAIT,  (struct sockaddr *)&(u.teloutaddr), sizeof(struct sockaddr));
+#endif // BOARD
 #endif // TELEM
+
 #if RAW
 #if BOARD
 #else // BOARD

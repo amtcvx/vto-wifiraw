@@ -135,12 +135,12 @@ typedef struct {
   struct sockaddr_in norawoutaddr;
   wfb_utils_log_t log;
   fec_t *fec_p;
-#if TELEM
-  struct sockaddr_in teloutaddr;
-#endif // TELEM
 #if BOARD
 #else
   wfb_utils_fec_t fec;
+#if TELEM
+  struct sockaddr_in teloutaddr;
+#endif // TELEM
 #endif // BOARD
 } wfb_utils_init_t;
 
