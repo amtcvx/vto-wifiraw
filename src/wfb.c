@@ -40,8 +40,6 @@ int main(void) {
   uint8_t vidcur=0;;
 #endif // BOARD
 
-  printf("[%d]\n",u.readnb);
-
   for(;;) {
     if (0 != poll(u.readsets, u.readnb, -1)) {
       for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
