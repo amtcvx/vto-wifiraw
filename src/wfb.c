@@ -48,8 +48,6 @@ int main(void) {
         if (u.readsets[cpt].revents == POLLIN) {
           uint8_t cptid =  u.readtab[cpt];
 
-                printf("(%d)\n",cptid);
-
 	  if ( cptid == WFB_PRO ) {
 
 	    len = read(u.readsets[cpt].fd, &exptime, sizeof(uint64_t)); 
