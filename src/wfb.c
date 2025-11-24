@@ -15,7 +15,6 @@ int main(void) {
 
   wfb_utils_init_t u;
   wfb_utils_init(&u);
-  uint8_t minraw = u.readnb;
 #if RAW
   int16_t probuf[MAXRAWDEV];
   ssize_t lentab[WFB_NB][MAXRAWDEV];
@@ -23,7 +22,6 @@ int main(void) {
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
   wfb_utils_addraw(&u,&n);
 #endif // RAW
-  uint8_t maxraw = u.readnb; 
 
   uint8_t sequence=0;
   uint8_t num=0;
@@ -42,12 +40,15 @@ int main(void) {
   uint8_t vidcur=0;;
 #endif // BOARD
 
+  printf("[%d]\n",u.readnb);
 
   for(;;) {
     if (0 != poll(u.readsets, u.readnb, -1)) {
       for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
         if (u.readsets[cpt].revents == POLLIN) {
           uint8_t cptid =  u.readtab[cpt];
+
+                printf("(%d)\n",cptid);
 
 	  if ( cptid == WFB_PRO ) {
 
@@ -56,11 +57,7 @@ int main(void) {
             wfb_utils_periodic(&u,&n,lentab,probuf);
 #endif // RAW
 	  } else {
-            if ((n.rc.mainraw >= 0) && (( cptid == WFB_VID ) || ( cptid == WFB_TUN ) 
-#if TELEM
-	      || ( cptid == WFB_TEL )
-#endif // TELEM
-	      )) n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
+            if ((n.rc.mainraw >= 0) && ( cptid < WFB_NB ))  n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
 	  }
 
 	  if (( cptid == WFB_TUN )
@@ -85,12 +82,8 @@ int main(void) {
       	    vidcur++;
 	  }
 #endif // BOARD
- 
-          if (( cptid != WFB_VID ) && ( cptid != WFB_TUN )                  
-#if TELEM     
-              && ( cptid != WFB_TEL )
-#endif // TELEM 
-             ) {
+
+          if ( cptid >= WFB_NB ) { 
             wfb_utils_heads_pay_t headspay;
             memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
             memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
@@ -111,7 +104,7 @@ int main(void) {
 #endif // BOARD
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
-	        (n.rawdevs[cpt-minraw]->stat.synccum)++;
+	        (n.rawdevs[cptid - WFB_NB]->stat.synccum)++;
               } else {
 #endif // RAW
                 if (headspay.msgcpt == WFB_TUN) len = write(u.fd[WFB_TUN], iovpay.iov_base, len);
@@ -127,7 +120,7 @@ int main(void) {
 #if RAW
 #if BOARD
 #else // BOARD
-                uint8_t rawcpt = cpt - minraw;
+                uint8_t rawcpt = cptid - WFB_NB;
                 if (n.rawdevs[rawcpt]->stat.syncchan != headspay.chan) {
                   n.rawdevs[rawcpt]->stat.syncchan = headspay.chan;
 		  if (headspay.chan != 0) wfb_utils_syncground(&u, &n, rawcpt);
@@ -163,7 +156,7 @@ int main(void) {
 #endif // BOARD
       for (uint8_t k=kmin;k<kmax;k++) {
         for (uint8_t d=0; d < WFB_NB; d++) {
-          for (uint8_t c = 0; c < (maxraw - minraw); c++) {
+          for (uint8_t c = 0; c < n.nbraws ; c++) {
             if (lentab[d][c] > 0) {
               struct iovec iovpay;
 #if BOARD
@@ -193,7 +186,7 @@ int main(void) {
               struct iovec iovtab[5] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovheadpay, iovpay }; uint8_t msglen = 5;
 	      struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
 #endif // RAW
-              len = sendmsg(u.fd[ c + minraw ], (const struct msghdr *)&msg, MSG_DONTWAIT);
+              len = sendmsg(u.fd[ c + WFB_NB ], (const struct msghdr *)&msg, MSG_DONTWAIT);
 #if RAW
 	      n.rawdevs[c]->stat.sent++;
 #endif // RAW

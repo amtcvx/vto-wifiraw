@@ -272,8 +272,9 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n) {
 
   for (uint8_t rawcpt=0; rawcpt < n->nbraws; rawcpt++) {
 
-    u->fd[u->readnb] = n->rawdevs[rawcpt]->sockfd;
-    u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+    u->fd[rawcpt + WFB_NB] = n->rawdevs[rawcpt]->sockfd;
+    u->readtab[u->readnb] = rawcpt + WFB_NB ;
+    u->readsets[u->readnb].fd = u->fd[rawcpt + WFB_NB]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
     memset(&(n->rawdevs[rawcpt]->stat), 0, sizeof(wfb_net_status_t));
 #if BOARD
