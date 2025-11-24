@@ -352,49 +352,50 @@ void wfb_utils_init(wfb_utils_init_t *u) {
   u->log.addr.sin_addr.s_addr = inet_addr(IP_LOCAL);
   u->log.len = 0;
 
-  u->readtab[u->readnb] = WFB_PRO;
-  if (-1 == (u->fd[u->readnb] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
+  if (-1 == (u->fd[WFB_PRO] = timerfd_create(CLOCK_MONOTONIC, 0))) exit(-1);
   struct itimerspec period = { { PERIOD_DELAY_S, 0 }, { PERIOD_DELAY_S, 0 } };
-  timerfd_settime(u->fd[u->readnb], 0, &period, NULL);
-  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+  timerfd_settime(u->fd[WFB_PRO], 0, &period, NULL);
+  u->readtab[u->readnb] = WFB_PRO;
+  u->readsets[u->readnb].fd = u->fd[WFB_PRO]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
-  u->readtab[u->readnb] = WFB_VID;
-  if (-1 == (u->fd[u->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == (u->fd[WFB_VID] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
 #if BOARD
-  if (-1 == setsockopt(u->fd[u->readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  if (-1 == setsockopt(u->fd[WFB_VID], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in  vidinaddr;
   vidinaddr.sin_family = AF_INET;
   vidinaddr.sin_port = htons(PORT_VID);
   vidinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  if (-1 == bind( u->fd[u->readnb], (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
+  if (-1 == bind( u->fd[WFB_VID], (const struct sockaddr *)&vidinaddr, sizeof(vidinaddr))) exit(-1);
 #else
-  u->fec.fdvid = u->fd[u->readnb];
+  u->fec.fdvid = u->fd[WFB_VID];
   u->fec.vidoutaddr.sin_family = AF_INET;
   u->fec.vidoutaddr.sin_port = htons(PORT_VID);
   u->fec.vidoutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
-  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+  u->readtab[u->readnb] = WFB_VID;
+  u->readsets[u->readnb].fd = u->fd[WFB_VID]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
+  if (-1 == (u->fd[WFB_TUN] = build_tun())) exit(-1);
   u->readtab[u->readnb] = WFB_TUN;
-  if (-1 == (u->fd[u->readnb] = build_tun())) exit(-1);
-  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+  u->readsets[u->readnb].fd = u->fd[WFB_TUN]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 
 #if TELEM
 #if BOARD
-  if (-1 == (u->fd[u->readnb] = build_uart())) exit(-1);
+  if (-1 == (u->fd[WFB_TEL] = build_uart())) exit(-1);
 #else
-  if (-1 == (u->fd[u->readnb] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
-  if (-1 == setsockopt(u->fd[u->readnb], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  if (-1 == (u->fd[WFB_TEL] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == setsockopt(u->fd[WFB_TEL], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
   struct sockaddr_in  telinaddr;
   telinaddr.sin_family = AF_INET;
   telinaddr.sin_port = htons(PORT_TEL_UP);
   telinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
-  if (-1 == bind( u->fd[u->readnb], (const struct sockaddr *)&telinaddr, sizeof(telinaddr))) exit(-1);
+  if (-1 == bind( u->fd[WFB_TEL], (const struct sockaddr *)&telinaddr, sizeof(telinaddr))) exit(-1);
   u->teloutaddr.sin_family = AF_INET;
   u->teloutaddr.sin_port = htons(PORT_TEL_DOWN);
   u->teloutaddr.sin_addr.s_addr = inet_addr(IP_LOCAL);
 #endif // BOARD
-  u->readsets[u->readnb].fd = u->fd[u->readnb]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+  u->readtab[u->readnb] = WFB_TEL;
+  u->readsets[u->readnb].fd = u->fd[WFB_TEL]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
 #endif // TELEM
 
   fec_new(FEC_K, FEC_N, &u->fec_p);

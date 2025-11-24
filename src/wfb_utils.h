@@ -131,6 +131,7 @@ typedef struct {
   struct pollfd readsets[MAXDEV];
   uint8_t fd[MAXDEV];
   uint8_t readtab[MAXDEV];
+  uint8_t socktab[MAXDEV];
   uint8_t readnb;
   struct sockaddr_in norawoutaddr;
   wfb_utils_log_t log;

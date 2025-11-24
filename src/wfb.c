@@ -45,43 +45,52 @@ int main(void) {
 
   for(;;) {
     if (0 != poll(u.readsets, u.readnb, -1)) {
-
       for (uint8_t cpt=0; cpt<u.readnb; cpt++) {
         if (u.readsets[cpt].revents == POLLIN) {
+          uint8_t cptid =  u.readtab[cpt];
 
-          if ( cpt == WFB_PRO )  { 
-	    len = read(u.fd[WFB_PRO], &exptime, sizeof(uint64_t)); 
+	  if ( cptid == WFB_PRO ) {
+
+	    len = read(u.readsets[cpt].fd, &exptime, sizeof(uint64_t)); 
 #if RAW
             wfb_utils_periodic(&u,&n,lentab,probuf);
 #endif // RAW
 	  } else {
-            if ((cpt < minraw) && (n.rc.mainraw >= 0)) n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
+            if ((n.rc.mainraw >= 0) && (( cptid == WFB_VID ) || ( cptid == WFB_TUN ) 
+#if TELEM
+	      || ( cptid == WFB_TEL )
+#endif // TELEM
+	      )) n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
 	  }
 
-	  if ((cpt == WFB_TUN)
+	  if (( cptid == WFB_TUN )
 #if TELEM
-	    || (cpt == WFB_TEL)
+	    || ( cptid == WFB_TEL)
 #endif // TELEM
-	  ) {
-            memset(&buf[cpt-WFB_TUN][0],0,ONLINE_MTU);
-            struct iovec iov; iov.iov_base = &buf[cpt-WFB_TUN][0]; iov.iov_len = ONLINE_MTU;
-            len = readv( u.fd[cpt], &iov, 1);
-            if (n.rc.mainraw >= 0) lentab[cpt][n.rc.mainraw] = len; 
+	    ) {
+            memset(&buf[cptid-WFB_TUN][0],0,ONLINE_MTU);
+            struct iovec iov; iov.iov_base = &buf[cptid-WFB_TUN][0]; iov.iov_len = ONLINE_MTU;
+            len = readv( u.readsets[cpt].fd, &iov, 1);
+            if (n.rc.mainraw >= 0) lentab[cptid][n.rc.mainraw] = len; 
           }
 
 #if BOARD
-          if (cpt == WFB_VID) {
+          if (cptid == WFB_VID) {
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
     	    struct iovec iov;
             iov.iov_base = &vidbuf[vidcur][sizeof(wfb_utils_fechd_t)];
             iov.iov_len = PAY_MTU;
-            lentab[WFB_VID][n.rc.mainraw] = readv( u.fd[WFB_VID], &iov, 1) + sizeof(wfb_utils_fechd_t);
+            lentab[WFB_VID][n.rc.mainraw] = readv( u.readsets[cpt].fd, &iov, 1) + sizeof(wfb_utils_fechd_t);
             ((wfb_utils_fechd_t *)&vidbuf[vidcur][0])->feclen = lentab[WFB_VID][n.rc.mainraw];
       	    vidcur++;
 	  }
 #endif // BOARD
-  
-          if ((cpt >= minraw) && (cpt < maxraw)) {
+ 
+          if (( cptid != WFB_VID ) && ( cptid != WFB_TUN )                  
+#if TELEM     
+              && ( cptid != WFB_TEL )
+#endif // TELEM 
+             ) {
             wfb_utils_heads_pay_t headspay;
             memset(&headspay,0,sizeof(wfb_utils_heads_pay_t));
             memset(&rawbuf[rawcur][0],0,ONLINE_MTU);
@@ -92,7 +101,7 @@ int main(void) {
 	    memset(iov_llchd_rx.iov_base, 0, sizeof(iov_llchd_rx));
 #endif // RAW
             struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = msglen };
-            len = recvmsg(u.fd[cpt], &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
+            len = recvmsg(u.readsets[cpt].fd, &msg, MSG_DONTWAIT) - sizeof(wfb_utils_heads_pay_t);
 #if RAW
             if (!((len > 0) &&
 #if BOARD
@@ -106,12 +115,12 @@ int main(void) {
               } else {
 #endif // RAW
                 if (headspay.msgcpt == WFB_TUN) len = write(u.fd[WFB_TUN], iovpay.iov_base, len);
-
 #if TELEM
+		if (headspay.msgcpt == WFB_TEL)
 #if BOARD
-                if (headspay.msgcpt == WFB_TEL) len = write(u.fd[WFB_TEL], iovpay.iov_base, len);
+                  len = write(u.fd[WFB_TEL], iovpay.iov_base, len);
 #else // BOARD
-                if (headspay.msgcpt == WFB_TEL) len = sendto(u.fd[WFB_TEL], iovpay.iov_base, len, MSG_DONTWAIT,  (struct sockaddr *)&(u.teloutaddr), sizeof(struct sockaddr));
+                  len = sendto(u.fd[WFB_TEL], iovpay.iov_base, len, MSG_DONTWAIT,  (struct sockaddr *)&(u.teloutaddr), sizeof(struct sockaddr));
 #endif // BOARD
 #endif // TELEM
 
