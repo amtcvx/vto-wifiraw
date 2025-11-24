@@ -32,7 +32,11 @@ int main(void) {
   uint8_t rawcur=0;;
 
   uint8_t rawbuf[MAXNBRAWBUF][ONLINE_MTU];
-  uint8_t tunbuf[ONLINE_MTU];
+#if TELEM
+  uint8_t buf[2][ONLINE_MTU];
+#else
+  uint8_t buf[1][ONLINE_MTU];
+#endif // TELEM
 #if BOARD
   uint8_t vidbuf[FEC_N][ONLINE_MTU];
   uint8_t vidcur=0;;
@@ -54,12 +58,17 @@ int main(void) {
             if ((cpt < minraw) && (n.rc.mainraw >= 0)) n.rawdevs[n.rc.mainraw]->stat.syncelapse = true;
 	  }
 
-	  if (cpt == WFB_TUN) {
-            memset(&tunbuf[0],0,ONLINE_MTU);
-            struct iovec iov; iov.iov_base = &tunbuf[0]; iov.iov_len = ONLINE_MTU;
-            len = readv( u.fd[WFB_TUN], &iov, 1);
-            if (n.rc.mainraw >= 0) lentab[WFB_TUN][n.rc.mainraw] = len; 
+	  if ((cpt == WFB_TUN)
+#if TELEM
+	    || (cpt == WFB_TEL)
+#endif // TELEM
+	  ) {
+            memset(&buf[cpt-WFB_TUN][0],0,ONLINE_MTU);
+            struct iovec iov; iov.iov_base = &buf[cpt-WFB_TUN][0]; iov.iov_len = ONLINE_MTU;
+            len = readv( u.fd[cpt], &iov, 1);
+            if (n.rc.mainraw >= 0) lentab[cpt][n.rc.mainraw] = len; 
           }
+
 #if BOARD
           if (cpt == WFB_VID) {
             memset(&vidbuf[vidcur][0],0,ONLINE_MTU);
@@ -96,7 +105,11 @@ int main(void) {
 	        (n.rawdevs[cpt-minraw]->stat.synccum)++;
               } else {
 #endif // RAW
-                if( headspay.msgcpt == WFB_TUN) len = write(u.fd[WFB_TUN], iovpay.iov_base, len);
+                if (headspay.msgcpt == WFB_TUN) len = write(u.fd[WFB_TUN], iovpay.iov_base, len);
+#if TELEM
+                if (headspay.msgcpt == WFB_TEL) len = sendto(u.fd[WFB_TEL], iovpay.iov_base, len, MSG_DONTWAIT,  (struct sockaddr *)&(u.teloutaddr), sizeof(struct sockaddr));
+
+#endif // TELEM
 #if RAW
 #if BOARD
 #else // BOARD
@@ -143,12 +156,15 @@ int main(void) {
 #if RAW
               if (d == WFB_PRO) {
                 lentab[WFB_PRO][c] = 0; iovpay.iov_len = 0;
-                //iovpay.iov_base = &probuf[c]; 
               }
 #endif // RAW
 #endif // BOARD
-              if (d == WFB_TUN) {
-                iovpay.iov_base = &tunbuf; iovpay.iov_len = lentab[WFB_TUN][c];
+              if ((d == WFB_TUN) 
+#if TELEM
+                || (d == WFB_TEL)
+#endif // TELEM
+              ) {
+                iovpay.iov_base = &buf[d-WFB_TUN][0]; iovpay.iov_len = lentab[d][c];
               };
 #if BOARD
               if (d == WFB_VID) {

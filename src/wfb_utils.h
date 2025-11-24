@@ -18,7 +18,11 @@
 
 #include "zfex.h"
 
-typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_NB } type_d;
+#if TELEM
+typedef enum { WFB_PRO, WFB_VID, WFB_TUN, WFB_TEL, WFB_NB } type_d;
+#else
+typedef enum { WFB_PRO, WFB_VID, WFB_TUN, WFB_NB } type_d;
+#endif // TELEM
      
 #define PAY_MTU 1400
 
@@ -39,6 +43,11 @@ typedef enum { WFB_PRO, WFB_TUN, WFB_VID, WFB_NB } type_d;
 #define PORT_NORAW   3000
 #define PORT_VID     5600
 #define PORT_LOG     5000
+
+#if TELEM
+#define PORT_TEL_UP   4245
+#define PORT_TEL_DOWN 4244
+#endif // TELEM
 
 #define PAY_MTU 1400
 
@@ -122,14 +131,15 @@ typedef struct {
   struct pollfd readsets[MAXDEV];
   uint8_t fd[MAXDEV];
   uint8_t readtab[MAXDEV];
-//  uint8_t socktab[MAXDEV];
   uint8_t readnb;
   struct sockaddr_in norawoutaddr;
   wfb_utils_log_t log;
   fec_t *fec_p;
+#if TELEM
+  struct sockaddr_in teloutaddr;
+#endif // TELEM
 #if BOARD
 #else
-  struct sockaddr_in teloutaddr;
   wfb_utils_fec_t fec;
 #endif // BOARD
 } wfb_utils_init_t;
