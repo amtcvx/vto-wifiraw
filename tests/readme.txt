@@ -51,8 +51,14 @@ gst-launch-1.0 udpsrc port=5600 ! application/x-rtp, encoding-name=H264, payload
 
 PPRZ
 ----
-socat -u "/dev/ttyS4",raw,echo=0,b115200 udp-sendto:127.0.0.1:4244
-socat -u udp-listen:4245,reuseaddr,fork "/dev/ttyS4",raw,echo=0,b115200 
+
+radxa (192.168.3.2)
+sudo socat -u udp-listen:4243 "/dev/ttyS4",raw,echo=0,b115200
+sudo socat -u "/dev/ttyS4",raw,echo=0,b115200 udp-sendto:192.168.3.1:4242
+
+gcs (192.168.3.2) 
+/home/pprz/Projects/paparazzi/sw/ground_segment/tmtc/
+link_py.py -ac 101:192.168.3.2:4242:4243 -d /dev/ttyUSB0 -s 57600 -t xbee 
 
 
 Doc
