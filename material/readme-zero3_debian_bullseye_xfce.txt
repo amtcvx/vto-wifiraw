@@ -152,6 +152,7 @@ python3 -m pip install pyserial
 /home/pprz/Projects/paparazzi/sw/ground_segment/tmtc/link -d /dev/ttyUSB0 -transport xbee -s 57600
 /home/pprz/Projects/paparazzi/sw/ground_segment/tmtc/link_py.py -d /dev/ttyUSB0 -t xbee -s 57600 -ac 115:127.0.0.1:4244:4245
 /home/pprz/Projects/paparazzi/sw/ground_segment/tmtc/messages
+(sudo apt install liblablgtk2-ocaml-dev)
 )
 
 -------------------------------------------------------------------------------
