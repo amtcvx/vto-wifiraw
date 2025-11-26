@@ -70,9 +70,8 @@ typedef enum { WFB_PRO, WFB_VID, WFB_TUN, WFB_NB } type_d;
 #define STR_HELPER(x) 	#x
 #define STR(x) 		STR_HELPER(x)
 
-#define TUN_DRONEID	DRONEID + 1
-#define TUN_IP_BOARD	"10.0.1." STR(TUN_DRONEID)
-#define TUN_IP_GROUND	"10.0.1.1"
+#define TUN_IP_BOARD	"10.0.1." STR(DRONEID)
+#define TUN_IP_GROUND	"10.0.1.0"
 #define TUN_MTU		1400
 #define IPBROAD		"255.255.255.0"
 
