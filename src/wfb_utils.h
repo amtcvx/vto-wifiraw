@@ -39,18 +39,9 @@ typedef enum { WFB_PRO, WFB_VID, WFB_TUN, WFB_NB } type_d;
 #define PERIOD_DELAY_S  1
 
 #define IP_LOCAL "127.0.0.1"
-
-#define PORT_NORAW   3000
-#define PORT_VID     5600
-#define PORT_LOG     5000
-
-#if TELEM
-#define PORT_TEL_UP   4245
-#define PORT_TEL_DOWN 4244
-#endif // TELEM
-
 #define PAY_MTU 1400
 
+/*
 #define DRONEID_GRD 0
 #define DRONEID_MIN 1
 #define DRONEID_MAX 2
@@ -60,9 +51,27 @@ typedef enum { WFB_PRO, WFB_VID, WFB_TUN, WFB_NB } type_d;
 #else
 #define DRONEID DRONEID_GRD
 #endif // BOARD
+*/
 
+#define PORT_NORAW   3000 + DRONEID
+#define PORT_LOG     5000 + DRONEID
 
-#define TUN_IP_BOARD	"10.0.1.2"
+#if BOARD
+#define PORT_VID     5600
+#else
+#define PORT_VID     5600 + DRONEID
+#endif // BOARD
+       
+#if TELEM
+#define PORT_TEL_UP   4240 + DRONEID
+#define PORT_TEL_DOWN 4250 + DRONEID
+#endif // TELEM
+
+#define STR_HELPER(x) 	#x
+#define STR(x) 		STR_HELPER(x)
+
+#define TUN_DRONEID	DRONEID + 1
+#define TUN_IP_BOARD	"10.0.1." STR(TUN_DRONEID)
 #define TUN_IP_GROUND	"10.0.1.1"
 #define TUN_MTU		1400
 #define IPBROAD		"255.255.255.0"
@@ -72,7 +81,7 @@ typedef enum { WFB_PRO, WFB_VID, WFB_TUN, WFB_NB } type_d;
 #define TUN_IP_SRC	TUN_IP_BOARD
 #define TUN_IP_DST	TUN_IP_GROUND
 #else
-#define TUN_NAME	"grdtun"
+#define TUN_NAME 	"grdtun" STR(DRONEID)
 #define TUN_IP_SRC	TUN_IP_GROUND
 #define TUN_IP_DST	TUN_IP_BOARD
 #endif // BOARD

@@ -13,6 +13,8 @@
 /*****************************************************************************/
 int main(void) {
 
+  printf("%s\n",TUN_IP_BOARD);
+
   wfb_utils_init_t u;
   wfb_utils_init(&u);
 #if RAW
@@ -94,9 +96,11 @@ int main(void) {
 #if RAW
             if (!((len > 0) &&
 #if BOARD
-              (headspay.droneid == DRONEID_GRD)
+              (headspay.droneid == DRONEID)
+//              (headspay.droneid == DRONEID_GRD)
 #else // BOARD
-              (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEID_MAX)
+//              (headspay.droneid >= DRONEID_MIN)&&(headspay.droneid <= DRONEID_MAX)
+              (headspay.droneid == DRONEID)
 #endif // BOARD
               && (((uint8_t *)iov_llchd_rx.iov_base)[0]==1)&&(((uint8_t *)iov_llchd_rx.iov_base)[1]==2)
               && (((uint8_t *)iov_llchd_rx.iov_base)[2]==3)&&(((uint8_t *)iov_llchd_rx.iov_base)[3]==4))) {
