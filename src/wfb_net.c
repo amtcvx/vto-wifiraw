@@ -103,7 +103,7 @@ int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
       strcpy(ptr->ifname, ifname);
       if (tb_msg[NL80211_ATTR_IFINDEX]) ptr->ifindex = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
       if (tb_msg[NL80211_ATTR_IFTYPE])  ptr->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
-      ((((elt_t *)arg)->nb)++);
+      if (ptr->iftype != NL80211_IFTYPE_MONITOR) ((((elt_t *)arg)->nb)++);
     }
   }
 
@@ -218,7 +218,7 @@ uint8_t setwifi(elt_t *elt, wfb_net_sockidnl_t *n) {
     if (nl_send_auto(n->socknl, msg3) >= 0)  nl_recvmsgs_default(n->socknl);
     nlmsg_free(msg3);
   }
-
+/*
   elt->nb = 0;
   struct nl_msg *msg4 = nlmsg_alloc();
   if (!msg4) return(0);
@@ -227,7 +227,7 @@ uint8_t setwifi(elt_t *elt, wfb_net_sockidnl_t *n) {
   msg_received = false;
   while (!msg_received) nl_recvmsgs(n->socknl, cb1);
   nlmsg_free(msg4);
-
+*/
   unblock_rfkill(elt);
 
   int8_t err = 0;
