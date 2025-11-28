@@ -21,6 +21,7 @@ int main(void) {
   wfb_net_init_t n;
   if (false == wfb_net_init(&n)) { printf("NO WIFI\n"); exit(-1); }
   wfb_utils_addraw(&u,&n);
+  for (uint8_t i=0;i<n.nbraws;i++) printf("(%s)\n",n.rawdevs[i]->ifname);
 #endif // RAW
 
   uint8_t sequence=0;

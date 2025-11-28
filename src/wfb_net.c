@@ -103,7 +103,7 @@ int getallinterfaces_callback(struct nl_msg *msg, void *arg) {
       strcpy(ptr->ifname, ifname);
       if (tb_msg[NL80211_ATTR_IFINDEX]) ptr->ifindex = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
       if (tb_msg[NL80211_ATTR_IFTYPE])  ptr->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
-      if (ptr->iftype != NL80211_IFTYPE_MONITOR) ((((elt_t *)arg)->nb)++);
+      if ((ptr->iftype != NL80211_IFTYPE_MONITOR) && (((elt_t *)arg)->nb < 2)) ((((elt_t *)arg)->nb)++);
     }
   }
 
