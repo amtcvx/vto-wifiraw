@@ -1,3 +1,45 @@
+Frequency=5.825
+
+
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw, width=1920, height=1080, framerate=30/1, format='NV12' ! mpph265enc bps=1000000 gop=60 qp-max=48 qp-min=8 rc-mode=cbr ! rtph265pay name=pay0 pt=96 config-interval=1 mtu=1400 ! udpsink port=5600 host=192.168.3.1
+
+MCS 4 : some errors
+MCS 1,2,3 : good
+
+sudo ./exe_fectestservraw $DEVICE
+
+(2)  (1397) Kbits/sec
+(2)  (2011) Kbits/sec
+(2)  (1319) Kbits/sec
+(2)  (2146) Kbits/sec
+(2)  (1396) Kbits/sec
+(2)  (1567) Kbits/sec
+(2)  (1624) Kbits/sec
+(2)  (1695) Kbits/sec
+(2)  (1610) Kbits/sec
+(2)  (1794) Kbits/sec
+(2)  (1601) Kbits/sec
+(2)  (1842) Kbits/sec
+(2)  (1372) Kbits/sec
+(2)  (2036) Kbits/sec
+(2)  (1349) Kbits/sec
+(2)  (2364) Kbits/sec
+(2)  (1262) Kbits/sec
+
+
+sudo ./exe_fectestcliraw $DEVICE
+
+(2) (1375) Kbits/sec
+(2) (1927) Kbits/sec
+(2) (1221) Kbits/sec
+(2) (2205) Kbits/sec
+(2) (1835) Kbits/sec
+(2) (1789) Kbits/sec
+(2) (1367) Kbits/sec
+(2) (2063) Kbits/sec
+(2) (1493) Kbits/sec
+(2) (1668) Kbits/sec
+
 ------------------------------------------
 NOMINAL
 nvh265enc rc-mode=2 bitrate=6000
