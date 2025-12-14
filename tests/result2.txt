@@ -1,5 +1,5 @@
 
-Board & Ground : Asus AC62
+Board & Ground : Asus AC56
 --------------------------
 
 mcs = 2
@@ -67,12 +67,3 @@ UDP buffer size:  208 KByte (default)
 [  1] 8.0000-9.0000 sec   330 KBytes  2.70 Mbits/sec   0.266 ms 37/267 (14%)
 [  1] 9.0000-10.0000 sec   352 KBytes  2.88 Mbits/sec   0.234 ms 23/268 (8.6%)
 [  1] 0.0000-10.0020 sec  3.06 MBytes  2.57 Mbits/sec   0.336 ms 492/2678 (18%)
-
-----------------------------------------------------
-
-ip link set wlan0 mtu 1500
-dd if=/dev/zero bs=4G count=1 | nc -v 127.0.0.1 1600
- 
-ip link set wlan0 mtu 1500
-nc -k -v -l 1600 > /dev/null
-
