@@ -40,7 +40,7 @@
 
 #define MCS_FLAGS  (IEEE80211_RADIOTAP_MCS_BW_20 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
 
-#define MCS_INDEX  2
+#define MCS_INDEX  10
 
 /************************************************************************************************/
 
