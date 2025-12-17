@@ -1,5 +1,10 @@
 --------------------------------------------------------------------------------
-OK 
+sudo cp rtw88.conf /etc/modprobe.d
+reboot
+
+--------------------------------------------------------------------------------
+Ping OK, ssh KO !
+ 
 git clone https://github.com/svpcom/rtl8812au.git
 mv rtl8812au rtl88xxau_wfb
 cd rtl88xxau_wfb
@@ -28,6 +33,12 @@ sudo dkms status
 
 /etc/modprobe.d/8812au.conf
 options 88XXau rtw_monitor_disable_1m=1
+options 88XXau rtw_led_ctrl=0
+
+reboot
+
+echo "0" > /proc/net/rtl88XXau/wlxfc349725a317/led_ctrl
+cat /proc/net/rtl88XXau/wlxfc349725a317/led_ctrl
 
 --------------------------------------------------------------------------------
 KO !!
@@ -36,6 +47,8 @@ cd rtw88
 sudo dkms install $PWD
 sudo make install_fw
 sudo cp rtw88.conf /etc/modprobe.d
+
+reboot
 
 sudo dkms status
 rtw88/0.6, 6.14.0-37-generic, x86_64: installed
