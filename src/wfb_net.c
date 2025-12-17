@@ -44,8 +44,7 @@
 
 /************************************************************************************************/
 
-//uint8_t radiotaphd_rx[35];
-uint8_t radiotaphd_rx[39];
+uint8_t radiotaphd_rx[RADIOTAPSIZE];
 uint8_t ieeehd_rx[24];
 uint8_t llchd_rx[4];
 
