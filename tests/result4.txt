@@ -25,6 +25,11 @@ options 88XXau_wfb rtw_tx_pwr_idx_override=1
 modinfo -p 88XXau_wfb | grep -i rtw_tx_pwr_idx_override
 rtw_tx_pwr_idx_override:0-63 int value to force-set all power index values to (int)
 
+/etc/modprobe.d/blacklist.conf
+blacklist 88XXau_wfb
+
+reboot
+
 --------------------------------------------------------------------------------
 git clone https://github.com/aircrack-ng/rtl8812au.git
 mv rtl8812au rtl88XXau
@@ -66,7 +71,9 @@ sudo dkms status
 rtw88/0.6, 6.14.0-37-generic, x86_64: installed
 
 /etc/modprobe.d/blacklist.conf
-blacklist 88XXau_wfb
+blacklist rtw_8812au
+blacklist rtw_8812a
+blacklist rtw_88xxa
 
 reboot
 
