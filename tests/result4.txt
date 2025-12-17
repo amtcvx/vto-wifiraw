@@ -70,10 +70,14 @@ reboot
 sudo dkms status
 rtw88/0.6, 6.14.0-37-generic, x86_64: installed
 
+6.14.0-37-generic
 /etc/modprobe.d/blacklist.conf
 blacklist rtw_8812au
 blacklist rtw_8812a
 blacklist rtw_88xxa
+
+6.11 
+?
 
 reboot
 
