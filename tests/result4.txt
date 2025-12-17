@@ -1,17 +1,26 @@
 --------------------------------------------------------------------------------
 OK 
 git clone https://github.com/svpcom/rtl8812au.git
-mv rtl8812au rtl8812au_svpcom
-cd rtl8812au_svpcom
+mv rtl8812au rtl88xxau_wfb
+cd rtl88xxau_wfb
 sudo ./dkms-install.sh 
-
+"
+Disabled IPv6 Successfuly 
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+"
 sudo dkms status
 rtl8812au/5.2.20.2, 6.14.0-37-generic, x86_64: installed
 
 --------------------------------------------------------------------------------
 KO !!
 git clone https://github.com/aircrack-ng/rtl8812au.git
-cd rtl8812au
+mv rtl8812au rtl88XXau
+cd rtl88XXau
 sudo make dkms_install
 
 sudo dkms status
