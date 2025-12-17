@@ -3,8 +3,6 @@ sudo cp rtw88.conf /etc/modprobe.d
 reboot
 
 --------------------------------------------------------------------------------
-Ping OK, ssh KO !
- 
 git clone https://github.com/svpcom/rtl8812au.git
 mv rtl8812au rtl88xxau_wfb
 cd rtl88xxau_wfb
@@ -22,7 +20,6 @@ sudo dkms status
 rtl8812au/5.2.20.2, 6.14.0-37-generic, x86_64: installed
 
 --------------------------------------------------------------------------------
-KO !!
 git clone https://github.com/aircrack-ng/rtl8812au.git
 mv rtl8812au rtl88XXau
 cd rtl88XXau
@@ -40,6 +37,11 @@ reboot
 echo "0" > /proc/net/rtl88XXau/wlxfc349725a317/led_ctrl
 cat /proc/net/rtl88XXau/wlxfc349725a317/led_ctrl
 
+/etc/modprobe.d/blacklist.conf
+blacklist 88XXau
+
+reboot
+
 --------------------------------------------------------------------------------
 KO !!
 git clone https://github.com/lwfinger/rtw88.git
@@ -52,6 +54,11 @@ reboot
 
 sudo dkms status
 rtw88/0.6, 6.14.0-37-generic, x86_64: installed
+
+/etc/modprobe.d/blacklist.conf
+blacklist 88XXau_wfb
+
+reboot
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
