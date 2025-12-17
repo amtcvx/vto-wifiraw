@@ -19,6 +19,12 @@ net.ipv6.conf.lo.disable_ipv6 = 1
 sudo dkms status
 rtl8812au/5.2.20.2, 6.14.0-37-generic, x86_64: installed
 
+/etc/modprobe.d/8812au.conf
+options 88XXau_wfb rtw_tx_pwr_idx_override=1
+
+modinfo -p 88XXau_wfb | grep -i rtw_tx_pwr_idx_override
+rtw_tx_pwr_idx_override:0-63 int value to force-set all power index values to (int)
+
 --------------------------------------------------------------------------------
 git clone https://github.com/aircrack-ng/rtl8812au.git
 mv rtl8812au rtl88XXau
@@ -33,6 +39,9 @@ options 88XXau rtw_monitor_disable_1m=1
 options 88XXau rtw_led_ctrl=0
 
 reboot
+
+modinfo -p 88XXau  | grep 1m
+rtw_monitor_disable_1m:Disable default 1Mbps rate for monitor injected frames (int)
 
 echo "0" > /proc/net/rtl88XXau/wlxfc349725a317/led_ctrl
 cat /proc/net/rtl88XXau/wlxfc349725a317/led_ctrl
