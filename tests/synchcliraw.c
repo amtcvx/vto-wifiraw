@@ -1,6 +1,11 @@
 /*
+rtl88xxau_wfb
+export RADIOTAPSIZE=39
 
-gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DCONFIG_LIBNL30 -I/usr/include/libnl3 -c synchcliraw.c -o synchcliraw.o
+rtl88XXau
+export RADIOTAPSIZE=35
+
+gcc -g -O2 -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DRADIOTAPSIZE=$RADIOTAPSIZE --DCONFIG_LIBNL30 -I/usr/include/libnl3 -c synchcliraw.c -o synchcliraw.o
 
 cc synchcliraw.o -g -lnl-route-3 -lnl-genl-3 -lnl-3 -o exe_synchcliraw
 
@@ -129,7 +134,7 @@ typedef struct {
 
 #define ONLINE_MTU PAY_MTU + sizeof(wfb_utils_fec_t)
 
-uint8_t radiotaphd_rx[35];
+uint8_t radiotaphd_rx[RADIOTAPSIZE];
 uint8_t ieeehd_rx[24];
 uint8_t llchd_rx[4];
 

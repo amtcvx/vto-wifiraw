@@ -1,5 +1,11 @@
 /*
-gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DBOARD=0 -c fectestservraw.c -o fectestservraw.o
+rtl88xxau_wfb
+export RADIOTAPSIZE=39
+
+rtl88XXau
+export RADIOTAPSIZE=35
+
+gcc -g -O2 -DZFEX_UNROLL_ADDMUL_SIMD=8 -DZFEX_USE_INTEL_SSSE3 -DZFEX_USE_ARM_NEON -DZFEX_INLINE_ADDMUL -DZFEX_INLINE_ADDMUL_SIMD -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -DRADIOTAPSIZE=$RADIOTAPSIZE -c fectestservraw.c -o fectestservraw.o
 
 cc fectestservraw.o ../obj/zfex.o -g -o exe_fectestservraw
 
@@ -94,7 +100,7 @@ typedef struct {
 
 /************************************************************************************************/
 
-uint8_t radiotaphd_rx[35];
+uint8_t radiotaphd_rx[RADIOTAPSIZE];
 uint8_t ieeehd_rx[24];
 uint8_t llchd_rx[4];
 
