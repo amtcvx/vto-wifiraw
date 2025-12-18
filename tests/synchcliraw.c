@@ -335,6 +335,8 @@ uint8_t buid_tun(void) {
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
+  printf("(%d)\n",RADIOTAPSIZE);
+
   if (!((argc >= 1) && (argc <= 3))) exit(-1);
   printf("START [%d]\n",argc); fflush (stdout);
 

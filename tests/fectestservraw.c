@@ -132,6 +132,8 @@ struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
+  printf("(%d)\n",RADIOTAPSIZE);
+
   if(argc == 3)  { radiotaphd_tx[12] = atoi(argv[2]); if (atoi(argv[2]) > 7) exit(-1); }
 
 

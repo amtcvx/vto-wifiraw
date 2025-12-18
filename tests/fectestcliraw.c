@@ -138,6 +138,8 @@ struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
+  printf("(%d)\n",RADIOTAPSIZE);
+
   fec_t *fec_p;
   fec_new(FEC_K, FEC_N, &fec_p);
 
