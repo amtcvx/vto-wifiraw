@@ -259,12 +259,12 @@ void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt
 
 
 /*****************************************************************************/
-void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t probuf[MAXRAWDEV]) {
 #if RAW
+void wfb_utils_periodic(wfb_utils_init_t *u, wfb_net_init_t *n,ssize_t lentab[WFB_NB][MAXRAWDEV] ,int16_t probuf[MAXRAWDEV]) {
   setmainbackup(u,n,lentab,probuf);
   printlog(u,n);
-#endif  // RAW
 }
+#endif  // RAW
 
 #if RAW
 /*****************************************************************************/
@@ -286,6 +286,23 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n) {
     wfb_net_setfreq(&n->sockidnl, n->rawdevs[rawcpt]->ifindex, n->rawdevs[rawcpt]->freqs[n->rawdevs[rawcpt]->stat.freqnb]);
   }
 }
+#else 
+void wfb_utils_addnoraw(wfb_utils_init_t *u) {
+
+  if (-1 == (u->fd[WFB_NB] = socket(AF_INET, SOCK_DGRAM, 0))) exit(-1);
+  if (-1 == setsockopt(u->fd[WFB_NB], SOL_SOCKET, SO_REUSEADDR , &(int){1}, sizeof(int))) exit(-1);
+  struct sockaddr_in  norawinaddr;
+  norawinaddr.sin_family = AF_INET;
+  norawinaddr.sin_port = htons(PORT_NORAW);
+  norawinaddr.sin_addr.s_addr = inet_addr(IP_LOCAL_RAW);
+  if (-1 == bind( u->fd[WFB_NB], (const struct sockaddr *)&norawinaddr, sizeof(norawinaddr))) exit(-1);
+  u->norawoutaddr.sin_family = AF_INET;
+  u->norawoutaddr.sin_port = htons(PORT_NORAW);
+  u->norawoutaddr.sin_addr.s_addr = inet_addr(IP_REMOTE_RAW);
+  u->readtab[u->readnb] = WFB_NB ;
+  u->readsets[u->readnb].fd = u->fd[WFB_NB]; u->readsets[u->readnb].events = POLLIN; u->readnb++;
+}
+
 #endif // RAW
 
 /*****************************************************************************/

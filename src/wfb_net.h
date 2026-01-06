@@ -1,3 +1,5 @@
+#if RAW
+
 #ifndef WFB_NET_H
 #define WFB_NET_H
 
@@ -60,4 +62,6 @@ bool wfb_net_init(wfb_net_init_t *n);
 void wfb_net_drain(uint8_t fd);
 bool wfb_net_setfreq(wfb_net_sockidnl_t *psock, int ifindex, uint32_t freq); 
 
-#endif // WFB_NET_H
+#endif // WFB_NET_H$
+
+#endif // RAW

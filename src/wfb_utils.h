@@ -163,6 +163,8 @@ void wfb_utils_addraw(wfb_utils_init_t *u, wfb_net_init_t *n);
 #else // BOARD
 void wfb_utils_syncground(wfb_utils_init_t *u, wfb_net_init_t *n, uint8_t rawcpt);
 #endif // BOARD
+#else // RAW
+void wfb_utils_addnoraw(wfb_utils_init_t *u);
 #endif // RAW
 
 #if BOARD

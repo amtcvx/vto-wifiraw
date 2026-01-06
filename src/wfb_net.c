@@ -1,3 +1,5 @@
+#if RAW
+
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
@@ -341,3 +343,5 @@ bool wfb_net_init(wfb_net_init_t *n) {
   }
   return(false);
 }
+
+#endif // RAW
