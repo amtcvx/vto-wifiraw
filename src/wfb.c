@@ -152,9 +152,6 @@ int main(void) {
 #if BOARD
 #else // BOARD
               if( headspay.msgcpt == WFB_VID) {
-
-	        printf("len(%d)\n",headspay.msglen);
-
                 if (rawcur < (MAXNBRAWBUF-1)) rawcur++; else rawcur=0; 
 	        wfb_utils_sendfec(&u.fec, u.fec_p, headspay.seq, headspay.fec, iovpay.iov_base);
 	      } 
