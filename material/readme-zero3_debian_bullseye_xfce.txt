@@ -34,7 +34,7 @@ Profile name Ethernetconnection1
 Device 
 IPV4 CONFIGURATION <Manual>
 Addresse 192.168.3.2/24
-Gateway 192.168.3.1
+Gateway
 DNS Servers 8.8.8.8
             8.8.4.4            
 IPV6 CONFIGURATION <Disabled>     
@@ -44,7 +44,15 @@ sudo nmtui
 => activate
 
 reboot
-ssh rock@192.168.3.2
+
+GroundID 100
+ground static 
+192.168.3.100
+255.255.255.0
+0.0.0.0
+
+DroneID 1
+ssh rock@192.168.3.1
 rock
 
 sudo nmcli connection show -a
@@ -76,6 +84,9 @@ sudo sysctl net.ipv4.ip_forward=1
 
 ssh rock@192.168.3.2
 rock
+
+if gateway empty
+sudo ip route add default via 192.168.3.100 dev enx3c18a0d60afa
 
 sudo apt-get update
 
