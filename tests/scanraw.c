@@ -226,12 +226,17 @@ int main(int argc, char **argv) {
         if (readsets[cpt].revents == POLLIN) {
           if (cpt == 0) {
             len = read(fd[0], &exptime, sizeof(uint64_t));
-	    printf("[%d] (%d)\n",rawdev.freqs[rawdev.cptfreqs],rawnb);
-	    rawnb=0;
-	    if (argc != 3) {
+	    printf("[%d] (%d) ",rawdev.freqs[rawdev.cptfreqs],rawnb);
+	    if (argc == 3) {
+              if (rawnb > 0)
+                printf("Antenna Signal (%d); Signal Quality (%d); Antenna (%d) signal (%d); Antenna (%d) signal (%d)",
+                  dumbuf[22]-256,(uint16_t)dumbuf[24],dumbuf[32],dumbuf[31]-256,dumbuf[34],dumbuf[33]-256);
+	    } else {
 	      if (rawdev.cptfreqs < (rawdev.nbfreqs - 1)) rawdev.cptfreqs++; else rawdev.cptfreqs = 0;
 	      setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
 	    }
+	    printf("\n");
+	    rawnb = 0;
 	  } else {
             rawlen = recvmsg(fd[1], &msg, MSG_DONTWAIT);
 	    rawnb++;
