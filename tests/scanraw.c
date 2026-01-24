@@ -128,6 +128,8 @@ bool setfreq(uint8_t sockid, struct nl_sock *socknl, int ifindex, uint32_t freq)
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
+  if ((argc < 2) || (argc > 3)) exit(-1);	
+
   uint8_t fd[2];
 
   uint64_t exptime;
@@ -208,13 +210,11 @@ int main(int argc, char **argv) {
   ssize_t rawlen = 0, len = 0;
   uint8_t rawnb = 0;
 
-  printf("argc(%d) argv(%s)\n",argc,argv[2]);
-
   rawdev.cptfreqs = 0; 
   if (argc == 3) { 
     uint8_t i = 0;
     for (i=0;i<rawdev.nbfreqs; i++) if (rawdev.freqs[i] == atoi(argv[2])) break;
-    if (rawdev.freqs[i] == atoi(argv[2])) rawdev.cptfreqs = i;
+    if (rawdev.freqs[i] == atoi(argv[2])) rawdev.cptfreqs = i; else exit(-1);
   }
   setfreq(sockid, socknl, ifr.ifr_ifindex, rawdev.freqs[rawdev.cptfreqs]);
 

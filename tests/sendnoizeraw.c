@@ -10,6 +10,10 @@ sudo ./exe_sendnoizeraw $DEVICE 2412
 sudo ./exe_sendnoizeraw $DEVICE 2427
 sudo ./exe_sendnoizeraw $DEVICE 5090
 
+sudo ./exe_sendnoizeraw $DEVICE 2412 0
+sudo ./exe_sendnoizeraw $DEVICE 2412 15
+
+
 */
 #include<unistd.h>
 #include <string.h>
@@ -84,6 +88,8 @@ struct iovec iov_llchd_tx =      { .iov_base = llchd_tx,      .iov_len = sizeof(
 /*****************************************************************************/
 int main(int argc, char **argv) {
 
+  if ((argc < 3)||(argc > 4)) exit(-1);
+
   uint8_t sockfd;
   uint16_t protocol = 0;
   if (-1 == (sockfd = socket(AF_PACKET,SOCK_RAW,protocol))) exit(-1);
@@ -149,8 +155,18 @@ int main(int argc, char **argv) {
   struct iovec iovtab[4] = { iov_radiotaphd_tx, iov_ieeehd_tx, iov_llchd_tx, iovdum };
   struct msghdr msg = { .msg_iov = iovtab, .msg_iovlen = 4 };
 
-  ssize_t rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
-  printf("(%ld)(%d)\n",rawlen,freq);
+  if (argc == 4) {
+    uint32_t mcs = atoi(argv[3]);
+    if (mcs > 31) exit(-1);
+    else radiotaphd_tx[12] = (uint8_t)mcs;
+   }
+
+  do {
+    ssize_t rawlen = sendmsg(sockfd, (const struct msghdr *)&msg, MSG_DONTWAIT);
+    printf("(%ld)(%d)(%d)\n",rawlen,freq,radiotaphd_tx[12]);
+    sleep(1);
+  } while (argc == 4);
+
 
   nla_put_failure:
     exit(-1);
