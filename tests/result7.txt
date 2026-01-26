@@ -3,6 +3,7 @@ send msg with 2 antennas (2T)
 
   and recv with 2 antennas (2R) 
     => Both rcv "Antenna Signal" (dBm) decrease proportionnaly but not equal with range from -22 to -80
+    (*)
 
   and recv with 1 antenna (1R), dummy load on the 2nd antenna
     => Only rcv dummy load "Antenna Signal" (dBm) decrease a lot with range
@@ -10,18 +11,18 @@ send msg with 2 antennas (2T)
 
 
 
+(*) rtl88xxau_wfb
+  Antenna 0, signal, noise, quality
+  Antenna 1, signal, noise, quality(!255)
+  
 
 
 
 
 -------------------------------------------------------------------------------
-ZAPO_W21_8812AU
-
-
 rtl88XXau
 
 lsusb  -t
-/:  Bus 003.Port 001: Dev 001, Class=root_hub, Driver=xhci_hcd/15p, 480M
     |__ Port 004: Dev 007, If 0, Class=Vendor Specific Class, Driver=rtl88XXau, 480M
 
 iw list
@@ -36,6 +37,31 @@ iw list
 
                 VHT Capabilities (0x03c031a2):
                         TX STBC
+
+
+rtl88xxau_wfb
+
+lsusb -t
+    |__ Port 001: Dev 006, If 0, Class=Vendor Specific Class, Driver=rtl88xxau_wfb, 480M
+
+
+iw list
+        Available Antennas: TX 0 RX 0
+
+        Band 1:
+                Capabilities: 0x19f2
+                        TX STBC
+                        RX STBC 1-stream
+
+        Band 2:
+                Capabilities: 0x19f2
+                        TX STBC
+                        RX STBC 1-stream
+
+
+
+-------------------------------------------------------------------------------
+ZAPO_W21_8812AU
 
 2 antennas: UpLeft   UpRight 
 
