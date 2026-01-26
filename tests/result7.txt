@@ -1,0 +1,71 @@
+
+send msg with 2 antennas (2T) 
+
+  and recv with 2 antennas (2R) 
+    => Both rcv "Antenna Signal" (dBm) decrease proportionnaly but not equal with range from -22 to -80
+
+  and recv with 1 antenna (1R), dummy load on the 2nd antenna
+    => Only rcv dummy load "Antenna Signal" (dBm) decrease a lot with range
+    => UpLeft antenna is ANT0, UpRight antenna is ANT1
+
+
+
+
+
+
+
+-------------------------------------------------------------------------------
+ZAPO_W21_8812AU
+
+
+rtl88XXau
+
+lsusb  -t
+/:  Bus 003.Port 001: Dev 001, Class=root_hub, Driver=xhci_hcd/15p, 480M
+    |__ Port 004: Dev 007, If 0, Class=Vendor Specific Class, Driver=rtl88XXau, 480M
+
+iw list
+        Available Antennas: TX 0x2 RX 0x2
+
+        Band 1:
+                Capabilities: 0x1972
+                        RX STBC 1-stream
+        Band 2:
+                Capabilities: 0x1972
+                        RX STBC 1-stream
+
+                VHT Capabilities (0x03c031a2):
+                        TX STBC
+
+2 antennas: UpLeft   UpRight 
+
+recvmsg = wireshark
+
+sendmsg
+
+#define IEEE80211_RADIOTAP_MCS_HAVE_BW    0x01
+#define IEEE80211_RADIOTAP_MCS_HAVE_MCS   0x02
+#define IEEE80211_RADIOTAP_MCS_HAVE_GI    0x04
+
+#define IEEE80211_RADIOTAP_MCS_HAVE_STBC  0x20
+
+#define IEEE80211_RADIOTAP_MCS_BW_20    0
+#define IEEE80211_RADIOTAP_MCS_SGI      0x04
+
+#define IEEE80211_RADIOTAP_MCS_STBC_1  1
+#define IEEE80211_RADIOTAP_MCS_STBC_SHIFT 5
+
+#define MCS_KNOWN (IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_STBC )
+
+#define MCS_FLAGS  (IEEE80211_RADIOTAP_MCS_BW_20 | IEEE80211_RADIOTAP_MCS_SGI | (IEEE80211_RADIOTAP_MCS_STBC_1 << IEEE80211_RADIOTAP_MCS_STBC_SHIFT))
+
+#define MCS_INDEX  2
+
+uint8_t radiotaphd_tx[] = {
+        0x00, 0x00, // <-- radiotap version
+        0x0d, 0x00, // <- radiotap header length
+        0x00, 0x80, 0x08, 0x00, // <-- radiotap present flags:  RADIOTAP_TX_FLAGS + RADIOTAP_MCS
+        0x08, 0x00,  // RADIOTAP_F_TX_NOACK
+        MCS_KNOWN , MCS_FLAGS, MCS_INDEX // bitmap, flags, mcs_index
+};
+
