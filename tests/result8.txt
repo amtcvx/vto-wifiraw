@@ -1,0 +1,92 @@
+Octave_101
+
+sudo exe_sendnoizeraw $DEVICE 5885 2
+sudo exe_scanraw wlx54c9ff02e7b2 5885
+
+Driver=rtl88XXau
+
+wlx54c9ff02e893
+[2484] (1) Antenna Signal (-34); Signal Quality (69); Antenna (0) signal (-34); Antenna (1) signal (-36)
+...
+[2484] (1) Antenna Signal (-54); Signal Quality (69); Antenna (0) signal (-58); Antenna (1) signal (-56)
+
+wlx54c9ff02e820
+[2484] (1) Antenna Signal (-26); Signal Quality (78); Antenna (0) signal (-26); Antenna (1) signal (-30)
+...
+[2484] (1) Antenna Signal (-54); Signal Quality (78); Antenna (0) signal (-56); Antenna (1) signal (-54)
+
+wlx54c9ff02e7ab
+[2484] (1) Antenna Signal (-28); Signal Quality (81); Antenna (0) signal (-26); Antenna (1) signal (-34)
+...
+[2484] (1) Antenna Signal (-58); Signal Quality (75); Antenna (0) signal (-58); Antenna (1) signal (-62)
+
+wlx54c9ff02e88b
+[2484] (1) Antenna Signal (-27); Signal Quality (69); Antenna (0) signal (-26); Antenna (1) signal (-32)
+...
+[2484] (1) Antenna Signal (-52); Signal Quality (69); Antenna (0) signal (-52); Antenna (1) signal (-56)
+
+
+wlx54c9ff02e893
+[5885] (1) Antenna Signal (-18); Signal Quality (45); Antenna (0) signal (-18); Antenna (1) signal (-24)
+...
+[5885] (1) Antenna Signal (-50); Signal Quality (42); Antenna (0) signal (-50); Antenna (1) signal (-50)
+
+wlx54c9ff02e820
+[5885] (1) Antenna Signal (-24); Signal Quality (60); Antenna (0) signal (-22); Antenna (1) signal (-22)
+...
+[5885] (1) Antenna Signal (-56); Signal Quality (57); Antenna (0) signal (-58); Antenna (1) signal (-54)
+
+wlx54c9ff02e7ab
+[5885] (1) Antenna Signal (-31); Signal Quality (66); Antenna (0) signal (-42); Antenna (1) signal (-30)
+...
+[5885] (1) Antenna Signal (-66); Signal Quality (66); Antenna (0) signal (-70); Antenna (1) signal (-66)
+
+wlx54c9ff02e88b
+[5885] (1) Antenna Signal (-29); Signal Quality (51); Antenna (0) signal (-32); Antenna (1) signal (-28)
+...
+[5885] (1) Antenna Signal (-52); Signal Quality (48); Antenna (0) signal (-56); Antenna (1) signal (-52)
+
+
+Driver=rtl88xxau_wfb
+
+wlx54c9ff02e893
+[2484] (1) Antenna signal (-22); Antenna noise (-49); Signal Quality (63); Antenna (0); Antenna signal (-22); Antenna noise (-48); Signal Quality (255); Antenna (1);
+...
+[2484] (1) Antenna signal (-48); Antenna noise (-78); Signal Quality (51); Antenna (0); Antenna signal (-46); Antenna noise (-78); Signal Quality (255); Antenna (1);
+
+wlx54c9ff02e820
+[2484] (1) Antenna signal (-22); Antenna noise (-50); Signal Quality (60); Antenna (0); Antenna signal (-20); Antenna noise (-50); Signal Quality (255); Antenna (1);
+...
+[2484] (1) Antenna signal (-50); Antenna noise (-80); Signal Quality (51); Antenna (0); Antenna signal (-44); Antenna noise (-75); Signal Quality (255); Antenna (1);
+
+wlx54c9ff02e7ab
+[2484] (1) Antenna signal (-20); Antenna noise (-48); Signal Quality (51); Antenna (0); Antenna signal (-26); Antenna noise (-51); Signal Quality (255); Antenna (1);
+...
+[2484] (1) Antenna signal (-48); Antenna noise (-79); Signal Quality (45); Antenna (0); Antenna signal (-46); Antenna noise (-75); Signal Quality (255); Antenna (1);
+
+wlx54c9ff02e88b
+[2484] (1) Antenna signal (-22); Antenna noise (-43); Signal Quality (57); Antenna (0); Antenna signal (-24); Antenna noise (-44); Signal Quality (255); Antenna (1);
+...
+[2484] (1) Antenna signal (-46); Antenna noise (-80); Signal Quality (48); Antenna (0); Antenna signal (-46); Antenna noise (-74); Signal Quality (255); Antenna (1);
+
+
+wlx54c9ff02e893
+[5805] (1) Antenna signal (-16); Antenna noise (-40); Signal Quality (39); Antenna (0); Antenna signal (-16); Antenna noise (-40); Signal Quality (255); Antenna (1);
+...
+[5805] (1) Antenna signal (-50); Antenna noise (-69); Signal Quality (36); Antenna (0); Antenna signal (-44); Antenna noise (-61); Signal Quality (255); Antenna (1);
+
+wlx54c9ff02e820
+[5805] (1) Antenna signal (-14); Antenna noise (-39); Signal Quality (48); Antenna (0); Antenna signal (-12); Antenna noise (-39); Signal Quality (255); Antenna (1);
+...
+[5805] (1) Antenna signal (-52); Antenna noise (-76); Signal Quality (39); Antenna (0); Antenna signal (-44); Antenna noise (-67); Signal Quality (255); Antenna (1);
+
+wlx54c9ff02e7ab
+[5805] (1) Antenna signal (-32); Antenna noise (-49); Signal Quality (36); Antenna (0); Antenna signal (-28); Antenna noise (-47); Signal Quality (255); Antenna (1);
+...
+[5805] (1) Antenna signal (-64); Antenna noise (-80); Signal Quality (39); Antenna (0); Antenna signal (-58); Antenna noise (-76); Signal Quality (255); Antenna (1);
+
+wlx54c9ff02e88b
+[5805] (1) Antenna signal (-18); Antenna noise (-46); Signal Quality (36); Antenna (0); Antenna signal (-8); Antenna noise (-37); Signal Quality (255); Antenna (1);
+...
+[5805] (1) Antenna signal (-52); Antenna noise (-80); Signal Quality (36); Antenna (0); Antenna signal (-44); Antenna noise (-74); Signal Quality (255); Antenna (1);
+
